@@ -24,12 +24,12 @@ rcon="$script_dir/send-rcon.sh"
 
 if $force; then
 	# Try to save, but continue on error.
-	"$rcon" save >/dev/null 2>&1
+	"$rcon" save-all >/dev/null 2>&1
 else
 	# Exit on error e.g. server is not running
 	# server does not need to be running to save, but this prevents
 	# automated backups when the server is not running.
-	"$rcon" save | grep --ignore-case --invert-match 'Error'
+	"$rcon" save-all | grep --ignore-case --invert-match 'Error'
 fi
 
 "${compose[@]}" run --rm backup
