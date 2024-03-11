@@ -80,6 +80,9 @@ if [ -n "$running_container" ]; then
 		# Create a stop file to signal the server to stop (see cfg/start.sh)
 		touch "$server_dir/server/stop"
 
+		"$rcon" say "Server will stop in $time seconds!" | grep --ignore-case --invert-match 'Error'
+		sleep "$time"
+
 		"$rcon" stop | grep --ignore-case --invert-match 'Error'
 		printf 'Waiting for server to close... '
 		docker container wait "$running_container" >/dev/null
