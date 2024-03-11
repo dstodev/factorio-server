@@ -9,17 +9,21 @@ source_dir="$(readlink --canonicalize "$script_dir/..")"
 docker_dir="$source_dir/docker"
 server_dir="$source_dir/server-files"
 
+# shellcheck disable=SC2046
+export $(xargs <"$docker_dir/.env")
+server_name="$SERVER_NAME"
+
 help() {
 	cat <<-EOF
 		Usage: $(basename "$0") [ -u ]
 		  -h, --help    Prints this message.
 		  -u, --update  Updates the server files before starting the server.
-		  -p, --update-only  Updates the server files and exits.
+		  -o, --update-only  Updates the server files and exits.
 	EOF
 }
 
 canonicalized=$(getopt --name "$(basename "$0")" \
-	--options hup \
+	--options huo \
 	--longoptions help,update,update-only \
 	-- "$@") || status=$?
 
@@ -39,7 +43,7 @@ for arg in "$@"; do
 	-u | --update)
 		update_server=true
 		;;
-	-p | --update-only)
+	-o | --update-only)
 		update_server=true
 		update_only=true
 		;;
@@ -59,37 +63,37 @@ fi
 
 logs_dir="$source_dir/logs"
 compose_yml="$docker_dir/compose.yml"
+compose=(docker compose --file "$compose_yml")
 
-running_container=$(docker container list --filter name=palworld-server --quiet)
+running_container=$(docker container list --filter name="$server_name-server" --quiet)
 
 if [ -n "$running_container" ]; then
 	echo Server is already running!
 	exit 2
 fi
 
-compose=(docker compose --file "$compose_yml")
-
 if $update_server; then
 	echo Updating server...
-	"${compose[@]}" run --rm server-files
+	"${compose[@]}" build base
 
 	"$script_dir/fix-permissions.sh"
 
-	echo Linking host files to volume...
-
 	mkdir --parents "$server_dir/server"
 	ln --logical --force "$source_dir/cfg/start.sh" "$server_dir/server/start.sh"
+
+	cp "$source_dir/cfg/forge-"*"-installer.jar" "$server_dir/installer.jar"
+	"${compose[@]}" run cmd "java -jar installer.jar --installServer"
 fi
 
 if ! $update_only; then
-	compose_run=("${compose[@]}" --progress plain run --rm --service-ports palworld-server)
+	compose_run=("${compose[@]}" --progress plain run --rm --service-ports server)
 
-	log="$logs_dir/log-$(date +%Y%j-%H%M%S).txt"
+	log="$logs_dir/log-$(date +%Y%j-%H%M%S).log"
 	mkdir --parents "$(dirname "$log")"
 
 	echo Running command: "${compose_run[*]}"
 	echo "... with output logging to file: $log"
-	echo "... in screen daemon; screen -r palworld"
+	echo "... in screen daemon; screen -r $server_name"
 
-	screen -dmS palworld -L -Logfile "$log" "${compose_run[@]}"
+	screen -dmS "$server_name" -L -Logfile "$log" "${compose_run[@]}"
 fi

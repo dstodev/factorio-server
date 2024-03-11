@@ -19,16 +19,20 @@ Edit these files to configure the server.
 
 The server uses the following ports:
 
-- `UDP 8211` (Game)
+- `UDP 25565` (Game)
 - `TCP 25575` (RCON)
 
 These ports are configurable in `./docker/.env`.
 
 ## Start server
 
+You will need a Forge installer for your required version in `./cfg/`.  
+You can get one [here](https://files.minecraftforge.net/net/minecraftforge/forge/),
+and should look like e.g. `./cfg/forge-1.12.2-14.23.5.2860-installer.jar`
+
 This script will download the server files and start the server. After starting
-for the first time, you do not need to use the `--update` flag unless you want
-to update the server files.  
+for the first time, you do not need to use the `--update` flag unless you are
+updating the server files.  
 `./script/start-server.sh --update`
 
 ## Stop server
@@ -67,11 +71,11 @@ To use `send-rcon.sh`, you must first set an RCON password.
 - Use `./script/backup.sh` without the `--force` flag, because it uses RCON to
   send the save command.
 
-To set an RCON password, edit `./server-files/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini`:
+To set an RCON password, edit `./server-files/server.properties`:
 
-- set `RCONEnabled=True`
-- set `RCONPort=25575` (or update `./docker/.env` to match)
-- set `AdminPassword="YourRconPassword"`
+- set `enable-rcon=true`
+- set `rcon.port=25575` (or update `./docker/.env` to match)
+- set `rcon.password=YourRconPassword`
 
 then make a file `./rcon/secret` containing the same password in plaintext.
 
@@ -90,42 +94,16 @@ for details.
 To restore from backup, unzip the backup file you want:  
 `tar -xjf ./backups/backup-timestamp.tar.bz2`
 
-Replace the files in `./server-files/Pal/Saved` with the files from the backup.
-
-## Update server
-
-To update server files, use the `--update` flag like when first
-starting the server:  
-`./script/start-server.sh --update`
-
-Palworld updates may change certain config files. When
-this happens, you may wish to only restore save files:
-
-1. Stop the server:  (`--force` if necessary)  
-   `./script/stop-server.sh`
-2. Make sure you have a backup of `./server-files/Pal/Saved`
-3. Delete `./server-files/`:  
-   `rm -rf ./server-files/`
-4. Populate the server files:  
-   `./script/start-server.sh --update && ./script/stop-server.sh --force`
-5. Restore your backup of `./server-files/Pal/Saved/SaveGames`
-6. Take note of the server name: `./server-files/Pal/Saved/SaveGames/0/<YOUR_SERVER_NAME>`
-7. Update `./server-files/Pal/Saved/Config/LinuxServer/GameUserSettings.ini`:  
-   Set `DedicatedServerName=YOUR_SERVER_NAME`
-8. Re-set your configurations in `./server-files/Pal/Saved/Config/LinuxServer/`
-9. Start the server:
-   `./script/start-server.sh`
-
-Try this if an update cuases your world or characters to reset.
+Replace the files in `./server-files/world` with the files from the backup.
 
 ## Other commands
 
 - Rebuild Docker image:  
-  `docker compose -f docker/compose.yml build --no-cache palworld-server`
+  `docker compose -f docker/compose.yml build --no-cache server`
 - Browse the Docker container with a bash shell:  
-  `docker compose -f docker/compose.yml run --entrypoint /bin/bash palworld-server`
+  `docker compose -f docker/compose.yml run --entrypoint /bin/bash server`
 - Attach to the server screen:  
-  `screen -r palworld`
+  `screen -r <server_name>`
   Keybinds:
   - `CTRL+A` then `D` to detach
   - `CTRL+C` to stop the server

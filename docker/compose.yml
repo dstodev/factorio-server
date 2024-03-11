@@ -1,26 +1,12 @@
 version: '3.9'
 
-services:
-  server-files:
-    image: steamcmd/steamcmd:ubuntu
-    volumes:
-      - ../server-files/:/server-files/
-    entrypoint: [ '/bin/bash', '-ec' ]
-    command:
-      - |
-        # Install & update official server files
-        steamcmd_cmd=(
-          steamcmd
-          +force_install_dir /server-files/
-          +login anonymous
-          +app_update 2394010 validate
-          +quit
-        )
-        "$${steamcmd_cmd[@]}"
+name: $SERVER_NAME
 
-  palworld-server:
+services:
+  base:
     build:
       context: .
+      dockerfile: Dockerfile
       args:
         server_port: $SERVER_PORT
         rcon_port: $RCON_PORT
@@ -28,11 +14,15 @@ services:
         user_name: $SERVER_USER_NAME
         group_id: $SERVER_GROUP_ID
         group_name: $SERVER_GROUP_NAME
+    image: $COMPOSE_PROJECT_NAME-server:1.0
 
-    image: palworld-server:1.0
-    container_name: palworld-server
+  server:
+    depends_on: [ base ]
+    image: $COMPOSE_PROJECT_NAME-server:1.0
+    container_name: $COMPOSE_PROJECT_NAME-server
     entrypoint: [ '/server-files/server/start.sh' ]
     ports:
+      - $SERVER_PORT:$SERVER_PORT/tcp
       - $SERVER_PORT:$SERVER_PORT/udp
       - $RCON_PORT:$RCON_PORT/tcp
     user: "$SERVER_USER_NAME:$SERVER_GROUP_NAME"
@@ -40,7 +30,7 @@ services:
       - ../server-files/:/server-files/
 
   cmd:
-    extends: palworld-server
+    extends: server
     entrypoint: [ '/bin/bash', '-ec' ]
 
   backup:
@@ -61,7 +51,7 @@ services:
     working_dir: /home/$SERVER_USER_NAME
     command:
       - |
-        server_data_path="/server-files/Pal/Saved"
+        server_data_path="/server-files/world"
         timestamp=$(date +%Y%j-%H%M%S)
         backup_path="/backups/backup-$$timestamp.tar.bz2"
         # Copy files first

@@ -2,8 +2,9 @@ FROM ubuntu:latest
 #    ubuntu:latest tracks the latest LTS release
 
 RUN apt update \
-	&& apt install -y sqlite3 libsdl2-2.0-0 \
-	&& apt install -y --reinstall ca-certificates
+	&& DEBIAN_FRONTEND=noninteractive \
+	&& apt install -y openjdk-8-jre-headless \
+	&& apt clean
 
 ARG server_port
 ARG rcon_port

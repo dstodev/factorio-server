@@ -59,22 +59,30 @@ time=${time-10} # Wait 10 seconds by default
 
 script_dir="$(cd "$(dirname "$0")" && env pwd --physical)"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
+docker_dir="$source_dir/docker"
 server_dir="$source_dir/server-files"
+
+compose_yml="$docker_dir/compose.yml"
+compose=(docker compose --file "$compose_yml")
+
 rcon="$script_dir/send-rcon.sh"
 
-running_container_id=$(docker container list --filter name=palworld-server --quiet)
+# shellcheck disable=SC2046
+export $(xargs <"$docker_dir/.env")
+server_name="$SERVER_NAME"
 
-if [ -n "$running_container_id" ]; then
+running_container=$(docker container list --filter name="$server_name-server" --quiet)
+
+if [ -n "$running_container" ]; then
 	if $force; then
-		compose="$script_dir/../docker/compose.yml"
-		docker compose -f "$compose" down --remove-orphans
+		"${compose[@]}" down --remove-orphans
 	else
 		# Create a stop file to signal the server to stop (see cfg/start.sh)
 		touch "$server_dir/server/stop"
 
-		"$rcon" shutdown "$time" "Closing_in_${time}_seconds..." | grep --ignore-case --invert-match 'Error'
+		"$rcon" stop | grep --ignore-case --invert-match 'Error'
 		printf 'Waiting for server to close... '
-		docker container wait "$running_container_id" >/dev/null
+		docker container wait "$running_container" >/dev/null
 		printf 'done!\n'
 
 		"$script_dir/backup.sh" --force
