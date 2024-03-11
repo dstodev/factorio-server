@@ -11,7 +11,8 @@ All host scripts are tested on `Ubuntu 22.04.3 LTS`
 After starting for the first time, server configuration files are created in:
 
 - `./server-files/` (root)
-- `./server-files/Pal/Saved/Config/LinuxServer/` (configs)
+- `./server-files/config` (mod configs)
+- `./server-files/server.properties` (server settings)
 
 Edit these files to configure the server.
 
@@ -103,7 +104,7 @@ Replace the files in `./server-files/world` with the files from the backup.
 - Browse the Docker container with a bash shell:  
   `docker compose -f docker/compose.yml run --entrypoint /bin/bash server`
 - Attach to the server screen:  
-  `screen -r <server_name>`
+  `screen -r <server_name>`  
   Keybinds:
   - `CTRL+A` then `D` to detach
   - `CTRL+C` to stop the server
