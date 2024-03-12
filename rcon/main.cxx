@@ -218,13 +218,13 @@ public:
 		}
 
 		if (success && packet.type() != from(PacketType::SERVERDATA_AUTH_RESPONSE)) {
-			std::cerr << "Expected packet type SERVERDATA_AUTH_RESPONSE (" << from(PacketType::SERVERDATA_AUTH_RESPONSE)
+			std::cerr << "Error: Expected packet type SERVERDATA_AUTH_RESPONSE (" << from(PacketType::SERVERDATA_AUTH_RESPONSE)
 			          << ") but got " << packet.type() << '\n';
 			success = false;
 		}
 
 		if (success && packet.id() != id) {
-			std::cerr << "Authentication failed!\n";
+			std::cerr << "Error: Authentication failed!\n";
 			success = false;
 		}
 
@@ -251,13 +251,13 @@ public:
 		}
 
 		if (success && packet.type() != from(PacketType::SERVERDATA_RESPONSE_VALUE)) {
-			std::cerr << "Expected packet type SERVERDATA_RESPONSE_VALUE ("
+			std::cerr << "Error: Expected packet type SERVERDATA_RESPONSE_VALUE ("
 			          << from(PacketType::SERVERDATA_RESPONSE_VALUE) << ") but got " << packet.type() << '\n';
 			success = false;
 		}
 
 		if (success && packet.id() != id) {
-			std::cerr << "Expected packet id " << id << " but got " << packet.id() << '\n';
+			std::cerr << "Error: Expected packet id " << id << " but got " << packet.id() << '\n';
 			success = false;
 		}
 
@@ -315,7 +315,7 @@ public:
 			}
 		}
 		else if (result == 0) {
-			std::cerr << "Timed out waiting for packet\n";
+			std::cerr << "Error: Timed out waiting for packet\n";
 			return false;
 		}
 		else {
@@ -458,7 +458,7 @@ auto get_password(int timeout_ms) -> std::string
 		}
 	}
 	else if (result == 0) {
-		std::cerr << "Timed out waiting for password\n";
+		std::cerr << "Error: Timed out waiting for password\n";
 	}
 	else {
 		std::cerr << "Error waiting for password: " << stream_errno(errno);
