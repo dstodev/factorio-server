@@ -49,4 +49,4 @@ if [ ! -f "$rcon_dir/secret" ]; then
 	exit 1
 fi
 
-"$client_path" "$host_str" "$@" <"$secret_path"
+"$client_path" "$host_str" "$@" <"$secret_path" | sed 's/^/(rcon) /'

@@ -108,6 +108,8 @@ Replace the files in `./server-files/world` with the files from the backup.
   Keybinds:
   - `CTRL+A` then `D` to detach
   - `CTRL+C` to stop the server
+- View disk usage:  
+  `du -hs * | sort -hr`
 
 <!-- line break -->
 

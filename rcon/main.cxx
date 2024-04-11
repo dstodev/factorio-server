@@ -44,7 +44,7 @@ auto to_little_endian(uint32_t value) -> std::array<uint8_t, sizeof(uint32_t)>;
 auto from_little_endian(std::array<uint8_t, sizeof(uint32_t)> const& bytes) -> uint32_t;
 bool is_big_endian();
 
-#define stream_errno(errno) strerrorname_np(errno) << " (" << errno << "): " << strerror(errno) << '\n'
+#define stream_errno(errno) strerrorname_np(errno) << " (" << errno << "): " << strerror(errno) << std::endl;
 
 enum class PacketType
 {
@@ -218,13 +218,13 @@ public:
 		}
 
 		if (success && packet.type() != from(PacketType::SERVERDATA_AUTH_RESPONSE)) {
-			std::cerr << "Error: Expected packet type SERVERDATA_AUTH_RESPONSE (" << from(PacketType::SERVERDATA_AUTH_RESPONSE)
-			          << ") but got " << packet.type() << '\n';
+			std::cerr << "Error: Expected packet type SERVERDATA_AUTH_RESPONSE ("
+			          << from(PacketType::SERVERDATA_AUTH_RESPONSE) << ") but got " << packet.type() << std::endl;
 			success = false;
 		}
 
 		if (success && packet.id() != id) {
-			std::cerr << "Error: Authentication failed!\n";
+			std::cerr << "Error: Authentication failed!" << std::endl;
 			success = false;
 		}
 
@@ -252,22 +252,27 @@ public:
 
 		if (success && packet.type() != from(PacketType::SERVERDATA_RESPONSE_VALUE)) {
 			std::cerr << "Error: Expected packet type SERVERDATA_RESPONSE_VALUE ("
-			          << from(PacketType::SERVERDATA_RESPONSE_VALUE) << ") but got " << packet.type() << '\n';
+			          << from(PacketType::SERVERDATA_RESPONSE_VALUE) << ") but got " << packet.type() << std::endl;
 			success = false;
 		}
 
 		if (success && packet.id() != id) {
-			std::cerr << "Error: Expected packet id " << id << " but got " << packet.id() << '\n';
+			std::cerr << "Error: Expected packet id " << id << " but got " << packet.id() << std::endl;
 			success = false;
 		}
 
 		// TODO: Handle multi-packet responses
 
 		std::string response {packet.body().begin(), packet.body().end()};
-		std::cout << response;
 
-		if (response.back() != '\n') {
-			std::cout << '\n';
+		if (!response.empty()) {
+			std::cout << response;
+
+			if (response.back() != '\n') {
+				std::cout << '\n';
+			}
+
+			std::cout << std::flush;
 		}
 
 		_id.release(id);
@@ -315,7 +320,7 @@ public:
 			}
 		}
 		else if (result == 0) {
-			std::cerr << "Error: Timed out waiting for packet\n";
+			std::cerr << "Error: Timed out waiting for packet" << std::endl;
 			return false;
 		}
 		else {
@@ -379,13 +384,13 @@ private:
 		int status = getaddrinfo(hostname.c_str(), nullptr, &hints, &result);
 
 		if (status != 0) {
-			std::cerr << "Error resolving hostname: " << gai_strerror(status) << '\n';
+			std::cerr << "Error resolving hostname: " << gai_strerror(status) << std::endl;
 			freeaddrinfo(result);
 			return {};
 		}
 
 		if (result->ai_next) {
-			std::cerr << "Warning: hostname resolved to multiple IP addresses!\n";
+			std::cerr << "Warning: hostname resolved to multiple IP addresses!" << std::endl;
 		}
 
 		sockaddr_in addr {};
@@ -413,7 +418,8 @@ int main(int argc, char const* argv[])
 		          << "   or: cat file_with_rcon_password | " << basename << " host[:port] [command]\n"
 		          << "   or: " << basename << " test\n\n"
 		          << "If a command is not provided, the client will print whether or not it can connect to the "
-		             "server.\n";
+		             "server.\n"
+		          << std::endl;
 		return 1;
 	}
 
@@ -424,7 +430,7 @@ int main(int argc, char const* argv[])
 
 	if (success && (success = rcon.authenticate(password))) {
 		if (argc == 2) {
-			std::cout << "Success!\n";
+			std::cout << "Success!" << std::endl;
 		}
 	}
 
@@ -438,7 +444,12 @@ int main(int argc, char const* argv[])
 		return rcon.command(command) ? 0 : 1;
 	}
 
-	return 0;
+	if (success) {
+		return 0;
+	}
+	else {
+		return -1;
+	}
 }
 
 auto get_password(int timeout_ms) -> std::string
@@ -458,7 +469,7 @@ auto get_password(int timeout_ms) -> std::string
 		}
 	}
 	else if (result == 0) {
-		std::cerr << "Error: Timed out waiting for password\n";
+		std::cerr << "Error: Timed out waiting for password" << std::endl;
 	}
 	else {
 		std::cerr << "Error waiting for password: " << stream_errno(errno);
@@ -549,7 +560,7 @@ bool is_big_endian()
 #define assert_eq(a, b) \
 	if ((a) != (b)) { \
 		std::cerr << "Assertion failed: " << (a) << " == " << (b) << '\n' \
-		          << "            near: " << __FILE__ << ":" << __LINE__ << '\n'; \
+		          << "            near: " << __FILE__ << ":" << __LINE__ << std::endl; \
 		success = false; \
 	}
 
@@ -715,10 +726,10 @@ bool test()
 	success &= test_packet();
 
 	if (success) {
-		std::cout << "All tests passed\n";
+		std::cout << "All tests passed" << std::endl;
 	}
 	else {
-		std::cout << "Some tests failed\n";
+		std::cerr << "Some tests failed" << std::endl;
 	}
 
 	return success;

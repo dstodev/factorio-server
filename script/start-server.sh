@@ -95,5 +95,5 @@ if ! $update_only; then
 	echo "... with output logging to file: $log"
 	echo "... in screen daemon; screen -r $server_name"
 
-	screen -dmS "$server_name" -L -Logfile "$log" "${compose_run[@]}"
+	screen -UdmS "$server_name" -L -Logfile "$log" "${compose_run[@]}"
 fi

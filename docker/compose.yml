@@ -1,5 +1,3 @@
-version: '3.9'
-
 name: $SERVER_NAME
 
 services:
@@ -31,6 +29,7 @@ services:
 
   cmd:
     extends: server
+    container_name: $COMPOSE_PROJECT_NAME-cmd
     entrypoint: [ '/bin/bash', '-ec' ]
 
   backup:

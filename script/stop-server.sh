@@ -80,15 +80,18 @@ if [ -n "$running_container" ]; then
 		# Create a stop file to signal the server to stop (see cfg/start.sh)
 		touch "$server_dir/server/stop"
 
-		"$rcon" say "Server will stop in $time seconds!" | grep --ignore-case --invert-match 'Error'
+		# Give any players time to gracefully leave
+		printf 'Waiting %d seconds before issuing stop command... ' "$time"
+		"$rcon" say "Server will stop in $time seconds!"
 		sleep "$time"
+		printf 'done!\n'
 
-		"$rcon" stop | grep --ignore-case --invert-match 'Error'
+		"$rcon" stop
 		printf 'Waiting for server to close... '
 		docker container wait "$running_container" >/dev/null
 		printf 'done!\n'
 
-		"$script_dir/backup.sh" --force
+		"$script_dir/backup.sh" --force # Just stopped server; force to ignore expected rcon failure
 	fi
 else
 	echo Server is not running!
