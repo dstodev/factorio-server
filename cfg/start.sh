@@ -8,9 +8,20 @@ script_dir="$(cd "$(dirname "$0")" && env pwd --physical)"
 #  dir: drwxrwxr-x
 umask 0002
 
-# Run in a loop unless a stop file is present
+run() {
+	./run.sh --nogui
+}
+
+pushd "$script_dir/.."
+
+# Always run at least once
+run
+
+# Run in a loop until a stop file is present
 while [ ! -f "$script_dir/stop" ]; do
-	java -Xmx8G -Xms4G -jar "$script_dir/../forge-"*".jar" --nogui
+	run
 done
+
+popd
 
 rm --force "$script_dir/stop"

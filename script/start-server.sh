@@ -76,17 +76,23 @@ if $update_server; then
 	echo Updating server...
 	"${compose[@]}" build base
 
+	mkdir --parents "$server_dir/server"
+
 	"$script_dir/fix-permissions.sh"
 
-	mkdir --parents "$server_dir/server"
 	ln --logical --force "$source_dir/cfg/start.sh" "$server_dir/server/start.sh"
 
 	cp "$source_dir/cfg/forge-"*"-installer.jar" "$server_dir/installer.jar"
-	"${compose[@]}" run cmd "java -jar installer.jar --installServer"
+	"${compose[@]}" run cmd "umask 0002 && java -jar installer.jar --installServer"
 fi
 
 if ! $update_only; then
 	compose_run=("${compose[@]}" --progress plain run --rm --service-ports server)
+
+	if [ ! -f "$server_dir/eula.txt" ]; then
+		# Only run once to generate the EULA file
+		touch "$server_dir/server/stop"
+	fi
 
 	log="$logs_dir/log-$(date +%Y%j-%H%M%S).log"
 	mkdir --parents "$(dirname "$log")"

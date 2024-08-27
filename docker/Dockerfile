@@ -3,7 +3,7 @@ FROM ubuntu:latest
 
 RUN apt update \
 	&& DEBIAN_FRONTEND=noninteractive \
-	&& apt install -y openjdk-8-jre-headless \
+	&& apt install -y openjdk-17-jre-headless \
 	&& apt clean
 
 ARG server_port
