@@ -50,7 +50,7 @@ services:
     working_dir: /home/$SERVER_USER_NAME
     command:
       - |
-        server_data_path="/server-files/factorio/saves"
+        server_data_path="/server-files/$BACKUP_TARGET"
         timestamp=$(date +%Y%j-%H%M%S)
         backup_path="/backups/backup-$$timestamp.tar.bz2"
         # Copy files first
