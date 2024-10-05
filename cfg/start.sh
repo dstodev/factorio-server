@@ -31,17 +31,20 @@ run() {
 		--start-server-load-latest \
 		--server-settings "$script_dir/server-settings.json" \
 		--rcon-port "$rcon_port" \
-		--rcon-password "$rcon_password"
+		--rcon-password "$rcon_password" \
+		"$@"
 }
 
 pushd "$server_dir"
 
 # Always run at least once
-run
+run "$@"
 
 # Run in a loop until a stop file is present
 while [ ! -f "$script_dir/stop" ]; do
-	run
+	sleep 5
+	echo "Restarting server..." >&2
+	run "$@"
 done
 
 popd

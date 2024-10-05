@@ -27,13 +27,10 @@ These ports are configurable in `./docker/.env`.
 
 ## Start server
 
-You will need a Forge installer for your required version in `./cfg/`.  
-You can get one [here](https://files.minecraftforge.net/net/minecraftforge/forge/),
-and should look like e.g. `./cfg/forge-1.12.2-14.23.5.2860-installer.jar`
-
 This script will download the server files and start the server. After starting
 for the first time, you do not need to use the `--update` flag unless you are
 updating the server files.  
+
 `./script/start-server.sh --update`
 
 ## Stop server

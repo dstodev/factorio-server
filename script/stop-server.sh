@@ -85,7 +85,7 @@ if [ -n "$running_container" ]; then
 		touch "$server_dir/server/stop"
 
 		# Give any players time to gracefully leave
-		printf 'Waiting %d seconds before issuing stop command... ' "$time"
+		printf 'Waiting %d seconds before issuing stop command...\n' "$time"
 		"$rcon" "Server will stop in $time seconds!"
 		sleep "$time"
 		printf 'done!\n'

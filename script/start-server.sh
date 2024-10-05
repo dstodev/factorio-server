@@ -89,22 +89,30 @@ if $update_server; then
 	"$script_dir/download-server.sh"
 fi
 
-if ! $update_only; then
-	if [ ! -f "$rcon_dir/secret" ]; then
-		date +%y%m%d%H%M%S%N | md5sum | cut -d ' ' -f 1 >"$rcon_dir/secret"
-	fi
-
-	if [ ! -f "$server_dir/server/secret" ]; then
-		ln --logical --force "$rcon_dir/secret" "$server_dir/server/secret"
-	fi
-
-	compose_run=("${compose[@]}" --progress plain run --rm --service-ports server "$@")
-
-	log="$logs_dir/log-$(date +%Y%j-%H%M%S).log"
-	mkdir --parents "$(dirname "$log")"
-
-	echo "Output logging to file: $log"
-	echo "Running in screen daemon: screen -r $server_name"
-
-	screen -UdmS "$server_name" -L -Logfile "$log" "${compose_run[@]}"
+if $update_only; then
+	exit 0
 fi
+
+if [ ! -d "$server_dir" ]; then
+	echo "Server files not found. Run with --update to acquire them." >&2
+	exit 3
+fi
+
+if [ ! -f "$rcon_dir/secret" ]; then
+	date +%y%m%d%H%M%S%N | md5sum | cut -d ' ' -f 1 >"$rcon_dir/secret"
+	relink=true
+fi
+
+if [ ! -f "$server_dir/server/secret" ] || ${relink-false}; then
+	ln --logical --force "$rcon_dir/secret" "$server_dir/server/secret"
+fi
+
+compose_run=("${compose[@]}" --progress plain run --rm --service-ports server "$@")
+
+log="$logs_dir/log-$(date +%Y%j-%H%M%S).log"
+mkdir --parents "$(dirname "$log")"
+
+echo "Output logging to file: $log"
+echo "Running in screen daemon: screen -r $server_name"
+
+screen -UdmS "$server_name" -L -Logfile "$log" "${compose_run[@]}"
