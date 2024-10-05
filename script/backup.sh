@@ -11,7 +11,7 @@ esac
 
 force=${force-false}
 
-script_dir="$(cd "$(dirname "$0")" && env pwd --physical)"
+script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
 backup_dir="$source_dir/backups"
 
@@ -24,12 +24,12 @@ rcon="$script_dir/send-rcon.sh"
 
 if $force; then
 	# Try to save, but continue on error.
-	"$rcon" save-all >/dev/null 2>&1 || true
+	"$rcon" "/server-save" >/dev/null 2>&1 || true
 else
 	# Exit on error e.g. server is not running
 	# server does not need to be running to save, but this prevents
 	# automated backups when the server is not running.
-	"$rcon" save-all
+	"$rcon" "/server-save"
 fi
 
 "${compose[@]}" run --rm backup

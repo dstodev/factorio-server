@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-script_dir="$(cd "$(dirname "$0")" && env pwd --physical)"
+script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
 docker_dir="$source_dir/docker"
 rcon_dir="$source_dir/rcon"
@@ -30,7 +30,7 @@ if ! dpkg --status build-essential >/dev/null 2>&1; then
 fi
 
 source_path="$rcon_dir/main.cxx"
-client_path="$script_dir/client.out"
+client_path="$rcon_dir/client.out"
 secret_path="$rcon_dir/secret"
 
 # If the RCON client does not exist, or the source file is newer than the

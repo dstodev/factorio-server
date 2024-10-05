@@ -4,7 +4,7 @@ set -euo pipefail
 # This script configures the server user and group, and sets
 # permissions on the server files.
 
-script_dir="$(cd "$(dirname "$0")" && env pwd --physical)"
+script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
 docker_dir="$source_dir/docker"
 server_dir="$source_dir/server-files"
@@ -44,7 +44,8 @@ fi
 printf 'Setting host permissions: '
 sudo chown --recursive ":$server_group_name" "$source_dir"
 sudo find "$source_dir" -type d -exec chmod g+w,g+s {} +
-sudo chmod g+x "$source_dir/cfg/start.sh"
+sudo chmod g+w,g+x "$source_dir/cfg/start.sh"
+sudo chmod g+w "$source_dir/cfg/"*.json
 find "$source_dir" -maxdepth 0 -printf '%p => [%M] %u:%g\n'
 
 printf 'Setting server permissions: '

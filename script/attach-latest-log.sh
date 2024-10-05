@@ -1,8 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-script_dir="$(cd "$(dirname "$0")" && env pwd --physical)"
-logs_dir="$script_dir/../logs"
+script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
+source_dir="$(readlink --canonicalize "$script_dir/..")"
+logs_dir="$source_dir/logs"
 
 case ${1-} in
 -f | --follow) follow=true ;;

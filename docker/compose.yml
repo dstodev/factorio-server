@@ -13,6 +13,7 @@ services:
         group_id: $SERVER_GROUP_ID
         group_name: $SERVER_GROUP_NAME
     image: $COMPOSE_PROJECT_NAME-server:1.0
+    user: "$SERVER_USER_NAME:$SERVER_GROUP_NAME"
 
   server:
     depends_on: [ base ]
@@ -23,7 +24,6 @@ services:
       - $SERVER_PORT:$SERVER_PORT/tcp
       - $SERVER_PORT:$SERVER_PORT/udp
       - $RCON_PORT:$RCON_PORT/tcp
-    user: "$SERVER_USER_NAME:$SERVER_GROUP_NAME"
     volumes:
       - ../server-files/:/server-files/
 
@@ -50,7 +50,7 @@ services:
     working_dir: /home/$SERVER_USER_NAME
     command:
       - |
-        server_data_path="/server-files/world"
+        server_data_path="/server-files/factorio/saves"
         timestamp=$(date +%Y%j-%H%M%S)
         backup_path="/backups/backup-$$timestamp.tar.bz2"
         # Copy files first

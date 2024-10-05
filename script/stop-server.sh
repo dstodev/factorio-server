@@ -10,12 +10,12 @@ help() {
 		Usage: $(basename "$0") [ -f ] [ -t <time> ] [ -r ]
 		  -h, --help     Prints this message.
 		  -f, --force    Force stop the server. Does not backup or wait.
-		  -t, --time     Time in seconds to wait before stopping the server.
+		  -t, --time <time>  Time in seconds to wait before stopping the server.
 		  -r, --restart  Restart the server after stopping.
 	EOF
 }
 
-canonicalized=$(getopt --name "$(basename "$0")" \
+canonical=$(getopt --name "$(basename "$0")" \
 	--options hft:r \
 	--longoptions help,force,time:,restart \
 	-- "$@") || status=$?
@@ -25,39 +25,42 @@ if [ "${status-0}" -ne 0 ]; then
 	exit 1
 fi
 
-eval set -- "$canonicalized"
+eval set -- "$canonical"
 
-for arg in "$@"; do
-	case $arg in
+while :; do
+	case "$1" in
 	-h | --help)
 		help
 		exit 0
 		;;
 	-f | --force)
 		force=true
-		shift
 		;;
 	-t | --time)
 		if [ -n "$2" ] && [ "${2:0:1}" != "-" ]; then
 			time="$2"
-			shift 2
+			shift # value
 		else
-			echo "Error: --time option requires a value."
+			echo "Error: option --time requires a value." >&2
 			exit 1
 		fi
 		;;
 	-r | --restart)
 		restart=true
-		shift
+		;;
+	--)
+		shift # --
+		break
 		;;
 	esac
+	shift # option
 done
 
 force=${force-false}
 restart=${restart-false}
 time=${time-10} # Wait 10 seconds by default
 
-script_dir="$(cd "$(dirname "$0")" && env pwd --physical)"
+script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
 docker_dir="$source_dir/docker"
 server_dir="$source_dir/server-files"
@@ -69,6 +72,7 @@ rcon="$script_dir/send-rcon.sh"
 
 # shellcheck disable=SC2046
 export $(xargs <"$docker_dir/.env")
+
 server_name="$SERVER_NAME"
 
 running_container=$(docker container list --filter name="$server_name-server" --quiet)
@@ -82,11 +86,11 @@ if [ -n "$running_container" ]; then
 
 		# Give any players time to gracefully leave
 		printf 'Waiting %d seconds before issuing stop command... ' "$time"
-		"$rcon" say "Server will stop in $time seconds!"
+		"$rcon" "Server will stop in $time seconds!"
 		sleep "$time"
 		printf 'done!\n'
 
-		"$rcon" stop
+		"$rcon" "/quit"
 		printf 'Waiting for server to close... '
 		docker container wait "$running_container" >/dev/null
 		printf 'done!\n'
