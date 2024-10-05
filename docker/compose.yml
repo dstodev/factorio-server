@@ -21,7 +21,7 @@ services:
     container_name: $COMPOSE_PROJECT_NAME-server
     entrypoint: [ '/server-files/server/start.sh' ]
     ports:
-      - $SERVER_PORT:$SERVER_PORT/tcp
+      # - $SERVER_PORT:$SERVER_PORT/tcp
       - $SERVER_PORT:$SERVER_PORT/udp
       - $RCON_PORT:$RCON_PORT/tcp
     volumes:

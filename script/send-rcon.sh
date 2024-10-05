@@ -1,16 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
-source_dir="$(readlink --canonicalize "$script_dir/..")"
-docker_dir="$source_dir/docker"
-rcon_dir="$source_dir/rcon"
-
-# shellcheck disable=SC2046
-export $(xargs <"$docker_dir/.env")
-
-host_str="localhost:$RCON_PORT"
-
 # If build-essential is not installed, prompt to install it.
 if ! dpkg --status build-essential >/dev/null 2>&1; then
 	printf '%s\n%s\n\n%s' \
@@ -29,6 +19,17 @@ if ! dpkg --status build-essential >/dev/null 2>&1; then
 	esac
 fi
 
+script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
+source_dir="$(readlink --canonicalize "$script_dir/..")"
+
+docker_dir="$source_dir/docker"
+rcon_dir="$source_dir/rcon"
+
+# shellcheck disable=SC2046
+export $(xargs <"$docker_dir/.env")
+
+host_str="localhost:$RCON_PORT"
+
 source_path="$rcon_dir/main.cxx"
 client_path="$rcon_dir/client.out"
 secret_path="$rcon_dir/secret"
@@ -45,7 +46,7 @@ fi
 # If the RCON secret file does not exist, tell the user to create it.
 if [ ! -f "$rcon_dir/secret" ]; then
 	echo "!! RCON password file does not exist."
-	echo "Create $secret_path containing only the RCON password."
+	echo "Create '$secret_path' containing only the RCON password."
 	exit 1
 fi
 

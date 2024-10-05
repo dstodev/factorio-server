@@ -4,17 +4,6 @@ set -euo pipefail
 # -u : error on unset variable
 # -o pipefail : fail on any error in pipe
 
-script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
-source_dir="$(readlink --canonicalize "$script_dir/..")"
-docker_dir="$source_dir/docker"
-server_dir="$source_dir/server-files"
-rcon_dir="$source_dir/rcon"
-
-# shellcheck disable=SC2046
-export $(xargs <"$docker_dir/.env")
-
-server_name="$SERVER_NAME"
-
 help() {
 	cat <<-EOF
 		Usage: $(basename "$0") [ -u | -o ]
@@ -68,9 +57,15 @@ if $update_server; then
 	fi
 fi
 
-logs_dir="$source_dir/logs"
-compose_yml="$docker_dir/compose.yml"
-compose=(docker compose --file "$compose_yml")
+script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
+source_dir="$(readlink --canonicalize "$script_dir/..")"
+
+docker_dir="$source_dir/docker"
+
+# shellcheck disable=SC2046
+export $(xargs <"$docker_dir/.env")
+
+server_name="$SERVER_NAME"
 
 running_container=$(docker container list --filter name="$server_name-server" --quiet)
 
@@ -79,8 +74,13 @@ if [ -n "$running_container" ]; then
 	exit 2
 fi
 
+compose_yml="$docker_dir/compose.yml"
+compose=(docker compose --file "$compose_yml")
+server_dir="$source_dir/server-files"
+
 if $update_server; then
 	echo Updating server...
+
 	"${compose[@]}" build base
 
 	mkdir --parents "$server_dir/server"
@@ -98,6 +98,8 @@ if [ ! -d "$server_dir" ]; then
 	exit 3
 fi
 
+rcon_dir="$source_dir/rcon"
+
 if [ ! -f "$rcon_dir/secret" ]; then
 	date +%y%m%d%H%M%S%N | md5sum | cut -d ' ' -f 1 >"$rcon_dir/secret"
 	relink=true
@@ -107,12 +109,15 @@ if [ ! -f "$server_dir/server/secret" ] || ${relink-false}; then
 	ln --logical --force "$rcon_dir/secret" "$server_dir/server/secret"
 fi
 
-compose_run=("${compose[@]}" --progress plain run --rm --service-ports server "$@")
+logs_dir="$source_dir/logs"
+
+mkdir --parents "$logs_dir"
 
 log="$logs_dir/log-$(date +%Y%j-%H%M%S).log"
-mkdir --parents "$(dirname "$log")"
 
 echo "Output logging to file: $log"
 echo "Running in screen daemon: screen -r $server_name"
+
+compose_run=("${compose[@]}" --progress plain run --rm --service-ports server "$@")
 
 screen -UdmS "$server_name" -L -Logfile "$log" "${compose_run[@]}"

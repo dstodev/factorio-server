@@ -4,30 +4,32 @@ set -euo pipefail
 # This script configures the server user and group, and sets
 # permissions on the server files.
 
-script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
-source_dir="$(readlink --canonicalize "$script_dir/..")"
-docker_dir="$source_dir/docker"
-server_dir="$source_dir/server-files"
-
-# shellcheck disable=SC2046
-export $(xargs <"$docker_dir/.env")
-
-server_user_id="$SERVER_USER_ID"
-server_user_name="$SERVER_USER_NAME"
-server_group_id="$SERVER_GROUP_ID"
-server_group_name="$SERVER_GROUP_NAME"
-
 if ! sudo --non-interactive true 2>/dev/null; then
 	# If not yet sudo, print prompt and read password before loop
 	printf 'sudo password required to fix server file permissions.\n'
 	sudo --validate || exit
 fi
 
+script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
+source_dir="$(readlink --canonicalize "$script_dir/..")"
+
+docker_dir="$source_dir/docker"
+server_dir="$source_dir/server-files"
+
+# shellcheck disable=SC2046
+export $(xargs <"$docker_dir/.env")
+
+server_group_id="$SERVER_GROUP_ID"
+server_group_name="$SERVER_GROUP_NAME"
+
 # If there is no server group, create it.
 if [ ! "$(getent group "$server_group_name")" ]; then
 	echo Creating group: "$server_group_name"
 	sudo groupadd --gid "$server_group_id" "$server_group_name"
 fi
+
+server_user_id="$SERVER_USER_ID"
+server_user_name="$SERVER_USER_NAME"
 
 # If there is no server user, create it.
 if [ ! "$(getent passwd "$server_user_name")" ]; then

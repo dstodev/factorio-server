@@ -13,10 +13,8 @@ force=${force-false}
 
 script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
-backup_dir="$source_dir/backups"
 
-compose_yml="$source_dir/docker/compose.yml"
-compose=(docker compose --file "$compose_yml")
+backup_dir="$source_dir/backups"
 
 mkdir --parents "$backup_dir"
 
@@ -31,6 +29,9 @@ else
 	# automated backups when the server is not running.
 	"$rcon" "/server-save"
 fi
+
+compose_yml="$source_dir/docker/compose.yml"
+compose=(docker compose --file "$compose_yml")
 
 "${compose[@]}" run --rm backup
 

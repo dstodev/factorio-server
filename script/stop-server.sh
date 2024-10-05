@@ -62,11 +62,9 @@ time=${time-10} # Wait 10 seconds by default
 
 script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
+
 docker_dir="$source_dir/docker"
 server_dir="$source_dir/server-files"
-
-compose_yml="$docker_dir/compose.yml"
-compose=(docker compose --file "$compose_yml")
 
 rcon="$script_dir/send-rcon.sh"
 
@@ -76,6 +74,9 @@ export $(xargs <"$docker_dir/.env")
 server_name="$SERVER_NAME"
 
 running_container=$(docker container list --filter name="$server_name-server" --quiet)
+
+compose_yml="$docker_dir/compose.yml"
+compose=(docker compose --file "$compose_yml")
 
 if [ -n "$running_container" ]; then
 	if $force; then
@@ -95,7 +96,9 @@ if [ -n "$running_container" ]; then
 		docker container wait "$running_container" >/dev/null
 		printf 'done!\n'
 
+		printf 'Backing up server... '
 		"$script_dir/backup.sh" --force # Just stopped server; force to ignore expected rcon failure
+		printf 'done!\n'
 	fi
 else
 	echo Server is not running!

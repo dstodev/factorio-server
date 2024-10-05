@@ -20,8 +20,8 @@ Edit these files to configure the server.
 
 The server uses the following ports:
 
-- `UDP 25565` (Game)
-- `TCP 25575` (RCON)
+- `UDP 34197` (Game)
+- `TCP 34207` (RCON)
 
 These ports are configurable in `./docker/.env`.
 
@@ -60,22 +60,6 @@ This environment supports RCON for sending commands to the server:
 
 This script assumes the server is accessible via `localhost`, but the
 underlying C++ client `./rcon/main.cxx` supports sending messages to any host.
-
-To use `send-rcon.sh`, you must first set an RCON password.  
-**Without an RCON password, you cannot**:
-
-- Gracefully stop the server using `./script/stop-server.sh`,
-  because it uses RCON to send the shutdown command.
-- Use `./script/backup.sh` without the `--force` flag, because it uses RCON to
-  send the save command.
-
-To set an RCON password, edit `./server-files/server.properties`:
-
-- set `enable-rcon=true`
-- set `rcon.port=25575` (or update `./docker/.env` to match)
-- set `rcon.password=YourRconPassword`
-
-then make a file `./rcon/secret` containing the same password in plaintext.
 
 ## Backups
 
