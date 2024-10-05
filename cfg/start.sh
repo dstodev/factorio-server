@@ -16,7 +16,10 @@ rcon_password="$(cat "$script_dir/secret")"
 umask 0002
 
 if [ $# -gt 0 ]; then
-	echo "Options:" "$@"
+	echo '-------------------------'
+	echo '  Extra server options:'
+	echo ' ' "$@"
+	echo '-------------------------'
 fi
 
 if [ ! -d "$server_dir/factorio/saves" ]; then
