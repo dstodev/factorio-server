@@ -82,19 +82,35 @@ if [ -n "$running_container" ]; then
 	if $force; then
 		"${compose[@]}" down --remove-orphans
 	else
+		# Give any players time to gracefully leave
+		printf 'Waiting %d seconds before issuing stop command...\n' "$time"
+
+		"$rcon" "Server will stop in $time seconds!" >/dev/null 2>&1 || status=$?
+
+		sleep "$time"
+
+		printf 'Stopping server...\n'
+
 		# Create a stop file to signal the server to stop (see cfg/start.sh)
 		touch "$server_dir/server/stop"
 
-		# Give any players time to gracefully leave
-		printf 'Waiting %d seconds before issuing stop command...\n' "$time"
-		"$rcon" "Server will stop in $time seconds!"
-		sleep "$time"
-		printf 'done!\n'
+		if [ "${status-0}" -eq 0 ]; then
+			# Server responded to rcon command; gracefully terminate
+			"$rcon" "/quit" >/dev/null 2>&1 || status=$?
 
-		"$rcon" "/quit"
-		printf 'Waiting for server to close... '
-		docker container wait "$running_container" >/dev/null
-		printf 'done!\n'
+			if [ "${status-0}" -eq 0 ]; then
+				printf 'Waiting for server to close... '
+				docker container wait "$running_container" >/dev/null
+				printf 'done!\n'
+			fi
+		fi
+
+		if [ "${status-0}" -ne 0 ]; then
+			echo "Failed to terminate gracefully!" >&2
+			printf 'Stopping container... '
+			docker container stop "$running_container" >/dev/null
+			printf 'done!\n'
+		fi
 
 		printf 'Backing up server... '
 		"$script_dir/backup.sh" --force # Just stopped server; force to ignore expected rcon failure

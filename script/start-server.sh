@@ -102,12 +102,11 @@ rcon_dir="$source_dir/rcon"
 
 if [ ! -f "$rcon_dir/secret" ]; then
 	date +%y%m%d%H%M%S%N | md5sum | cut -d ' ' -f 1 >"$rcon_dir/secret"
-	relink=true
 fi
 
-if [ ! -f "$server_dir/server/secret" ] || ${relink-false}; then
-	ln --logical --force "$rcon_dir/secret" "$server_dir/server/secret"
-fi
+rcon_password=$(<"$rcon_dir/secret")
+
+rm --force "$server_dir/server/stop"
 
 logs_dir="$source_dir/logs"
 
@@ -118,6 +117,15 @@ log="$logs_dir/log-$(date +%Y%j-%H%M%S).log"
 echo "Output logging to file: $log"
 echo "Running in screen daemon: screen -r $server_name"
 
-compose_run=("${compose[@]}" --progress plain run --rm --service-ports server "$@")
+compose_run=(
+	"${compose[@]}"
+	--progress plain
+	run
+	--rm
+	--service-ports
+	server
+	--rcon-password "$rcon_password"
+	"$@"
+)
 
 screen -UdmS "$server_name" -L -Logfile "$log" "${compose_run[@]}"

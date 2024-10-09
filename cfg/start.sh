@@ -8,19 +8,23 @@ server_dir="$(readlink --canonicalize "$script_dir/..")"
 export $(xargs <"$script_dir/.env")
 
 rcon_port="$RCON_PORT"
-rcon_password="$(cat "$script_dir/secret")"
+
+if [ $# -gt 2 ]; then
+	print_skip_first_two() {
+		shift
+		shift
+		echo '-------------------------'
+		echo '  Extra server options:'
+		echo ' ' "$@"
+		echo '-------------------------'
+	}
+	print_skip_first_two "$@" # Known that first two are rcon password
+fi
 
 # For file permissions:
 # file: -rw-rw-r--
 #  dir: drwxrwxr-x
 umask 0002
-
-if [ $# -gt 0 ]; then
-	echo '-------------------------'
-	echo '  Extra server options:'
-	echo ' ' "$@"
-	echo '-------------------------'
-fi
 
 if [ ! -d "$server_dir/factorio/saves" ]; then
 	factorio/bin/x64/factorio \
@@ -34,8 +38,12 @@ run() {
 		--start-server-load-latest \
 		--server-settings "$script_dir/server-settings.json" \
 		--rcon-port "$rcon_port" \
-		--rcon-password "$rcon_password" \
-		"$@"
+		"$@" ||
+		status=$?
+
+	if [ "${status-0}" -ne 0 ]; then
+		echo "Server exited with status: $status" >&2
+	fi
 }
 
 pushd "$server_dir"
