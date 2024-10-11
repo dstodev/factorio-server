@@ -26,3 +26,4 @@ ln --logical --force "$source_dir/cfg/server-settings.json" "$output_dir/server/
 echo 'Downloading server package...'
 wget --quiet --continue --output-document="$pkg_dest" "$SERVER_PKG_URL"
 tar --extract --file="$pkg_dest" --directory="$output_dir"
+rm --force "$pkg_dest"

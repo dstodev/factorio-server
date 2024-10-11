@@ -13,6 +13,7 @@ if [ $# -gt 2 ]; then
 	print_skip_first_two() {
 		shift
 		shift
+
 		echo '-------------------------'
 		echo '  Extra server options:'
 		echo ' ' "$@"
