@@ -47,8 +47,9 @@ printf 'Setting host permissions: '
 sudo chown --recursive ":$server_group_name" "$source_dir"
 sudo find "$source_dir" -type d -exec chmod g+w,g+s {} +
 sudo chmod g+w,g+x "$source_dir/cfg/start.sh"
-sudo chmod g+w "$source_dir/cfg/"*.json
 find "$source_dir" -maxdepth 0 -printf '%p => [%M] %u:%g\n'
+
+mkdir --parents "$server_dir"
 
 printf 'Setting server permissions: '
 sudo chown --recursive "$server_user_name:$server_group_name" "$server_dir"

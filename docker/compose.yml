@@ -54,7 +54,7 @@ services:
         timestamp=$(date +%Y%j-%H%M%S)
         backup_path="/backups/backup-$$timestamp.tar.bz2"
         # Copy files first
-        rsync --archive --delete "$$server_data_path/" "backup/"
+        rsync --archive --no-compress --delete --exclude '*.tmp*' "$$server_data_path" "backup/"
         # Backup server files using bzip2
         tar -cjf backup.tar.bz2 -C "backup/" .
         mv backup.tar.bz2 "$$backup_path"

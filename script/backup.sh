@@ -24,7 +24,8 @@ if $force; then
 	# Try to save, but continue on error.
 	"$rcon" "/server-save" >/dev/null 2>&1 || true
 else
-	# Exit on error e.g. server is not running
+	# Exit on error (from 'set -e' above)
+	# e.g. server is not running (and thus does not respond to RCON)
 	# server does not need to be running to save, but this prevents
 	# automated backups when the server is not running.
 	"$rcon" "/server-save"

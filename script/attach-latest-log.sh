@@ -18,5 +18,5 @@ if logs=$(ls -At "$logs_dir" 2>/dev/null) && [ -n "$logs" ]; then
 	[ "$follow" = true ] && cmd+=(+F)
 	"${cmd[@]}" "$logs_dir/$newest_log"
 else
-	echo "No log files found!"
+	echo 'No log files found!'
 fi

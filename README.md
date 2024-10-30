@@ -33,6 +33,8 @@ updating the server files.
 
 `./script/start-server.sh --update`
 
+<!-- TODO: Recommend --update-only -> configure -> start with no flags for factorio workflow -->
+
 ## Stop server
 
 This script will save the world and gracefully stop the server.  

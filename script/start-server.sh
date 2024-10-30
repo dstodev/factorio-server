@@ -83,10 +83,17 @@ if $update_server; then
 
 	"${compose[@]}" build base
 
-	mkdir --parents "$server_dir/server"
+	umask 0002
+	# For file permissions:
+	# file: -rw-rw-r-- (0666 & ~0002 = 0664)
+	#  dir: drwxrwxr-x (0777 & ~0002 = 0775)
 
-	"$script_dir/fix-permissions.sh"
-	"$script_dir/download-server.sh"
+	# to test umask:
+	# echo "umask: $(umask)" && rm -rf /tmp/check-umask && mkdir -p '/tmp/check-umask/ dir' && touch /tmp/check-umask/file && stat -c '%n: %A (octal %a)' /tmp/check-umask/* | sed 's|/.*/||g' && rm -r /tmp/check-umask
+
+	"$script_dir/shelve-state.sh"
+	"$script_dir/init-permissions.sh" # Set up server dir with setgid
+	"$script_dir/download-server.sh"  # Download files with group set from setgid
 fi
 
 if $update_only; then
@@ -94,9 +101,20 @@ if $update_only; then
 fi
 
 if [ ! -d "$server_dir" ]; then
-	echo "Server files not found. Run with --update to acquire them." >&2
+	echo 'Server files not found. Run with --update to acquire them.' >&2
 	exit 3
 fi
+
+mkdir --parents "$server_dir/server"
+
+link=(ln --logical --force)
+
+"${link[@]}" "$source_dir/docker/.env" "$server_dir/server/.env"
+"${link[@]}" "$source_dir/cfg/start.sh" "$server_dir/server/start.sh"
+
+"${link[@]}" "$source_dir/cfg/map-gen-settings.json" "$server_dir/server/map-gen-settings.json"
+"${link[@]}" "$source_dir/cfg/map-settings.json" "$server_dir/server/map-settings.json"
+"${link[@]}" "$source_dir/cfg/server-settings.json" "$server_dir/server/server-settings.json"
 
 rcon_dir="$source_dir/rcon"
 
@@ -106,7 +124,10 @@ fi
 
 rcon_password=$(<"$rcon_dir/secret")
 
-rm --force "$server_dir/server/stop"
+if [ -f "$server_dir/server/stop" ]; then
+	rm "$server_dir/server/stop"
+	echo 'Removed previous stopfile.'
+fi
 
 logs_dir="$source_dir/logs"
 

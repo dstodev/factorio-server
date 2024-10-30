@@ -22,12 +22,12 @@ if [ $# -gt 2 ]; then
 	print_skip_first_two "$@" # Known that first two are rcon password
 fi
 
-# For file permissions:
-# file: -rw-rw-r--
-#  dir: drwxrwxr-x
 umask 0002
+# For file permissions:
+# file: -rw-rw-r-- (0666 & ~0002 = 0664)
+#  dir: drwxrwxr-x (0777 & ~0002 = 0775)
 
-if [ ! -d "$server_dir/factorio/saves" ]; then
+if [ ! -d "$server_dir/factorio/saves" ]; then # TODO: use instead?: [ ! -f "$server_dir/factorio/saves/world.zip" ]
 	factorio/bin/x64/factorio \
 		--create "$server_dir/factorio/saves/world.zip" \
 		--map-gen-settings "$script_dir/map-gen-settings.json" \
@@ -52,10 +52,10 @@ pushd "$server_dir"
 # Always run at least once
 run "$@"
 
-# Run in a loop until a stop file is present
+# Run in a loop until a file named "stop" (a "stop file") is present
 while [ ! -f "$script_dir/stop" ]; do
 	sleep 5
-	echo "Restarting server..." >&2
+	echo 'Restarting server...' >&2
 	run "$@"
 done
 

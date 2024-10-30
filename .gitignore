@@ -3,6 +3,8 @@
 
 /backups/
 /logs/
-/server-files/
+/server-files*/
+/cfg/*.json
 
 secret
+tmp*
