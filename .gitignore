@@ -1,10 +1,11 @@
 *.out
 *.jar
 
+/.vscode/settings.json
 /backups/
+/cfg/*.json
 /logs/
 /server-files*/
-/cfg/*.json
 
 secret
 tmp*
