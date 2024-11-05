@@ -41,6 +41,7 @@ fi
 if ! id --groups --name | grep --quiet --fixed-strings --word-regexp "$server_group_name"; then
 	echo "Adding current user $(id --user --name) to group: $server_group_name"
 	sudo usermod -aG "$server_group_name" "$(id --user --name)"
+	echo 'Log-out and back-in to apply group changes.'
 fi
 
 printf 'Setting host permissions: '

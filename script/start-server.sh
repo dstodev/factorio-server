@@ -3,6 +3,7 @@ set -euo pipefail
 # -e : exit on error
 # -u : error on unset variable
 # -o pipefail : fail on any error in pipe
+# Docs: https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 
 help() {
 	cat <<-EOF
@@ -84,15 +85,18 @@ if $update_server; then
 	"${compose[@]}" build base
 
 	umask 0002
-	# For file permissions:
+	# For permissions:
 	# file: -rw-rw-r-- (0666 & ~0002 = 0664)
 	#  dir: drwxrwxr-x (0777 & ~0002 = 0775)
-
+	#
 	# to test umask:
 	# echo "umask: $(umask)" && rm -rf /tmp/check-umask && mkdir -p '/tmp/check-umask/ dir' && touch /tmp/check-umask/file && stat -c '%n: %A (octal %a)' /tmp/check-umask/* | sed 's|/.*/||g' && rm -r /tmp/check-umask
 
+	mkdir --parents "$source_dir/cfg"
+	mkdir --parents "$source_dir/backups"
+
 	"$script_dir/shelve-state.sh"
-	"$script_dir/init-permissions.sh" # Set up server dir with setgid
+	"$script_dir/init-permissions.sh" # Set up host environment permissions
 	"$script_dir/download-server.sh"  # Download files with group set from setgid
 fi
 

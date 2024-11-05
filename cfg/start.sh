@@ -27,7 +27,7 @@ umask 0002
 # file: -rw-rw-r-- (0666 & ~0002 = 0664)
 #  dir: drwxrwxr-x (0777 & ~0002 = 0775)
 
-if [ ! -d "$server_dir/factorio/saves" ]; then # TODO: use instead?: [ ! -f "$server_dir/factorio/saves/world.zip" ]
+if [ ! -d "$server_dir/factorio/saves" ]; then
 	factorio/bin/x64/factorio \
 		--create "$server_dir/factorio/saves/world.zip" \
 		--map-gen-settings "$script_dir/map-gen-settings.json" \

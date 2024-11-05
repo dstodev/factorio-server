@@ -402,6 +402,7 @@ private:
 };
 
 // g++ -O3 main.cxx && ./a.out
+// g++ -O3 main.cxx && ./a.out test
 int main(int argc, char const* argv[])
 {
 	std::string filename = argv[0];
@@ -556,14 +557,6 @@ bool is_big_endian()
      Self Tests
 ~~~~~~~~~~~~~~~~~ */
 
-/// Assumes a variable named "success" is in scope and initialized to true
-#define assert_eq(a, b) \
-	if ((a) != (b)) { \
-		std::cerr << "Assertion failed: " << (a) << " == " << (b) << '\n' \
-		          << "            near: " << __FILE__ << ":" << __LINE__ << std::endl; \
-		success = false; \
-	}
-
 template <typename Container>
 std::ostream& stream(std::ostream& os, Container const& container)
 {
@@ -585,6 +578,16 @@ std::ostream& operator<<(std::ostream& os, std::array<uint8_t, sizeof(uint32_t)>
 	return stream(os, arr);
 }
 
+#define assert_eq(a, b) \
+	([=] { \
+		bool equal = (a) == (b); \
+		if (!equal) { \
+			std::cerr << "Assertion failed: " << (a) << " == " << (b) << '\n' \
+			          << "         on line: " << __FILE__ << ":" << __LINE__ << std::endl; \
+		} \
+		return equal; \
+	}())
+
 bool test_split_hoststr()
 {
 	bool success = true;
@@ -593,8 +596,8 @@ bool test_split_hoststr()
 		std::string host {};
 		uint16_t port {};
 		std::tie(host, port) = split_hoststr(host_str);
-		assert_eq(expected_host, host);
-		assert_eq(expected_port, port);
+		success &= assert_eq(expected_host, host);
+		success &= assert_eq(expected_port, port);
 	};
 
 	test("name", "name", DEFAULT_RCON_PORT);
@@ -613,7 +616,7 @@ bool test_to_little_endian()
 
 	auto test = [&](uint32_t value, std::array<uint8_t, sizeof(uint32_t)> const& expected_bytes) {
 		auto bytes = to_little_endian(value);
-		assert_eq(expected_bytes, bytes);
+		success &= assert_eq(expected_bytes, bytes);
 	};
 
 	test(0x01020304, {0x04, 0x03, 0x02, 0x01});
@@ -627,7 +630,7 @@ bool test_from_little_endian()
 
 	auto test = [&](std::array<uint8_t, sizeof(uint32_t)> const& bytes, uint32_t expected_value) {
 		auto value = from_little_endian(bytes);
-		assert_eq(expected_value, value);
+		success &= assert_eq(expected_value, value);
 	};
 
 	test({0x04, 0x03, 0x02, 0x01}, 0x01020304);
@@ -642,7 +645,7 @@ bool test_packet()
 	auto test_size = [&](std::string const& body, uint32_t expected_size) {
 		Packet packet(0);
 		packet.set_body(body);
-		assert_eq(expected_size, packet.size());
+		success &= assert_eq(expected_size, packet.size());
 	};
 
 	test_size("", 10);
@@ -652,7 +655,7 @@ bool test_packet()
 		Packet packet(0);
 		packet.set_body(body);
 		auto buffer = packet.to_byte_buffer();
-		assert_eq(expected_buffer, buffer);
+		success &= assert_eq(expected_buffer, buffer);
 	};
 
 	std::vector<uint8_t> expected {};
@@ -660,18 +663,18 @@ bool test_packet()
 	//          -----------  ----------  ----------  -  -
 	expected = {10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 	test_to_byte_buffer("", expected);
-	assert_eq(14, expected.size());
+	success &= assert_eq(14, expected.size());
 
 	//          size         id          type        body                   null
 	//          -----------  ----------  ----------  ---------------------  -
 	expected = {14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'a', 'b', 'c', 'd', 0, 0};
 	test_to_byte_buffer("abcd", expected);
-	assert_eq(18, expected.size());
+	success &= assert_eq(18, expected.size());
 
 	auto test_from_byte_buffer = [&](std::vector<uint8_t> const& buffer) {
 		Packet packet(0);
 		packet.from_byte_buffer(buffer.data(), buffer.size());
-		assert_eq(buffer, packet.to_byte_buffer());
+		success &= assert_eq(buffer, packet.to_byte_buffer());
 	};
 
 	//                     size         id          type     body  null
@@ -693,7 +696,7 @@ bool test_id_generator()
 
 	auto test = [&](uint32_t expected_id) {
 		auto id = idgen.generate();
-		assert_eq(expected_id, id);
+		success &= assert_eq(expected_id, id);
 	};
 
 	test(0);
@@ -726,10 +729,10 @@ bool test()
 	success &= test_packet();
 
 	if (success) {
-		std::cout << "All tests passed" << std::endl;
+		std::cout << "All tests passed!" << std::endl;
 	}
 	else {
-		std::cerr << "Some tests failed" << std::endl;
+		std::cerr << "Some tests failed!" << std::endl;
 	}
 
 	return success;
