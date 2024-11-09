@@ -8,7 +8,7 @@ set -euo pipefail
 help() {
 	cat <<-EOF
 		Usage: $(basename "$0") [ -f ] [ -t <time> ] [ -r ]
-		  -h, --help     Prints this message.
+		  -h, --help     Print this message.
 		  -f, --force    Force stop the server. Does not backup or wait.
 		  -t, --time <time>  Time in seconds to wait before stopping the server.
 		  -r, --restart  Restart the server after stopping.
@@ -71,7 +71,7 @@ rcon="$script_dir/send-rcon.sh"
 # shellcheck disable=SC2046
 export $(xargs <"$docker_dir/.env")
 
-server_name="$SERVER_NAME"
+server_name="${SERVER_NAME-game}"
 
 running_container=$(docker container list --filter name="$server_name-server" --quiet)
 

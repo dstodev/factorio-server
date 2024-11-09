@@ -4,18 +4,72 @@ set -euo pipefail
 script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
 
-name="$source_dir/server-files"
+shelf_dir="$source_dir/shelf"
+
+help() {
+	cat <<-EOF
+		Usage: $(basename "$0") [ -l ]
+		  -h, --help    Print this message.
+		  -l, --print-latest  Print absolute path to latest-shelved server files.
+	EOF
+}
+
+canonical=$(getopt --name "$(basename "$0")" \
+	--options l \
+	--longoptions print-latest \
+	-- "$@") || status=$?
+
+if [ "${status-0}" -ne 0 ]; then
+	help
+	exit 1
+fi
+
+eval set -- "$canonical"
+
+while :; do
+	case "$1" in
+	-h | --help)
+		help
+		exit 0
+		;;
+	-l | --print-latest)
+		print_latest=true
+		;;
+	--)
+		shift # --
+		break
+		;;
+	esac
+	shift # option
+done
+
+print_latest=${print_latest-false}
+
+latest="$(
+	find "$shelf_dir" -mindepth 1 -maxdepth 1 -type d -printf '%f\0' 2>/dev/null |
+		sort -nz |
+		tail -zn 1 |
+		xargs -0
+)" || true
+next=$((latest + 1))
+
+if $print_latest; then
+	[ -n "$latest" ] && echo "$shelf_dir/$latest" || exit 1
+	exit 0
+fi
+
+next_dir="$shelf_dir/$next"
+
+shelf_targets=(
+	"$source_dir/server-files"
+	"$source_dir/logs"
+)
 
 check() {
 	[ -e "$1" ] || [ -L "$1" ]
 }
 
-if check "$name"; then
-	i=1
-	while check "$name-$i"; do
-		i=$((i + 1))
-	done
-	new_name="$name-$i"
-	echo "Shelving server files: $name => $new_name"
-	mv "$name" "$new_name"
+if check "${shelf_targets[0]}"; then
+	mkdir --parents "$next_dir"
+	mv --verbose --target-directory="$next_dir" "${shelf_targets[@]}"
 fi

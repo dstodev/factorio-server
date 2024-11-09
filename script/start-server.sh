@@ -8,7 +8,7 @@ set -euo pipefail
 help() {
 	cat <<-EOF
 		Usage: $(basename "$0") [ -u | -o ]
-		  -h, --help    Prints this message.
+		  -h, --help    Print this message.
 		  -u, --update  Updates the server files before starting the server.
 		  -o, --update-only  Updates the server files and exits.
 	EOF
@@ -66,7 +66,7 @@ docker_dir="$source_dir/docker"
 # shellcheck disable=SC2046
 export $(xargs <"$docker_dir/.env")
 
-server_name="$SERVER_NAME"
+server_name="${SERVER_NAME-game}"
 
 running_container=$(docker container list --filter name="$server_name-server" --quiet)
 

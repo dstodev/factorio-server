@@ -6,6 +6,7 @@
 /cfg/*.json
 /logs/
 /server-files*/
+/shelf*/
 
 secret
 tmp*
