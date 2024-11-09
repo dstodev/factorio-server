@@ -51,14 +51,10 @@ latest="$(
 		tail -zn 1 |
 		xargs -0
 )" || true
-next=$((latest + 1))
 
 if $print_latest; then
-	[ -n "$latest" ] && echo "$shelf_dir/$latest" || exit 1
-	exit 0
+	[ -n "$latest" ] && echo "$shelf_dir/$latest" && exit 0 || exit 1
 fi
-
-next_dir="$shelf_dir/$next"
 
 shelf_targets=(
 	"$source_dir/server-files"
@@ -69,7 +65,16 @@ check() {
 	[ -e "$1" ] || [ -L "$1" ]
 }
 
-if check "${shelf_targets[0]}"; then
+verified=()
+
+for target in "${shelf_targets[@]}"; do
+	check "$target" && verified+=("$target")
+done
+
+next=$((latest + 1))
+next_dir="$shelf_dir/$next"
+
+if [ "${#verified[@]}" -gt 0 ]; then
 	mkdir --parents "$next_dir"
-	mv --verbose --target-directory="$next_dir" "${shelf_targets[@]}"
+	mv --verbose --target-directory="$next_dir" "${verified[@]}"
 fi
