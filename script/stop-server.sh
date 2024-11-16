@@ -8,7 +8,7 @@ set -euo pipefail
 help() {
 	cat <<-EOF
 		Usage: $(basename "$0") [ -f ] [ -t <time> ] [ -r ]
-		  -h, --help     Prints this message.
+		  -h, --help     Print this message.
 		  -f, --force    Force stop the server. Does not backup or wait.
 		  -t, --time <time>  Time in seconds to wait before stopping the server.
 		  -r, --restart  Restart the server after stopping.
@@ -41,7 +41,7 @@ while :; do
 			time="$2"
 			shift # value
 		else
-			echo "Error: option --time requires a value." >&2
+			echo 'Error: option --time requires a value.' >&2
 			exit 1
 		fi
 		;;
@@ -71,42 +71,57 @@ rcon="$script_dir/send-rcon.sh"
 # shellcheck disable=SC2046
 export $(xargs <"$docker_dir/.env")
 
-server_name="$SERVER_NAME"
+server_name="${SERVER_NAME-game}"
 
 running_container=$(docker container list --filter name="$server_name-server" --quiet)
 
 compose_yml="$docker_dir/compose.yml"
 compose=(docker compose --file "$compose_yml")
 
+status=0
+
 if [ -n "$running_container" ]; then
 	if $force; then
 		"${compose[@]}" down --remove-orphans
 	else
-		# Give any players time to gracefully leave
-		printf 'Waiting %d seconds before issuing stop command...\n' "$time"
-
+		# Give any players time to prepare & leave by themselves
 		"$rcon" "Server will stop in $time seconds!" >/dev/null 2>&1 || status=$?
 
-		sleep "$time"
-
-		printf 'Stopping server...\n'
-
-		# Create a stop file to signal the server to stop (see cfg/start.sh)
-		touch "$server_dir/server/stop"
-
-		if [ "${status-0}" -eq 0 ]; then
+		if [ "$status" -eq 0 ]; then
 			# Server responded to rcon command; gracefully terminate
-			"$rcon" "/quit" >/dev/null 2>&1 || status=$?
+			printf 'Waiting %d seconds before issuing stop command...\n' "$time"
+			sleep "$time"
+			printf 'Stopping server...\n'
 
-			if [ "${status-0}" -eq 0 ]; then
+			# Save the server
+			"$rcon" '/server-save' >/dev/null 2>&1 || status=$?
+
+			if [ "$status" -ne 0 ]; then
+				echo 'Failed to save server with RCON!' >&2
+				status=0 # Reset status for next command
+			fi
+
+			# Create a stop file to avoid restarting the server (see cfg/start.sh)
+			touch "$server_dir/server/stop"
+
+			# Quit the server
+			# Even if save failed, /quit will also try to save
+			# (but maybe only to autosave file, check logs!)
+			"$rcon" '/quit' >/dev/null 2>&1 || status=$?
+
+			if [ "$status" -eq 0 ]; then
 				printf 'Waiting for server to close... '
 				docker container wait "$running_container" >/dev/null
 				printf 'done!\n'
+			else
+				echo 'Failed to stop server with RCON!' >&2
 			fi
+		else
+			echo 'Server is not responding to RCON!' >&2
 		fi
 
-		if [ "${status-0}" -ne 0 ]; then
-			echo "Failed to terminate gracefully!" >&2
+		if [ "$status" -ne 0 ]; then
+			echo 'Failed to terminate gracefully!' >&2
 			printf 'Stopping container... '
 			docker container stop "$running_container" >/dev/null
 			printf 'done!\n'
@@ -117,7 +132,7 @@ if [ -n "$running_container" ]; then
 		printf 'done!\n'
 	fi
 else
-	echo Server is not running!
+	echo 'Server is not running!'
 
 	if ! $restart; then
 		exit 2

@@ -8,22 +8,26 @@ source_dir="$(readlink --canonicalize "$script_dir/..")"
 
 output_dir="$source_dir/server-files"
 
-pkg_dest="$output_dir/server.tar.xz"
+copy=(rsync --archive --no-compress)
+tmp_dir="$script_dir/tmp-package"
+cfg_dir="$source_dir/cfg"
+pkg_dest="$tmp_dir/package.tar.xz"
 
-if [ -e "$pkg_dest" ]; then
-	exit 0
+mkdir --parents "$tmp_dir/unpack"
+
+if [ ! -f "$pkg_dest" ]; then # Condition is useful when `rm` line is commented out for debugging
+	echo 'Downloading server package...'
+	wget --continue --output-document="$pkg_dest" --quiet "$SERVER_PKG_URL"
 fi
 
-mkdir --parents "$output_dir/server"
+echo 'Extracting server package...'
+tar --directory="$tmp_dir/unpack" --extract --file="$pkg_dest" --no-same-permissions
+chmod --recursive g+w "$tmp_dir/unpack/"
+# --omit-dir-times because setting for server-files/ requires running as its owner (server-user)
+"${copy[@]}" --delete --omit-dir-times "$tmp_dir/unpack/" "$output_dir"
+rm --recursive "$tmp_dir"
 
-ln --logical --force "$source_dir/docker/.env" "$output_dir/server/.env"
-ln --logical --force "$source_dir/cfg/start.sh" "$output_dir/server/start.sh"
-
-ln --logical --force "$source_dir/cfg/map-gen-settings.json" "$output_dir/server/map-gen-settings.json"
-ln --logical --force "$source_dir/cfg/map-settings.json" "$output_dir/server/map-settings.json"
-ln --logical --force "$source_dir/cfg/server-settings.json" "$output_dir/server/server-settings.json"
-
-echo 'Downloading server package...'
-wget --quiet --continue --output-document="$pkg_dest" "$SERVER_PKG_URL"
-tar --extract --file="$pkg_dest" --directory="$output_dir"
-rm --force "$pkg_dest"
+mkdir --parents "$cfg_dir"
+"${copy[@]}" "$output_dir/factorio/data/map-gen-settings.example.json" "$cfg_dir/map-gen-settings.json"
+"${copy[@]}" "$output_dir/factorio/data/map-settings.example.json" "$cfg_dir/map-settings.json"
+"${copy[@]}" "$output_dir/factorio/data/server-settings.example.json" "$cfg_dir/server-settings.json"

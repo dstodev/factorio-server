@@ -27,18 +27,36 @@ These ports are configurable in `./docker/.env`.
 
 ## Start server
 
-This script will download the server files and start the server. After starting
-for the first time, you do not need to use the `--update` flag unless you are
-updating the server files.  
+### For the first time
 
-`./script/start-server.sh --update`
+To start the server for the first time, run:  
+`./script/start-server.sh --update-only`
+
+to download the server files without starting the server.
+
+Then, update configuration files in `./cfg` and start the server normally:
+
+### Normally
+
+To start the server normally, run:  
+`./script/start-server.sh`
+
+### With updated server files
+
+To update the server before starting, run:  
+`./script/start-server.sh --update --restore`
+
+to move the current server files to `./shelf` and update the server files.
+After updating, `--restore` will copy world and configuration files from the
+latest-"shelved" server files to the new server instance. After, the server
+starts normally.
 
 ## Stop server
 
 This script will save the world and gracefully stop the server.  
 `./script/stop-server.sh`
 
-This script requires RCON (see below).
+Gracefully stopping the server requires RCON (see below).
 
 To forcefully stop the server, pass the `--force` flag:  
 `./script/stop-server.sh --force`
@@ -76,7 +94,7 @@ for details.
 To restore from backup, unzip the backup file you want:  
 `tar -xjf ./backups/backup-timestamp.tar.bz2`
 
-Replace the files in `./server-files/world` with the files from the backup.
+Replace contents of `./server-files/` with files from the backup.
 
 ## Other commands
 

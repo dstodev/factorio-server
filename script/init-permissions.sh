@@ -41,14 +41,16 @@ fi
 if ! id --groups --name | grep --quiet --fixed-strings --word-regexp "$server_group_name"; then
 	echo "Adding current user $(id --user --name) to group: $server_group_name"
 	sudo usermod -aG "$server_group_name" "$(id --user --name)"
+	echo 'Log-out and back-in to apply group changes.'
 fi
 
 printf 'Setting host permissions: '
 sudo chown --recursive ":$server_group_name" "$source_dir"
 sudo find "$source_dir" -type d -exec chmod g+w,g+s {} +
 sudo chmod g+w,g+x "$source_dir/cfg/start.sh"
-sudo chmod g+w "$source_dir/cfg/"*.json
 find "$source_dir" -maxdepth 0 -printf '%p => [%M] %u:%g\n'
+
+mkdir --parents "$server_dir"
 
 printf 'Setting server permissions: '
 sudo chown --recursive "$server_user_name:$server_group_name" "$server_dir"

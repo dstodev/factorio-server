@@ -3,19 +3,22 @@ set -euo pipefail
 # -e : exit on error
 # -u : error on unset variable
 # -o pipefail : fail on any error in pipe
+# Docs: https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 
 help() {
 	cat <<-EOF
 		Usage: $(basename "$0") [ -u | -o ]
-		  -h, --help    Prints this message.
-		  -u, --update  Updates the server files before starting the server.
-		  -o, --update-only  Updates the server files and exits.
+		  -h, --help    Print this message.
+		  -u, --update  Update the server files before starting the server.
+		  -o, --update-only  Update the server files and exit.
+		  -r, --restore  If updating, restore the latest-shelved world
+		                 and configuration files.
 	EOF
 }
 
 canonical=$(getopt --name "$(basename "$0")" \
-	--options huo \
-	--longoptions help,update,update-only \
+	--options huor \
+	--longoptions help,update,update-only,restore \
 	-- "$@") || status=$?
 
 if [ "${status-0}" -ne 0 ]; then
@@ -38,6 +41,9 @@ while :; do
 		update_server=true
 		update_only=true
 		;;
+	-r | --restore)
+		restore_latest=true
+		;;
 	--)
 		shift # --
 		break
@@ -48,6 +54,7 @@ done
 
 update_server=${update_server-false}
 update_only=${update_only-false}
+restore_latest=${restore_latest-false}
 
 if $update_server; then
 	if ! sudo --non-interactive true 2>/dev/null; then
@@ -65,7 +72,7 @@ docker_dir="$source_dir/docker"
 # shellcheck disable=SC2046
 export $(xargs <"$docker_dir/.env")
 
-server_name="$SERVER_NAME"
+server_name="${SERVER_NAME-game}"
 
 running_container=$(docker container list --filter name="$server_name-server" --quiet)
 
@@ -83,10 +90,35 @@ if $update_server; then
 
 	"${compose[@]}" build base
 
-	mkdir --parents "$server_dir/server"
+	umask 0002
+	# For permissions:
+	# file: -rw-rw-r-- (0666 & ~0002 = 0664)
+	#  dir: drwxrwxr-x (0777 & ~0002 = 0775)
+	#
+	# to test umask:
+	# echo "umask: $(umask)" && rm -rf /tmp/check-umask && mkdir -p '/tmp/check-umask/ dir' && touch /tmp/check-umask/file && stat -c '%n: %A (octal %a)' /tmp/check-umask/* | sed 's|/.*/||g' && rm -r /tmp/check-umask
 
-	"$script_dir/fix-permissions.sh"
-	"$script_dir/download-server.sh"
+	mkdir --parents "$source_dir/cfg"
+	mkdir --parents "$source_dir/backups"
+
+	"$script_dir/shelve-state.sh"
+	"$script_dir/init-permissions.sh" # Set up host environment permissions
+	"$script_dir/download-server.sh"  # Download files with group set from setgid
+
+	if $restore_latest; then
+		latest_dir="$("$script_dir/shelve-state.sh" --print-latest)"
+
+		if [ -d "$latest_dir" ]; then
+			echo "Restoring server files from: '$latest_dir'"
+			cp --verbose --target-directory="$server_dir/factorio" --recursive "$latest_dir/server-files/factorio/saves"
+			cp --verbose --target-directory="$source_dir/cfg" "$latest_dir/server-files/server/"*.json
+		else
+			echo "Found no shelved server files." >&2
+			exit 1
+		fi
+
+		exit 0
+	fi
 fi
 
 if $update_only; then
@@ -94,9 +126,20 @@ if $update_only; then
 fi
 
 if [ ! -d "$server_dir" ]; then
-	echo "Server files not found. Run with --update to acquire them." >&2
+	echo 'Server files not found. Run with --update to acquire them.' >&2
 	exit 3
 fi
+
+mkdir --parents "$server_dir/server"
+
+link=(ln --logical --force)
+
+"${link[@]}" "$source_dir/docker/.env" "$server_dir/server/.env"
+"${link[@]}" "$source_dir/cfg/start.sh" "$server_dir/server/start.sh"
+
+"${link[@]}" "$source_dir/cfg/map-gen-settings.json" "$server_dir/server/map-gen-settings.json"
+"${link[@]}" "$source_dir/cfg/map-settings.json" "$server_dir/server/map-settings.json"
+"${link[@]}" "$source_dir/cfg/server-settings.json" "$server_dir/server/server-settings.json"
 
 rcon_dir="$source_dir/rcon"
 
@@ -106,7 +149,10 @@ fi
 
 rcon_password=$(<"$rcon_dir/secret")
 
-rm --force "$server_dir/server/stop"
+if [ -f "$server_dir/server/stop" ]; then
+	rm "$server_dir/server/stop"
+	echo 'Removed previous stopfile.'
+fi
 
 logs_dir="$source_dir/logs"
 

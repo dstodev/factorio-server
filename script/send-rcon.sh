@@ -13,7 +13,7 @@ if ! dpkg --status build-essential >/dev/null 2>&1; then
 	case $option in
 	[Yy]*) sudo apt update && sudo apt install --yes build-essential ;;
 	*)
-		echo "Operation aborted."
+		echo 'Operation aborted.'
 		exit 1
 		;;
 	esac
@@ -45,7 +45,7 @@ fi
 
 # If the RCON secret file does not exist, tell the user to create it.
 if [ ! -f "$rcon_dir/secret" ]; then
-	echo "!! RCON password file does not exist."
+	echo '!! RCON password file does not exist.'
 	echo "Create '$secret_path' containing only the RCON password."
 	exit 1
 fi
