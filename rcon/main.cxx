@@ -578,15 +578,25 @@ std::ostream& operator<<(std::ostream& os, std::array<uint8_t, sizeof(uint32_t)>
 	return stream(os, arr);
 }
 
-#define assert_eq(a, b) \
-	([=] { \
-		bool equal = (a) == (b); \
-		if (!equal) { \
-			std::cerr << "Assertion failed: " << (a) << " == " << (b) << '\n' \
-			          << "         on line: " << __FILE__ << ":" << __LINE__ << std::endl; \
-		} \
-		return equal; \
-	}())
+template <typename L, typename R>
+bool _assert_eq(L const& a, R const& b, size_t line)
+{
+	bool equal = a == b;
+	if (!equal) {
+		std::cerr << "Assertion failed: " << a << " == " << b << '\n'
+		          << "         on line: " << __FILE__ << ":" << line << std::endl;
+	}
+	return equal;
+}
+
+/* Using a macro helps expand __LINE__ more usefully:
+-- top of call stack --
+    _assert_eq()  <- Without a macro, __LINE_ expands only once (at the definition)
+    assert_eq()   <- With a macro, __LINE__ expands at each invocation site
+    test_fn()
+    main()
+-- bottom of call stack -- */
+#define assert_eq(a, b) _assert_eq(a, b, __LINE__)
 
 bool test_split_hoststr()
 {
