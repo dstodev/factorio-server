@@ -64,7 +64,7 @@ shelf_targets=(
 )
 
 check() {
-	[ -e "$1" ] || [ -L "$1" ]
+	[ -e "$1" ]
 }
 
 verified=()

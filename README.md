@@ -53,7 +53,7 @@ starts normally.
 
 ## Stop server
 
-This script will save the world and gracefully stop the server.  
+To save the world and gracefully stop the server, run:  
 `./script/stop-server.sh`
 
 Gracefully stopping the server requires RCON (see below).
@@ -73,7 +73,7 @@ See `./script/stop-server.sh` for details.
 
 ## RCON
 
-This environment supports RCON for sending commands to the server:  
+To send RCON commands to the server, run:  
 `./script/send-rcon.sh MyRconCommand`
 
 This script assumes the server is accessible via `localhost`, but the
@@ -81,7 +81,7 @@ underlying C++ client `./rcon/main.cxx` supports sending messages to any host.
 
 ## Backups
 
-This script creates a backup of important server files to `./backups/`:  
+To backup important server files, run:  
 `./script/backup.sh --force`
 
 Backups are created automatically when the server is stopped via `stop-server.sh`.
