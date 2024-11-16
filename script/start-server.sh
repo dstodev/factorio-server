@@ -9,14 +9,16 @@ help() {
 	cat <<-EOF
 		Usage: $(basename "$0") [ -u | -o ]
 		  -h, --help    Print this message.
-		  -u, --update  Updates the server files before starting the server.
-		  -o, --update-only  Updates the server files and exits.
+		  -u, --update  Update the server files before starting the server.
+		  -o, --update-only  Update the server files and exit.
+		  -r, --restore  If updating, restore the latest-shelved world
+		                 and configuration files.
 	EOF
 }
 
 canonical=$(getopt --name "$(basename "$0")" \
-	--options huo \
-	--longoptions help,update,update-only \
+	--options huor \
+	--longoptions help,update,update-only,restore \
 	-- "$@") || status=$?
 
 if [ "${status-0}" -ne 0 ]; then
@@ -39,6 +41,9 @@ while :; do
 		update_server=true
 		update_only=true
 		;;
+	-r | --restore)
+		restore_latest=true
+		;;
 	--)
 		shift # --
 		break
@@ -49,6 +54,7 @@ done
 
 update_server=${update_server-false}
 update_only=${update_only-false}
+restore_latest=${restore_latest-false}
 
 if $update_server; then
 	if ! sudo --non-interactive true 2>/dev/null; then
@@ -98,6 +104,21 @@ if $update_server; then
 	"$script_dir/shelve-state.sh"
 	"$script_dir/init-permissions.sh" # Set up host environment permissions
 	"$script_dir/download-server.sh"  # Download files with group set from setgid
+
+	if $restore_latest; then
+		latest_dir="$("$script_dir/shelve-state.sh" --print-latest)"
+
+		if [ -d "$latest_dir" ]; then
+			echo "Restoring server files from: '$latest_dir'"
+			cp --verbose --target-directory="$server_dir/factorio" --recursive "$latest_dir/server-files/factorio/saves"
+			cp --verbose --target-directory="$source_dir/cfg" "$latest_dir/server-files/server/"*.json
+		else
+			echo "Found no shelved server files." >&2
+			exit 1
+		fi
+
+		exit 0
+	fi
 fi
 
 if $update_only; then

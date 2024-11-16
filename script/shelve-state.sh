@@ -47,18 +47,20 @@ print_latest=${print_latest-false}
 
 latest="$(
 	find "$shelf_dir" -mindepth 1 -maxdepth 1 -type d -printf '%f\0' 2>/dev/null |
-		sort -nz |
-		tail -zn 1 |
-		xargs -0
+		sort --zero-terminated --numeric-sort |
+		tail --zero-terminated --lines 1 |
+		xargs --null
 )" || true
 
 if $print_latest; then
-	[ -n "$latest" ] && echo "$shelf_dir/$latest" && exit 0 || exit 1
+	latest_dir="$shelf_dir/$latest"
+	[ -n "$latest" ] && echo "$latest_dir" && exit 0 || exit 1
 fi
 
 shelf_targets=(
-	"$source_dir/server-files"
+	# "$source_dir/backups"
 	"$source_dir/logs"
+	"$source_dir/server-files"
 )
 
 check() {
