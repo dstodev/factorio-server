@@ -177,4 +177,14 @@ compose_run=(
 	"$@"
 )
 
-screen -UdmS "$server_name" -L -Logfile "$log" "${compose_run[@]}"
+screenrc="$source_dir/.screenrc"
+
+# If no .screenrc file exists, create one with timetsamps turned on:
+if [ ! -f "$screenrc" ]; then
+	cat <<-EOF >"$screenrc"
+		logtstamp on
+		logtstamp after 5
+	EOF
+fi
+
+screen -UdmS "$server_name" -L -Logfile "$log" -c "$screenrc" "${compose_run[@]}"
