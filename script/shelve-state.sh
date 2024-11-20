@@ -9,8 +9,9 @@ shelf_dir="$source_dir/shelf"
 help() {
 	cat <<-EOF
 		Usage: $(basename "$0") [ -l ]
-		  -h, --help    Print this message.
-		  -l, --print-latest  Print absolute path to latest-shelved server files.
+		  -h, --help  Print this message.
+		  -l, --print-latest
+		              Print absolute path to latest-shelved server files.
 	EOF
 }
 

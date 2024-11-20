@@ -7,10 +7,11 @@ set -euo pipefail
 
 help() {
 	cat <<-EOF
-		Usage: $(basename "$0") [ -u | -o ]
-		  -h, --help    Print this message.
-		  -u, --update  Update the server files before starting the server.
-		  -o, --update-only  Update the server files and exit.
+		Usage: $(basename "$0") [ -u | -o ] [ -r ]
+		  -h, --help     Print this message.
+		  -u, --update   Update the server files before starting the server.
+		  -o, --update-only
+		                 Update the server files and exit.
 		  -r, --restore  If updating, restore the latest-shelved world
 		                 and configuration files.
 	EOF
@@ -69,8 +70,10 @@ source_dir="$(readlink --canonicalize "$script_dir/..")"
 
 docker_dir="$source_dir/docker"
 
-# shellcheck disable=SC2046
-export $(xargs <"$docker_dir/.env")
+set -o allexport
+# shellcheck source=../docker/.env
+source "$docker_dir/.env"
+set +o allexport
 
 server_name="${SERVER_NAME-game}"
 
@@ -158,7 +161,7 @@ logs_dir="$source_dir/logs"
 
 mkdir --parents "$logs_dir"
 
-log="$logs_dir/log-$(date +%Y%j-%H%M%S).log"
+log="$logs_dir/$(date +"%Y%m%dT%H%M%S%z").log" # see backup.sh for info on date format
 
 echo "Output logging to file: $log"
 echo "Running in screen daemon: screen -r $server_name"
@@ -174,4 +177,14 @@ compose_run=(
 	"$@"
 )
 
-screen -UdmS "$server_name" -L -Logfile "$log" "${compose_run[@]}"
+screenrc="$source_dir/.screenrc"
+
+# If no .screenrc file exists, create one with timestamps turned on
+if [ ! -f "$screenrc" ]; then
+	cat <<-EOF >"$screenrc"
+		logtstamp on
+		logtstamp after 5
+	EOF
+fi
+
+screen -UdmS "$server_name" -L -Logfile "$log" -c "$screenrc" "${compose_run[@]}"

@@ -31,30 +31,3 @@ services:
     extends: server
     container_name: $COMPOSE_PROJECT_NAME-cmd
     entrypoint: [ '/bin/bash', '-ec' ]
-
-  backup:
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM alpine:latest
-        ENV TZ=America/Los_Angeles
-        RUN apk add --no-cache rsync tzdata \
-         && ln -s /usr/share/zoneinfo/$$TZ /etc/localtime
-        RUN addgroup --gid $SERVER_GROUP_ID $SERVER_GROUP_NAME \
-         && adduser --disabled-password --gecos "" --uid $SERVER_USER_ID --ingroup $SERVER_GROUP_NAME $SERVER_USER_NAME
-    entrypoint: [ '/bin/sh', '-ec' ]
-    user: "$SERVER_USER_NAME:$SERVER_GROUP_NAME"
-    volumes:
-      - ../server-files/:/server-files/
-      - ../backups/:/backups/
-    working_dir: /home/$SERVER_USER_NAME
-    command:
-      - |
-        server_data_path="/server-files/$BACKUP_TARGET"
-        timestamp=$(date +%Y%j-%H%M%S)
-        backup_path="/backups/backup-$$timestamp.tar.bz2"
-        # Copy files first
-        rsync --archive --no-compress --delete --exclude '*.tmp*' "$$server_data_path" "backup/"
-        # Backup server files using bzip2
-        tar -cjf backup.tar.bz2 -C "backup/" .
-        mv backup.tar.bz2 "$$backup_path"

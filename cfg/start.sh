@@ -4,8 +4,10 @@ set -euo pipefail
 script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
 server_dir="$(readlink --canonicalize "$script_dir/..")"
 
-# shellcheck disable=SC2046
-export $(xargs <"$script_dir/.env")
+set -o allexport
+# shellcheck source=../docker/.env
+source "$script_dir/.env"
+set +o allexport
 
 rcon_port="$RCON_PORT"
 
