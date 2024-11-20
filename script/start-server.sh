@@ -7,10 +7,11 @@ set -euo pipefail
 
 help() {
 	cat <<-EOF
-		Usage: $(basename "$0") [ -u | -o ]
-		  -h, --help    Print this message.
-		  -u, --update  Update the server files before starting the server.
-		  -o, --update-only  Update the server files and exit.
+		Usage: $(basename "$0") [ -u | -o ] [ -r ]
+		  -h, --help     Print this message.
+		  -u, --update   Update the server files before starting the server.
+		  -o, --update-only
+		                 Update the server files and exit.
 		  -r, --restore  If updating, restore the latest-shelved world
 		                 and configuration files.
 	EOF
@@ -160,7 +161,7 @@ logs_dir="$source_dir/logs"
 
 mkdir --parents "$logs_dir"
 
-log="$logs_dir/log-$(date +%Y%j-%H%M%S).log"
+log="$logs_dir/$(date +"%Y%m%dT%H%M%S%z").log" # see backup.sh for info on date format
 
 echo "Output logging to file: $log"
 echo "Running in screen daemon: screen -r $server_name"

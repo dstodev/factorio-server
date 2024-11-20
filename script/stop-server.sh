@@ -7,11 +7,13 @@ set -euo pipefail
 
 help() {
 	cat <<-EOF
-		Usage: $(basename "$0") [ -f ] [ -t <time> ] [ -r ]
+		Usage: $(basename "$0") [ -f ] [ -t <time> ] [ -r ] [--]
 		  -h, --help     Print this message.
 		  -f, --force    Force stop the server. Does not backup or wait.
-		  -t, --time <time>  Time in seconds to wait before stopping the server.
+		  -t <time>, --time <time>
+		                 Time in seconds to wait before stopping the server.
 		  -r, --restart  Restart the server after stopping.
+		  -- [ ... ]     When restarting, pass all arguments after -- to start-server.sh.
 	EOF
 }
 
@@ -142,5 +144,5 @@ else
 fi
 
 if $restart; then
-	"$script_dir/start-server.sh"
+	"$script_dir/start-server.sh" "$@"
 fi
