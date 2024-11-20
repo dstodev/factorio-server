@@ -36,12 +36,12 @@ fi
 server_data_path="$source_dir/server-files/factorio/saves"
 
 timestamp=$(date +"%Y%m%dT%H%M%S%z")
-# Based on ISO 8601:
+# Format based on ISO 8601:
 # - https://en.wikipedia.org/wiki/ISO_8601
 # - https://www.gnu.org/software/coreutils/manual/html_node/Options-for-date.html#index-_002dI_005btimespec_005d
-# Try:
+# Try commands:
 #   date --iso-8601=seconds
-# or
+# or:
 #   date +"%Y-%m-%dT%H:%M:%S%:z"
 
 backup_target="$backup_dir/$timestamp.tar"

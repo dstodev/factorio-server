@@ -179,7 +179,7 @@ compose_run=(
 
 screenrc="$source_dir/.screenrc"
 
-# If no .screenrc file exists, create one with timetsamps turned on:
+# If no .screenrc file exists, create one with timestamps turned on
 if [ ! -f "$screenrc" ]; then
 	cat <<-EOF >"$screenrc"
 		logtstamp on

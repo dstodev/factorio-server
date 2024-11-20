@@ -91,10 +91,10 @@ for details.
 
 ### Restore from backup
 
-To restore from backup, unzip the backup file you want:  
-`tar -xjf ./backups/backup-timestamp.tar.bz2`
+To restore from backup, extract the backup you want:  
+`tar -xf ./backups/<timestamp>.tar`
 
-Replace contents of `./server-files/` with files from the backup.
+Then replace files in `./server-files/` with files from the backup.
 
 ## Other commands
 
