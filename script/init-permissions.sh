@@ -16,8 +16,10 @@ source_dir="$(readlink --canonicalize "$script_dir/..")"
 docker_dir="$source_dir/docker"
 server_dir="$source_dir/server-files"
 
-# shellcheck disable=SC2046
-export $(xargs <"$docker_dir/.env")
+set -o allexport
+# shellcheck source=../docker/.env
+source "$docker_dir/.env"
+set +o allexport
 
 server_group_id="$SERVER_GROUP_ID"
 server_group_name="$SERVER_GROUP_NAME"

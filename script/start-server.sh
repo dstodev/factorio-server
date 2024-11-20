@@ -69,8 +69,10 @@ source_dir="$(readlink --canonicalize "$script_dir/..")"
 
 docker_dir="$source_dir/docker"
 
-# shellcheck disable=SC2046
-export $(xargs <"$docker_dir/.env")
+set -o allexport
+# shellcheck source=../docker/.env
+source "$docker_dir/.env"
+set +o allexport
 
 server_name="${SERVER_NAME-game}"
 

@@ -8,11 +8,11 @@ All host scripts are tested on `Ubuntu 22.04.3 LTS`
 
 ## Configure server
 
-Configuration files are located in:
+After starting for the first time, configuration files are available in:
 
 - `./cfg/`
 
-After starting for the first time, server files are created in:
+and server files are available in:
 
 - `./server-files/`
 

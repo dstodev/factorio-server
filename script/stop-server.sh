@@ -68,8 +68,10 @@ server_dir="$source_dir/server-files"
 
 rcon="$script_dir/send-rcon.sh"
 
-# shellcheck disable=SC2046
-export $(xargs <"$docker_dir/.env")
+set -o allexport
+# shellcheck source=../docker/.env
+source "$docker_dir/.env"
+set +o allexport
 
 server_name="${SERVER_NAME-game}"
 
