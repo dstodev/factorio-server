@@ -71,7 +71,7 @@ source_dir="$(readlink --canonicalize "$script_dir/..")"
 docker_dir="$source_dir/docker"
 
 set -o allexport
-# shellcheck source=../docker/.env
+# shellcheck source=docker/.env
 source "$docker_dir/.env"
 set +o allexport
 

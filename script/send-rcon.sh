@@ -26,7 +26,7 @@ docker_dir="$source_dir/docker"
 rcon_dir="$source_dir/rcon"
 
 set -o allexport
-# shellcheck source=../docker/.env
+# shellcheck source=docker/.env
 source "$docker_dir/.env"
 set +o allexport
 

@@ -7,5 +7,6 @@
 	],
 	"settings": {
 		"C_Cpp.autoAddFileAssociations": false,
-	}
+		"shellcheck.useWorkspaceRootAsCwd": true,
+	},
 }

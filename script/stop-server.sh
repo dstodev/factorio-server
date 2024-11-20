@@ -71,7 +71,7 @@ server_dir="$source_dir/server-files"
 rcon="$script_dir/send-rcon.sh"
 
 set -o allexport
-# shellcheck source=../docker/.env
+# shellcheck source=docker/.env
 source "$docker_dir/.env"
 set +o allexport
 
