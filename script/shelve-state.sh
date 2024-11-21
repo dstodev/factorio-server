@@ -16,8 +16,8 @@ help() {
 }
 
 canonical=$(getopt --name "$(basename "$0")" \
-	--options l \
-	--longoptions print-latest \
+	--options hl \
+	--longoptions help,print-latest \
 	-- "$@") || status=$?
 
 if [ "${status-0}" -ne 0 ]; then

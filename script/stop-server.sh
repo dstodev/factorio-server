@@ -131,9 +131,7 @@ if [ -n "$running_container" ]; then
 			printf 'done!\n'
 		fi
 
-		printf 'Backing up server... '
 		"$script_dir/backup.sh" --force # Just stopped server; force to ignore expected rcon failure
-		printf 'done!\n'
 	fi
 else
 	echo 'Server is not running!'

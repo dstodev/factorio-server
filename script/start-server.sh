@@ -112,13 +112,12 @@ if $update_server; then
 	if [ "${status-0}" -eq 0 ]; then
 		"$script_dir/shelve-state.sh"
 		mv --verbose "$tmp_state" "$server_dir"
-		exit 3
 	elif [ "${status-0}" -eq 2 ]; then
 		# Server files are up-to-date
 		rm --recursive --verbose "$tmp_state"
 	else
 		echo 'Failed to download server files.' >&2
-		exit 4
+		exit 3
 	fi
 
 	if $restore_latest; then
@@ -141,7 +140,7 @@ fi
 
 if [ ! -d "$server_dir" ]; then
 	echo 'Server files not found. Run with --update to acquire them.' >&2
-	exit 5
+	exit 4
 fi
 
 mkdir --parents "$server_dir/server"

@@ -35,8 +35,8 @@ fi
 
 new_hash=$(md5sum "$pkg_dest" | cut --delimiter ' ' --fields 1)
 
-echo "   Current hash: ${cur_hash-}"
-echo "Downloaded hash: ${new_hash-}"
+echo "   Current hash: ${cur_hash-(none)}"
+echo "Downloaded hash: ${new_hash-(none)}"
 
 if [ "${cur_hash-}" = "${new_hash-}" ]; then
 	echo 'Server files are up-to-date.'
