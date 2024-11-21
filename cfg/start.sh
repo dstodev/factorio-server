@@ -63,4 +63,4 @@ done
 
 popd
 
-rm --force "$script_dir/stop"
+rm --force --verbose "$script_dir/stop"

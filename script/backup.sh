@@ -47,10 +47,11 @@ timestamp=$(date +"%Y%m%dT%H%M%S%z")
 backup_target="$backup_dir/$timestamp.tar"
 
 # Copy files to a temporary directory before archiving.
-tmp_dir="$script_dir/tmp"
+tmp_dir="$script_dir/tmp-backup"
 rsync --archive --no-compress --delete --exclude '*.tmp*' "$server_data_path" "$tmp_dir"
-tar --create --file "$backup_target" --directory "$tmp_dir" . # note dot at end
-rm --recursive --force "$tmp_dir"
+tar --create --file "$backup_target" --directory "$tmp_dir" '.'
+echo "Backup saved to: $backup_target"
+rm --recursive --verbose "$tmp_dir" | tail --lines 1
 
 # Preserve most recent backups, deleting older ones.
 days_to_preserve=14

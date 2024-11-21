@@ -104,9 +104,22 @@ if $update_server; then
 	mkdir --parents "$source_dir/cfg"
 	mkdir --parents "$source_dir/backups"
 
-	"$script_dir/shelve-state.sh"
-	"$script_dir/init-permissions.sh" # Set up host environment permissions
-	"$script_dir/download-server.sh"  # Download files with group set from setgid
+	tmp_state="$source_dir/tmp-state"
+
+	"$script_dir/init-permissions.sh" "$tmp_state"             # Set up host environment permissions
+	"$script_dir/download-server.sh" "$tmp_state" || status=$? # Download files with group set from setgid
+
+	if [ "${status-0}" -eq 0 ]; then
+		"$script_dir/shelve-state.sh"
+		mv --verbose "$tmp_state" "$server_dir"
+		exit 3
+	elif [ "${status-0}" -eq 2 ]; then
+		# Server files are up-to-date
+		rm --recursive --verbose "$tmp_state"
+	else
+		echo 'Failed to download server files.' >&2
+		exit 4
+	fi
 
 	if $restore_latest; then
 		latest_dir="$("$script_dir/shelve-state.sh" --print-latest)"
@@ -119,8 +132,6 @@ if $update_server; then
 			echo "Found no shelved server files." >&2
 			exit 1
 		fi
-
-		exit 0
 	fi
 fi
 
@@ -130,7 +141,7 @@ fi
 
 if [ ! -d "$server_dir" ]; then
 	echo 'Server files not found. Run with --update to acquire them.' >&2
-	exit 3
+	exit 5
 fi
 
 mkdir --parents "$server_dir/server"
@@ -153,8 +164,7 @@ fi
 rcon_password=$(<"$rcon_dir/secret")
 
 if [ -f "$server_dir/server/stop" ]; then
-	rm "$server_dir/server/stop"
-	echo 'Removed previous stopfile.'
+	rm --verbose "$server_dir/server/stop"
 fi
 
 logs_dir="$source_dir/logs"

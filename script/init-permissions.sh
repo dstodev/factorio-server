@@ -14,7 +14,7 @@ script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
 
 docker_dir="$source_dir/docker"
-server_dir="$source_dir/server-files"
+server_dir="${1-$source_dir/server-files}"
 
 set -o allexport
 # shellcheck source=docker/.env
