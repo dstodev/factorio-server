@@ -11,8 +11,8 @@ esac
 
 force=${force-false}
 
-script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
-source_dir="$(readlink --canonicalize "$script_dir/..")"
+script_dir="$(dirname -- "$(readlink -f -- "$0")")"
+source_dir="$(readlink -f "$script_dir/..")"
 
 backup_dir="$source_dir/backups"
 
@@ -24,7 +24,7 @@ save_cmd='/server-save'
 
 if $force; then
 	# Try to save, but continue on error.
-	"$rcon" "$save_cmd" >/dev/null 2>&1 || true
+	"$rcon" "$save_cmd" || true
 else
 	# Exit on error (from 'set -e' above)
 	# e.g. server is not running (and thus does not respond to RCON)

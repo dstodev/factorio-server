@@ -65,7 +65,7 @@ if $update_server; then
 	fi
 fi
 
-script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
+script_dir="$(dirname -- "$(readlink -f -- "$0")")"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
 
 docker_dir="$source_dir/docker"
@@ -160,6 +160,7 @@ if [ ! -f "$rcon_dir/secret" ]; then
 	date +%y%m%d%H%M%S%N | md5sum | cut -d ' ' -f 1 >"$rcon_dir/secret"
 fi
 
+rcon_port=$RCON_PORT
 rcon_password=$(<"$rcon_dir/secret")
 
 if [ -f "$server_dir/server/stop" ]; then
@@ -182,7 +183,8 @@ compose_run=(
 	--rm
 	--service-ports
 	server
-	--rcon-password "$rcon_password"
+	"$rcon_port"
+	"$rcon_password"
 	"$@"
 )
 

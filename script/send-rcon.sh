@@ -19,7 +19,7 @@ if ! dpkg --status build-essential >/dev/null 2>&1; then
 	esac
 fi
 
-script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
+script_dir="$(dirname -- "$(readlink -f -- "$0")")"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
 
 docker_dir="$source_dir/docker"

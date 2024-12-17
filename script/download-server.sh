@@ -3,7 +3,7 @@ set -euo pipefail
 
 SERVER_PKG_URL='https://factorio.com/get-download/stable/headless/linux64'
 
-script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
+script_dir="$(dirname -- "$(readlink -f -- "$0")")"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
 
 output_dir="${1-$source_dir/server-files}"

@@ -39,7 +39,7 @@ while :; do
 		force=true
 		;;
 	-t | --time)
-		if [ -n "$2" ] && [ "${2:0:1}" != "-" ]; then
+		if [ -n "$2" ] && [ "$(cut -c 1 <<<"$2")" != '-' ]; then
 			time="$2"
 			shift # value
 		else
@@ -62,7 +62,7 @@ force=${force-false}
 restart=${restart-false}
 time=${time-10} # Wait 10 seconds by default
 
-script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
+script_dir="$(dirname -- "$(readlink -f -- "$0")")"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
 
 docker_dir="$source_dir/docker"

@@ -1,27 +1,25 @@
 #!/bin/bash
 set -euo pipefail
 
-script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
+# script/start-server.sh should run this script. It is not meant to run directly.
+# Requires provided inputs:
+#   $1 - rcon port
+#   $2 - rcon password
+
+rcon_port="$1"
+rcon_password="$2"
+
+shift
+shift
+
+script_dir="$(dirname -- "$(readlink -f -- "$0")")"
 server_dir="$(readlink --canonicalize "$script_dir/..")"
 
-set -o allexport
-# shellcheck source=docker/.env
-source "$script_dir/.env"
-set +o allexport
-
-rcon_port="$RCON_PORT"
-
-if [ $# -gt 2 ]; then
-	print_skip_first_two() {
-		shift
-		shift
-
-		echo '-------------------------'
-		echo '  Extra server options:'
-		echo ' ' "$@"
-		echo '-------------------------'
-	}
-	print_skip_first_two "$@" # Known that first two are rcon password
+if [ $# -gt 0 ]; then
+	echo '-------------------------'
+	echo '  Extra server options:'
+	echo ' ' "$@"
+	echo '-------------------------'
 fi
 
 umask 0002
@@ -41,6 +39,7 @@ run() {
 		--start-server-load-latest \
 		--server-settings "$script_dir/server-settings.json" \
 		--rcon-port "$rcon_port" \
+		--rcon-password "$rcon_password" \
 		"$@" ||
 		status=$?
 

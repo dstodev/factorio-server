@@ -10,7 +10,7 @@ if ! sudo --non-interactive true 2>/dev/null; then
 	sudo --validate || exit
 fi
 
-script_dir="$(builtin cd -- "$(dirname "$0")" && pwd -P)"
+script_dir="$(dirname -- "$(readlink -f -- "$0")")"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
 
 docker_dir="$source_dir/docker"
