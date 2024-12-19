@@ -173,7 +173,10 @@ logs_dir="$source_dir/logs"
 
 mkdir --parents --verbose "$logs_dir"
 
-log="$logs_dir/$(date +"%Y%m%dT%H%M%S%z").log" # see backup.sh for info on date format
+# shellcheck source=script/util.sh
+source "$script_dir/util.sh"
+
+log="$logs_dir/$(timestamp).log" # see util.sh for info on date format
 
 echo "Output logging to file: $log"
 echo "Running in screen daemon: screen -r $server_name"
