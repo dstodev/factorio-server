@@ -101,8 +101,8 @@ if $update_server; then
 	# to test umask:
 	# echo "umask: $(umask)" && rm -rf /tmp/check-umask && mkdir -p '/tmp/check-umask/ dir' && touch /tmp/check-umask/file && stat -c '%n: %A (octal %a)' /tmp/check-umask/* | sed 's|/.*/||g' && rm -r /tmp/check-umask
 
-	mkdir --parents "$source_dir/cfg"
-	mkdir --parents "$source_dir/backups"
+	mkdir --parents --verbose "$source_dir/cfg"
+	mkdir --parents --verbose "$source_dir/backups"
 
 	tmp_state="$source_dir/tmp-state"
 
@@ -110,11 +110,13 @@ if $update_server; then
 	"$script_dir/download-server.sh" "$tmp_state" || status=$? # Download files with group set from setgid
 
 	if [ "${status-0}" -eq 0 ]; then
+		# New server files downloaded
 		"$script_dir/shelve-state.sh"
 		mv --verbose "$tmp_state" "$server_dir"
 	elif [ "${status-0}" -eq 2 ]; then
 		# Server files are up-to-date
 		rm --recursive --verbose "$tmp_state"
+		restore_latest=false
 	else
 		echo 'Failed to download server files.' >&2
 		exit 3
@@ -143,7 +145,7 @@ if [ ! -d "$server_dir" ]; then
 	exit 4
 fi
 
-mkdir --parents "$server_dir/server"
+mkdir --parents --verbose "$server_dir/server"
 
 link=(ln --logical --force)
 
@@ -169,7 +171,7 @@ fi
 
 logs_dir="$source_dir/logs"
 
-mkdir --parents "$logs_dir"
+mkdir --parents --verbose "$logs_dir"
 
 log="$logs_dir/$(date +"%Y%m%dT%H%M%S%z").log" # see backup.sh for info on date format
 

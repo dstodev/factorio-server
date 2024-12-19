@@ -16,7 +16,7 @@ source_dir="$(readlink -f "$script_dir/..")"
 
 backup_dir="$source_dir/backups"
 
-mkdir --parents "$backup_dir"
+mkdir --parents --verbose "$backup_dir"
 
 rcon="$script_dir/send-rcon.sh"
 
@@ -48,6 +48,7 @@ backup_target="$backup_dir/$timestamp.tar"
 
 # Copy files to a temporary directory before archiving.
 tmp_dir="$script_dir/tmp-backup"
+mkdir --parents --verbose "$tmp_dir"
 rsync --archive --no-compress --delete --exclude '*.tmp*' "$server_data_path" "$tmp_dir"
 tar --create --file "$backup_target" --directory "$tmp_dir" '.'
 echo "Backup saved to: $backup_target"

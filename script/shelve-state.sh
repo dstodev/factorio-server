@@ -78,6 +78,6 @@ next=$((latest + 1))
 next_dir="$shelf_dir/$next"
 
 if [ "${#verified[@]}" -gt 0 ]; then
-	mkdir --parents "$next_dir"
+	mkdir --parents --verbose "$next_dir"
 	mv --verbose --target-directory="$next_dir" "${verified[@]}"
 fi

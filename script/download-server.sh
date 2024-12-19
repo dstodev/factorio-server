@@ -17,11 +17,11 @@ cleanup() {
 	rm --recursive --verbose "$tmp_dir" | tail --lines 1
 }
 
-mkdir --parents "$tmp_dir/unpack"
+mkdir --parents --verbose "$tmp_dir/unpack" | tail --lines 1
 
 if [ ! -f "$pkg_dest" ]; then # Condition is useful when commenting out `rm` line in cleanup() for debugging
 	echo 'Downloading server package...'
-	wget --continue --output-document="$pkg_dest" --quiet "$SERVER_PKG_URL"
+	wget --continue --output-document="$pkg_dest" --quiet --show-progress "$SERVER_PKG_URL"
 fi
 
 # Always look in server-files, not $output_dir, for the current hash file.
@@ -58,7 +58,7 @@ cleanup
 cfg_dir="$source_dir/cfg"
 
 # Copy new configuration files to top-level config directory
-mkdir --parents "$cfg_dir"
+mkdir --parents --verbose "$cfg_dir"
 "${copy[@]}" "$output_dir/factorio/data/map-gen-settings.example.json" "$cfg_dir/map-gen-settings.json"
 "${copy[@]}" "$output_dir/factorio/data/map-settings.example.json" "$cfg_dir/map-settings.json"
 "${copy[@]}" "$output_dir/factorio/data/server-settings.example.json" "$cfg_dir/server-settings.json"
