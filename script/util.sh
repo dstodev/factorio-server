@@ -11,7 +11,7 @@ timestamp() {
 	#
 	# Try commands:
 	#   date --iso-8601=seconds
-	# or:
 	#   date +"%Y-%m-%dT%H:%M:%S%:z"
+	#
 	date +"%Y-%m-%dT%H+%M+%S%z"
 }
