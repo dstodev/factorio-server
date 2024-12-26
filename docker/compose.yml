@@ -4,7 +4,7 @@ services:
   base:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: server.dockerfile
       args:
         server_port: $SERVER_PORT
         rcon_port: $RCON_PORT
@@ -30,4 +30,21 @@ services:
   cmd:
     extends: server
     container_name: $COMPOSE_PROJECT_NAME-cmd
-    entrypoint: [ '/bin/bash', '-ec' ]
+    entrypoint:
+      - /bin/bash
+      - -c
+
+  manage:
+    build:
+      context: ..
+      dockerfile: docker/manage.dockerfile
+    image: $COMPOSE_PROJECT_NAME-manage:1.0
+    volumes:
+      - ../:/repo/
+
+  manage-test:
+    extends: manage
+    entrypoint:
+      - python
+      - -m
+      - unittest

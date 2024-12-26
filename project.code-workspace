@@ -2,11 +2,16 @@
 	"folders": [
 		{
 			"name": "Game Server",
-			"path": "."
-		}
+			"path": ".",
+		},
 	],
 	"settings": {
 		"C_Cpp.autoAddFileAssociations": false,
 		"shellcheck.useWorkspaceRootAsCwd": true,
+
+		"files.exclude": {
+			"**/__pycache__": true,
+			"**/*.pyc": true,
+		},
 	},
 }

@@ -12,3 +12,6 @@ secret
 tmp*
 
 .screenrc
+
+__pycache__/
+*.pyc
