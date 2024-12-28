@@ -3,16 +3,17 @@ set -euo pipefail
 
 help() {
 	cat <<-EOF
-		Usage: $(basename "$0") [ -u ]
+		Usage: $(basename "$0") [ -u ] [ -t ] [--]
 		  -h, --help    Print this message.
+		  -t, --test    Run manage tests, then exit.
 		  -u, --update  Update the manage project first.
 		  -- [ ... ]    Pass all arguments after -- to the manage program.
 	EOF
 }
 
 canonical=$(getopt --name "$(basename "$0")" \
-	--options hu \
-	--longoptions help,update \
+	--options htu \
+	--longoptions help,test,update \
 	-- "$@") || status=$?
 
 if [ "${status-0}" -ne 0 ]; then
@@ -28,6 +29,9 @@ while :; do
 		help
 		exit 0
 		;;
+	-t | --test)
+		test_manage=true
+		;;
 	-u | --update)
 		update_manage=true
 		;;
@@ -39,6 +43,7 @@ while :; do
 	shift # option
 done
 
+test_manage=${test_manage-false}
 update_manage=${update_manage-false}
 
 pushd manage >/dev/null
@@ -74,6 +79,11 @@ if [ -d .venv ] && ! $update_manage; then
 	venv_activate
 else
 	venv_init # calls venv_activate
+fi
+
+if $test_manage; then
+	python -m unittest || status=$?
+	exit "${status-0}"
 fi
 
 manage "$@"

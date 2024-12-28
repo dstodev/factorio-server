@@ -47,10 +47,3 @@ services:
     volumes:
       - ../:/repo/
     user: "$SERVER_USER_NAME:$SERVER_GROUP_NAME"
-
-  manage-test:
-    extends: manage
-    entrypoint:
-      - python
-      - -m
-      - unittest
