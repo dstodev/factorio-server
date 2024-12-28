@@ -1,16 +1,16 @@
-# Expects build context set to repo root
-
 FROM python:3
 
-COPY manage /repo/manage/
+WORKDIR /repo/
 
-WORKDIR /repo/manage
+ENTRYPOINT [ "docker/manage.entrypoint.sh" ]
 
-RUN python -m venv /opt/venv \
-	&& . /opt/venv/bin/activate \
-	&& pip install --upgrade pip \
-	&& pip install --no-cache-dir .
+ARG user_id
+ARG user_name
+ARG group_id
+ARG group_name
 
-ENV PATH="/opt/venv/bin:$PATH"
-
-ENTRYPOINT ["manage"]
+RUN groupadd --gid $group_id $group_name \
+	&& useradd --create-home \
+	           --uid $user_id \
+	           --gid $group_id \
+	           $user_name

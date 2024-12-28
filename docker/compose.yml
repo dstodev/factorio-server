@@ -36,11 +36,17 @@ services:
 
   manage:
     build:
-      context: ..
-      dockerfile: docker/manage.dockerfile
+      context: .
+      dockerfile: manage.dockerfile
+      args:
+        user_id: $SERVER_USER_ID
+        user_name: $SERVER_USER_NAME
+        group_id: $SERVER_GROUP_ID
+        group_name: $SERVER_GROUP_NAME
     image: $COMPOSE_PROJECT_NAME-manage:1.0
     volumes:
       - ../:/repo/
+    user: "$SERVER_USER_NAME:$SERVER_GROUP_NAME"
 
   manage-test:
     extends: manage

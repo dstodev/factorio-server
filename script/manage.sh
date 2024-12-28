@@ -10,4 +10,4 @@ compose_yml="$docker_dir/compose.yml"
 compose=(docker compose --file "$compose_yml")
 
 "${compose[@]}" build --quiet manage
-"${compose[@]}" run --rm --user "$(id -u)" manage "$@"
+"${compose[@]}" run --rm manage "$@"
