@@ -3,11 +3,18 @@ set -euo pipefail
 
 help() {
 	cat <<-EOF
-		Usage: $(basename "$0") [ -u ] [ -t ] [--]
+		This script sets up the Python virtual environment for the
+		manage program, and forwards arguments to it.
+
+		Usage: $(basename "$0") [ -t ] [ -u ] [--]
 		  -h, --help    Print this message.
 		  -t, --test    Run manage tests, then exit.
 		  -u, --update  Update the manage project first.
 		  -- [ ... ]    Pass all arguments after -- to the manage program.
+
+		Try:
+		  script/manage.sh --test
+		  script/manage.sh -- --help
 	EOF
 }
 

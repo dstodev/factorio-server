@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+####################################################################
+#  This script forwards arguments to docker/manage.entrypoint.sh,  #
+#  running in a Docker container.                                  #
+#                                                                  #
+#  Try:                                                            #
+#    script/manage.sh --help                                       #
+#    script/manage.sh -- --help                                    #
+####################################################################
+
 script_dir="$(dirname -- "$(readlink -f -- "$0")")"
 source_dir="$(readlink --canonicalize "$script_dir/..")"
 
