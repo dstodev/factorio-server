@@ -14,4 +14,8 @@ tmp*
 .screenrc
 
 __pycache__/
+.venv/
+*.egg-info
 *.pyc
+
+/build/

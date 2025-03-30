@@ -62,13 +62,13 @@ force=${force-false}
 restart=${restart-false}
 time=${time-10} # Wait 10 seconds by default
 
-script_dir="$(dirname -- "$(readlink -f -- "$0")")"
-source_dir="$(readlink --canonicalize "$script_dir/..")"
+this_dir="$(dirname -- "$(readlink -f -- "$0")")"
+source_dir="$(readlink -f -- "$this_dir/..")"
 
 docker_dir="$source_dir/docker"
 server_dir="$source_dir/server-files"
 
-rcon="$script_dir/send-rcon.sh"
+rcon="$this_dir/send-rcon.sh"
 
 set -o allexport
 # shellcheck source=docker/.env
@@ -131,7 +131,7 @@ if [ -n "$running_container" ]; then
 			printf 'done!\n'
 		fi
 
-		"$script_dir/backup.sh" --force # Just stopped server; force to ignore expected rcon failure
+		"$this_dir/backup.sh" --force # Just stopped server; force to ignore expected rcon failure
 	fi
 else
 	echo 'Server is not running!'
@@ -142,5 +142,5 @@ else
 fi
 
 if $restart; then
-	"$script_dir/start-server.sh" "$@"
+	"$this_dir/start-server.sh" "$@"
 fi

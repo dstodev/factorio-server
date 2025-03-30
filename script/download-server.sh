@@ -3,13 +3,13 @@ set -euo pipefail
 
 SERVER_PKG_URL='https://factorio.com/get-download/stable/headless/linux64'
 
-script_dir="$(dirname -- "$(readlink -f -- "$0")")"
-source_dir="$(readlink --canonicalize "$script_dir/..")"
+this_dir="$(dirname -- "$(readlink -f -- "$0")")"
+source_dir="$(readlink -f -- "$this_dir/..")"
 
 output_dir="${1-$source_dir/server-files}"
 
 copy=(rsync --archive --no-compress)
-tmp_dir="$script_dir/tmp-package"
+tmp_dir="$this_dir/tmp-package"
 pkg_dest="$tmp_dir/package.tar.xz"
 
 cleanup() {

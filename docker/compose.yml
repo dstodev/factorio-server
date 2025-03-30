@@ -34,16 +34,20 @@ services:
       - /bin/bash
       - -c
 
-  manage:
+  py:
     build:
       context: .
-      dockerfile: manage.dockerfile
+      dockerfile: py.dockerfile
       args:
         user_id: $SERVER_USER_ID
         user_name: $SERVER_USER_NAME
         group_id: $SERVER_GROUP_ID
         group_name: $SERVER_GROUP_NAME
-    image: $COMPOSE_PROJECT_NAME-manage:1.0
+    image: $COMPOSE_PROJECT_NAME-py:1.0
+    container_name: $COMPOSE_PROJECT_NAME-py
     volumes:
       - ../:/repo/
-    user: "$SERVER_USER_NAME:$SERVER_GROUP_NAME"
+      - py-home:/home/$SERVER_USER_NAME/
+
+volumes:
+  py-home:

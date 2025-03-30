@@ -12,8 +12,8 @@ rcon_password="$2"
 shift
 shift
 
-script_dir="$(dirname -- "$(readlink -f -- "$0")")"
-server_dir="$(readlink --canonicalize "$script_dir/..")"
+this_dir="$(dirname -- "$(readlink -f -- "$0")")"
+server_dir="$(readlink -f -- "$this_dir/..")"
 
 if [ $# -gt 0 ]; then
 	echo '-------------------------'
@@ -30,14 +30,14 @@ umask 0002
 if [ ! -d "$server_dir/factorio/saves" ]; then
 	factorio/bin/x64/factorio \
 		--create "$server_dir/factorio/saves/world.zip" \
-		--map-gen-settings "$script_dir/map-gen-settings.json" \
-		--map-settings "$script_dir/map-settings.json"
+		--map-gen-settings "$this_dir/map-gen-settings.json" \
+		--map-settings "$this_dir/map-settings.json"
 fi
 
 run() {
 	factorio/bin/x64/factorio \
 		--start-server-load-latest \
-		--server-settings "$script_dir/server-settings.json" \
+		--server-settings "$this_dir/server-settings.json" \
 		--rcon-port "$rcon_port" \
 		--rcon-password "$rcon_password" \
 		"$@" ||
@@ -54,7 +54,7 @@ pushd "$server_dir"
 run "$@"
 
 # Run in a loop until a file named "stop" (a "stop file") is present
-while [ ! -f "$script_dir/stop" ]; do
+while [ ! -f "$this_dir/stop" ]; do
 	sleep 5
 	echo 'Restarting server...' >&2
 	run "$@"
@@ -62,4 +62,4 @@ done
 
 popd
 
-rm --force --verbose "$script_dir/stop"
+rm --force --verbose "$this_dir/stop"

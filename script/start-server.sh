@@ -65,8 +65,8 @@ if $update_server; then
 	fi
 fi
 
-script_dir="$(dirname -- "$(readlink -f -- "$0")")"
-source_dir="$(readlink --canonicalize "$script_dir/..")"
+this_dir="$(dirname -- "$(readlink -f -- "$0")")"
+source_dir="$(readlink -f -- "$this_dir/..")"
 
 docker_dir="$source_dir/docker"
 
@@ -106,12 +106,12 @@ if $update_server; then
 
 	tmp_state="$source_dir/tmp-state"
 
-	"$script_dir/init-permissions.sh" "$tmp_state"             # Set up host environment permissions
-	"$script_dir/download-server.sh" "$tmp_state" || status=$? # Download files with group set from setgid
+	"$this_dir/init-permissions.sh" "$tmp_state"             # Set up host environment permissions
+	"$this_dir/download-server.sh" "$tmp_state" || status=$? # Download files with group set from setgid
 
 	if [ "${status-0}" -eq 0 ]; then
 		# New server files downloaded
-		"$script_dir/shelve-state.sh"
+		"$this_dir/shelve-state.sh"
 		mv --verbose "$tmp_state" "$server_dir"
 	elif [ "${status-0}" -eq 2 ]; then
 		# Server files are up-to-date
@@ -123,7 +123,7 @@ if $update_server; then
 	fi
 
 	if $restore_latest; then
-		latest_dir="$("$script_dir/shelve-state.sh" --print-latest)"
+		latest_dir="$("$this_dir/shelve-state.sh" --print-latest)"
 
 		if [ -d "$latest_dir" ]; then
 			echo "Restoring server files from: '$latest_dir'"
@@ -174,7 +174,7 @@ logs_dir="$source_dir/logs"
 mkdir --parents --verbose "$logs_dir"
 
 # shellcheck source=script/util.sh
-source "$script_dir/util.sh"
+source "$this_dir/util.sh"
 
 log="$logs_dir/$(timestamp).log" # see util.sh for info on date format
 

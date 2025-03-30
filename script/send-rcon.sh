@@ -19,8 +19,8 @@ if ! dpkg --status build-essential >/dev/null 2>&1; then
 	esac
 fi
 
-script_dir="$(dirname -- "$(readlink -f -- "$0")")"
-source_dir="$(readlink --canonicalize "$script_dir/..")"
+this_dir="$(dirname -- "$(readlink -f -- "$0")")"
+source_dir="$(readlink -f -- "$this_dir/..")"
 
 docker_dir="$source_dir/docker"
 rcon_dir="$source_dir/rcon"

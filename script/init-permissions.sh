@@ -10,8 +10,8 @@ if ! sudo --non-interactive true 2>/dev/null; then
 	sudo --validate || exit
 fi
 
-script_dir="$(dirname -- "$(readlink -f -- "$0")")"
-source_dir="$(readlink --canonicalize "$script_dir/..")"
+this_dir="$(dirname -- "$(readlink -f -- "$0")")"
+source_dir="$(readlink -f -- "$this_dir/..")"
 
 docker_dir="$source_dir/docker"
 server_dir="${1-$source_dir/server-files}"

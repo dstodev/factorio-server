@@ -11,14 +11,14 @@ esac
 
 force=${force-false}
 
-script_dir="$(dirname -- "$(readlink -f -- "$0")")"
-source_dir="$(readlink -f "$script_dir/..")"
+this_dir="$(dirname -- "$(readlink -f -- "$0")")"
+source_dir="$(readlink -f -- "$this_dir/..")"
 
 backup_dir="$source_dir/backups"
 
 mkdir --parents --verbose "$backup_dir"
 
-rcon="$script_dir/send-rcon.sh"
+rcon="$this_dir/send-rcon.sh"
 
 save_cmd='/server-save'
 
@@ -36,12 +36,12 @@ fi
 server_data_path="$source_dir/server-files/factorio/saves"
 
 # shellcheck source=script/util.sh
-source "$script_dir/util.sh"
+source "$this_dir/util.sh"
 
 backup_target="$backup_dir/$(timestamp).tar"
 
 # Copy files to a temporary directory before archiving.
-tmp_dir="$script_dir/tmp-backup"
+tmp_dir="$this_dir/tmp-backup"
 mkdir --parents --verbose "$tmp_dir"
 rsync --archive --no-compress --delete --exclude '*.tmp*' "$server_data_path" "$tmp_dir"
 tar --create --file "$backup_target" --directory "$tmp_dir" '.'
