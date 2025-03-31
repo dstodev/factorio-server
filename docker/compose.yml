@@ -1,3 +1,6 @@
+# Variables in this script are automatically interpolated from variables whose
+# defaults are defined in docker/.env when building service images.
+
 name: $SERVER_NAME
 
 services:
@@ -50,4 +53,4 @@ services:
       - py-home:/home/$SERVER_USER_NAME/
 
 volumes:
-  py-home:
+  py-home: # persists the home directory of the py container

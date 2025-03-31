@@ -41,7 +41,18 @@ else
 	done
 fi
 
-if [ -z "$*" ]; then
+unit() {
+	# Helper for running unit tests
+	# Run like:
+	#   script/dpy.sh -- bash -c 'unit manage'
+	# or
+	#   script/dpy.sh
+	#   > (in shell) unit manage
+	python -m unittest discover --start-directory "$1"
+}
+export -f unit
+
+if [ "$#" -eq 0 ]; then
 	exec /bin/bash
 fi
 
