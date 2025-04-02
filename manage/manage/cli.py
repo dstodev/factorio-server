@@ -1,9 +1,11 @@
 import sys
 
-from manage.rcon import Client
+import docker
 
 
 def main():
     print("Hello, world!")
     print(sys.argv)
-    client = Client()
+
+    client = docker.from_env()
+    print(client.info())

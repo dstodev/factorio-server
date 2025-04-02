@@ -2,6 +2,7 @@
 name = 'manage'
 version = '1.0.0'
 requires-python = ">=3.10"
+dependencies = ['docker']
 
 [project.scripts]
 manage = 'manage.cli:main'
