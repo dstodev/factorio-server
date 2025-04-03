@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="3vneUjeyB_59g0w3qiDZ" name="Page-1">
-        <mxGraphModel dx="1572" dy="2029" grid="1" gridSize="10" guides="0" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="2475" dy="1600" grid="1" gridSize="10" guides="0" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -16,8 +16,8 @@
                 <mxCell id="246" value="Create dir: tmp-server-files/" style="rounded=1;whiteSpace=wrap;html=1;shadow=0;glass=0;" vertex="1" parent="245">
                     <mxGeometry x="10" y="10" width="180" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="141" value="Mappings include RCON commands for these concepts per game" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;spacing=6;spacingTop=20;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
-                    <mxGeometry x="1200" y="590" width="100" height="120" as="geometry"/>
+                <mxCell id="141" value="Mappings include commands for these concepts per game" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;spacing=6;spacingTop=20;fillColor=default;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=default;" vertex="1" parent="1">
+                    <mxGeometry x="1240" y="580" width="100" height="120" as="geometry"/>
                 </mxCell>
                 <mxCell id="125" value="" style="swimlane;startSize=0;" vertex="1" parent="1">
                     <mxGeometry x="1630" y="140" width="160" height="80" as="geometry"/>
@@ -34,23 +34,29 @@
                         <mxPoint x="1170" y="549" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="97" value="" style="endArrow=none;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" edge="1" parent="1" source="67" target="65">
+                <mxCell id="97" value="" style="endArrow=none;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" edge="1" parent="1" source="67" target="55">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
                         <mxPoint x="1020" y="250" as="sourcePoint"/>
                         <mxPoint x="1070" y="200" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="52" value="" style="swimlane;startSize=0;collapsible=0;" vertex="1" parent="1">
-                    <mxGeometry x="70" y="40" width="400" height="470" as="geometry"/>
+                    <mxGeometry x="70" y="60" width="400" height="470" as="geometry"/>
                 </mxCell>
                 <mxCell id="18" value="Unique data per game&lt;div&gt;&quot;Game Identity&quot;&lt;/div&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="52">
                     <mxGeometry x="130" width="140" height="50" as="geometry"/>
                 </mxCell>
-                <mxCell id="19" value="" style="group" vertex="1" connectable="0" parent="52">
-                    <mxGeometry x="60" y="50" width="280" height="390" as="geometry"/>
+                <mxCell id="8" value="Backups" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;verticalAlign=middle;" parent="52" vertex="1">
+                    <mxGeometry x="30" y="150" width="100" height="120" as="geometry"/>
                 </mxCell>
-                <mxCell id="3" value="" style="swimlane;startSize=0;collapsible=0;" parent="19" vertex="1">
-                    <mxGeometry x="120" width="160" height="390" as="geometry">
+                <mxCell id="7" value="Game&lt;br&gt;&quot;shelf&quot;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;verticalAlign=middle;" parent="52" vertex="1">
+                    <mxGeometry x="30" y="50" width="100" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="15" value="Game&lt;div&gt;image&lt;/div&gt;" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;" parent="52" vertex="1">
+                    <mxGeometry x="30" y="370" width="120" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="" style="swimlane;startSize=0;collapsible=0;" parent="52" vertex="1">
+                    <mxGeometry x="180" y="50" width="160" height="390" as="geometry">
                         <mxRectangle x="120" width="50" height="40" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
@@ -69,31 +75,37 @@
                 <mxCell id="10" value="Game&lt;div&gt;server&lt;/div&gt;" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" parent="3" vertex="1">
                     <mxGeometry x="20" y="50" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="15" value="Game&lt;div&gt;image&lt;/div&gt;" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;" parent="19" vertex="1">
-                    <mxGeometry width="120" height="80" as="geometry"/>
+                <mxCell id="253" value="" style="shape=curlyBracket;whiteSpace=wrap;html=1;rounded=1;labelPosition=left;verticalLabelPosition=middle;align=right;verticalAlign=middle;" vertex="1" parent="3">
+                    <mxGeometry x="-50" y="150" width="70" height="220" as="geometry"/>
                 </mxCell>
-                <mxCell id="8" value="Backups" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;verticalAlign=middle;" parent="19" vertex="1">
-                    <mxGeometry x="10" y="250" width="100" height="120" as="geometry"/>
+                <mxCell id="255" value="server-files/game/" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="52">
+                    <mxGeometry x="30" y="290" width="110" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="7" value="Game&lt;br&gt;&quot;shelf&quot;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;verticalAlign=middle;" parent="19" vertex="1">
-                    <mxGeometry x="10" y="150" width="100" height="120" as="geometry"/>
+                <mxCell id="66" value="Server&lt;div&gt;start&lt;/div&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="52">
+                    <mxGeometry x="360" y="240" width="80" height="100" as="geometry"/>
                 </mxCell>
-                <mxCell id="17" value="" style="endArrow=none;html=1;" edge="1" parent="19" target="7">
+                <mxCell id="91" value="Mappings:&lt;div&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;shelf restore paths&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;backup paths&lt;/span&gt;&lt;div&gt;&lt;div&gt;RCON commands&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=6;" vertex="1" parent="52">
+                    <mxGeometry x="360" y="80" width="120" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="68" value="" style="endArrow=none;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" edge="1" parent="52" source="5" target="66">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="-20" y="184.1935483870967" as="sourcePoint"/>
-                        <mxPoint x="230" y="180" as="targetPoint"/>
+                        <mxPoint x="700" y="360" as="sourcePoint"/>
+                        <mxPoint x="750" y="310" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="16" value="&quot;Shelf&quot;&lt;div&gt;Before updating, all game files are moved to the shelf. This includes world data, configs, etc.&lt;br&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;After updating server files, important data from the shelf is copied back to the server directories before starting.&lt;/div&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;spacing=6;" vertex="1" parent="52">
-                    <mxGeometry x="-120" y="120" width="160" height="200" as="geometry"/>
+                <mxCell id="67" value="Server file&lt;div&gt;acquisition&lt;/div&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="52">
+                    <mxGeometry x="370" y="320" width="80" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="69" value="" style="endArrow=none;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" edge="1" parent="52" source="4" target="67">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="320" y="303" as="sourcePoint"/>
+                        <mxPoint x="380" y="277" as="targetPoint"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="21" value="" style="swimlane;startSize=0;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="-530" y="350" width="400" height="320" as="geometry">
+                    <mxGeometry x="-380" y="310" width="400" height="320" as="geometry">
                         <mxRectangle x="-530" y="350" width="50" height="40" as="alternateBounds"/>
                     </mxGeometry>
-                </mxCell>
-                <mxCell id="22" value="Shelf" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="21">
-                    <mxGeometry x="140" width="120" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="24" value="Scripts" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;verticalAlign=middle;" vertex="1" parent="21">
                     <mxGeometry x="30" y="190" width="100" height="70" as="geometry"/>
@@ -131,6 +143,15 @@
                 <mxCell id="35" value="&quot;Before updating to version 2.2&quot;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="21">
                     <mxGeometry x="270" y="270" width="100" height="30" as="geometry"/>
                 </mxCell>
+                <mxCell id="266" value="/shelf/game/1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="21">
+                    <mxGeometry x="30" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="267" value="/shelf/game/2" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="21">
+                    <mxGeometry x="150" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="268" value="/shelf/game/3" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="21">
+                    <mxGeometry x="270" width="100" height="30" as="geometry"/>
+                </mxCell>
                 <mxCell id="37" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="21" target="16">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
                         <mxPoint x="-150" y="490" as="sourcePoint"/>
@@ -138,13 +159,13 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="53" value="Curated&lt;div&gt;manually&lt;/div&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;verticalAlign=middle;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
-                    <mxGeometry x="-190" y="100" width="110" height="90" as="geometry"/>
+                    <mxGeometry x="-400" y="-140" width="110" height="90" as="geometry"/>
                 </mxCell>
                 <mxCell id="54" value="Curated automatically" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;verticalAlign=middle;strokeColor=default;align=center;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;" vertex="1" parent="1">
-                    <mxGeometry x="-190" y="30" width="110" height="90" as="geometry"/>
+                    <mxGeometry x="-400" y="-210" width="110" height="90" as="geometry"/>
                 </mxCell>
-                <mxCell id="55" value="&lt;div&gt;Download then edit configs before starting.&lt;/div&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;spacing=6;" vertex="1" parent="1">
-                    <mxGeometry x="560" y="400" width="100" height="120" as="geometry"/>
+                <mxCell id="55" value="&lt;div&gt;Download then edit configs before starting.&lt;/div&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;strokeColor=#d79b00;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fillColor=#ffe6cc;spacing=6;" vertex="1" parent="1">
+                    <mxGeometry x="700" y="430" width="100" height="120" as="geometry"/>
                 </mxCell>
                 <mxCell id="58" value="Manage" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
                     <mxGeometry x="880" y="410" width="120" height="60" as="geometry"/>
@@ -160,24 +181,6 @@
                 </mxCell>
                 <mxCell id="65" value="Download" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
                     <mxGeometry x="1070" y="530" width="120" height="40" as="geometry"/>
-                </mxCell>
-                <mxCell id="66" value="Server&lt;div&gt;start&lt;/div&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
-                    <mxGeometry x="430" y="300" width="80" height="100" as="geometry"/>
-                </mxCell>
-                <mxCell id="67" value="Server file&lt;div&gt;acquisition&lt;/div&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
-                    <mxGeometry x="440" y="370" width="80" height="100" as="geometry"/>
-                </mxCell>
-                <mxCell id="68" value="" style="endArrow=none;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" edge="1" parent="1" source="5" target="66">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="770" y="420" as="sourcePoint"/>
-                        <mxPoint x="820" y="370" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="69" value="" style="endArrow=none;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" edge="1" parent="1" source="4" target="67">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="390" y="363" as="sourcePoint"/>
-                        <mxPoint x="450" y="337" as="targetPoint"/>
-                    </mxGeometry>
                 </mxCell>
                 <mxCell id="70" value="Server&lt;div&gt;exists?&lt;/div&gt;" style="triangle;whiteSpace=wrap;html=1;align=left;" vertex="1" parent="1">
                     <mxGeometry x="1070" y="50" width="60" height="80" as="geometry"/>
@@ -230,9 +233,6 @@
                 </mxCell>
                 <mxCell id="88" value="Restore" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
                     <mxGeometry x="1070" y="480" width="120" height="20" as="geometry"/>
-                </mxCell>
-                <mxCell id="91" value="Mappings:&lt;div&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;shelf restore paths&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;backup paths&lt;/span&gt;&lt;div&gt;&lt;div&gt;RCON commands&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=6;" vertex="1" parent="1">
-                    <mxGeometry x="430" y="140" width="120" height="140" as="geometry"/>
                 </mxCell>
                 <mxCell id="94" value="RCON" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
                     <mxGeometry x="1070" y="580" width="120" height="40" as="geometry"/>
@@ -535,20 +535,14 @@
                 <mxCell id="219" value="RCON: Save" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
                     <mxGeometry x="1740" y="770" width="140" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="230" value="Backup critical data to /backup" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;strokeColor=default;align=center;verticalAlign=middle;spacingLeft=18;spacingRight=18;spacing=2;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;" vertex="1" parent="1">
-                    <mxGeometry x="1900" y="880" width="120" height="60" as="geometry"/>
+                <mxCell id="230" value="Backup critical data to /backup/game" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;strokeColor=default;align=center;verticalAlign=middle;spacingLeft=18;spacingRight=18;spacing=2;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;" vertex="1" parent="1">
+                    <mxGeometry x="1890" y="880" width="160" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="231" value="Get file mapping: critical data for backup" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;strokeColor=default;align=center;verticalAlign=middle;spacingTop=20;spacing=6;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;" vertex="1" parent="1">
+                <mxCell id="231" value="Get file mapping: paths to backup" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;strokeColor=default;align=center;verticalAlign=middle;spacingTop=20;spacing=6;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;" vertex="1" parent="1">
                     <mxGeometry x="1750" y="880" width="80" height="100" as="geometry"/>
                 </mxCell>
-                <mxCell id="233" value="Backup should focus on only critical, non-reproduceable data like worlds. Configs can be recrated, but memories can&#39;t." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;strokeColor=default;align=center;verticalAlign=middle;spacingTop=20;spacing=6;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;" vertex="1" parent="1">
-                    <mxGeometry x="1540" y="900" width="170" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="234" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="233" target="231">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="1860" y="1010" as="sourcePoint"/>
-                        <mxPoint x="1910" y="960" as="targetPoint"/>
-                    </mxGeometry>
+                <mxCell id="233" value="Backup should focus on only critical, non-reproduceable data like worlds. Configs can be recreated, but memories cannot." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;strokeColor=default;align=center;verticalAlign=middle;spacingTop=20;spacing=6;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;" vertex="1" parent="1">
+                    <mxGeometry x="590" y="50" width="170" height="140" as="geometry"/>
                 </mxCell>
                 <mxCell id="235" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="219" target="231">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
@@ -571,8 +565,8 @@
                         <mxPoint x="1970" y="490" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="247" value="Rename tmp-server-files/ to server-files/" style="rounded=1;whiteSpace=wrap;html=1;shadow=0;glass=0;" vertex="1" parent="1">
-                    <mxGeometry x="1360" y="40" width="240" height="30" as="geometry"/>
+                <mxCell id="247" value="Rename tmp-server-files/ to server-files/game/" style="rounded=1;whiteSpace=wrap;html=1;shadow=0;glass=0;" vertex="1" parent="1">
+                    <mxGeometry x="1360" y="40" width="260" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="248" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="78" target="247">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
@@ -590,6 +584,57 @@
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
                         <mxPoint x="1740" y="50" as="sourcePoint"/>
                         <mxPoint x="1790" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="16" value="&quot;Shelf&quot;&lt;div&gt;Before updating, all game files are moved to the shelf. This includes world data, configs, etc.&lt;br&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;After updating server files, important data from the shelf is copied back to the server directories before starting.&lt;/div&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;spacing=6;" vertex="1" parent="1">
+                    <mxGeometry x="-140" y="70" width="160" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="256" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="91" target="233">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="900" y="410" as="sourcePoint"/>
+                        <mxPoint x="950" y="360" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="17" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="16" target="7">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="40" y="334.1935483870967" as="sourcePoint"/>
+                        <mxPoint x="290" y="330" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="257" value="Container should exit after RCON:&amp;nbsp; Stop with stopfile present" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;strokeColor=default;align=center;verticalAlign=middle;spacingTop=20;spacing=6;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;" vertex="1" parent="1">
+                    <mxGeometry x="1880" y="360" width="100" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="258" value="The start script should start the server inside a loop. If a stopfile is present, the loop should break." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;strokeColor=default;align=center;verticalAlign=middle;spacingTop=20;spacing=6;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;" vertex="1" parent="1">
+                    <mxGeometry x="2000" y="320" width="120" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="259" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="147" target="257">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="1930" y="500" as="sourcePoint"/>
+                        <mxPoint x="1980" y="450" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="260" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="257" target="258">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="1880" y="462" as="sourcePoint"/>
+                        <mxPoint x="2100" y="450" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="261" value="" style="endArrow=none;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" edge="1" parent="1" source="55" target="65">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="530" y="449" as="sourcePoint"/>
+                        <mxPoint x="570" y="458" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="265" value="" style="shape=curlyBracket;whiteSpace=wrap;html=1;rounded=1;flipH=1;labelPosition=right;verticalLabelPosition=middle;align=left;verticalAlign=middle;" vertex="1" parent="1">
+                    <mxGeometry x="1200" y="620" width="30" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="269" value="Shelf directories could increment by simple integer e.g.:&lt;br&gt;/shelf/game/1&lt;br&gt;/shelf/game/2&lt;br&gt;or timestamp e.g.:&lt;br&gt;/shelf/game/2025-04-03_051202" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;strokeColor=default;align=center;verticalAlign=middle;spacingTop=20;spacing=6;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;" vertex="1" parent="1">
+                    <mxGeometry x="330" y="620" width="220" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="271" value="" style="endArrow=none;html=1;" edge="1" parent="1" source="185" target="269">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="600" y="760" as="sourcePoint"/>
+                        <mxPoint x="650" y="710" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
             </root>

@@ -11,7 +11,8 @@ timestamp() {
 	#
 	# Try commands:
 	#   date --iso-8601=seconds
-	#   date +"%Y-%m-%dT%H:%M:%S%:z"
+	#   date +'%Y-%m-%dT%H:%M:%S%:z' # can use %z instead of %:z
+	#   date +'%Y-%m-%dT%H:%M:%SZ' --utc
 	#
 	date +"%Y-%m-%dT%H+%M+%S%z"
 }
