@@ -27,8 +27,8 @@ fi
 
 eval set -- "$canonical"
 
-refresh=0
 VERBOSE="${VERBOSE:-0}"
+refresh=0
 
 while :; do
 	case "$1" in
@@ -40,9 +40,11 @@ while :; do
 		VERBOSE=$((VERBOSE + 1))
 		export VERBOSE
 		;;
+
 	-r | --refresh)
 		refresh=$((refresh + 1))
 		;;
+
 	--)
 		shift # --
 		break
