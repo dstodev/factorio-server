@@ -1,8 +1,6 @@
-*.out
-*.jar
-
 /.vscode/settings.json
-/backups/
+
+/backup/
 /cfg/*.json
 /logs/
 /server-files*/
@@ -14,8 +12,10 @@ tmp*
 .screenrc
 
 __pycache__/
+.pytest_cache/
 .venv/
 *.egg-info
 *.pyc
 
-/build/
+*.out
+*.jar

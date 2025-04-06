@@ -1,3 +1,3 @@
-from manage.cli import main
+from manage.main import main
 
 main()

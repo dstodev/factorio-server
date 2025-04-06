@@ -23,6 +23,18 @@ verbose() {
 	fi
 }
 
+flag_verbose() {
+	if [ "${VERBOSE:-0}" -gt 0 ]; then
+		echo '-v'
+	fi
+}
+
+flag_quiet() {
+	if [ "${VERBOSE:-0}" -eq 0 ]; then
+		echo '-q'
+	fi
+}
+
 # True if version $1 >= $2
 version_ge() {
 	# Sorts in ascending order, so the first line is the lowest

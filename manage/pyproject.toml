@@ -5,8 +5,16 @@ requires-python = ">=3.10"
 dependencies = ['docker']
 
 [project.scripts]
-manage = 'manage.cli:main'
+manage = 'manage.main:main'
+
+[project.optional-dependencies]
+dev = ['pytest', 'pytest-cov']
 
 [build-system]
 requires = ['setuptools']
 build-backend = 'setuptools.build_meta'
+
+# See: https://docs.pytest.org/en/stable/reference/customize.html#pyproject-toml
+[tool.pytest.ini_options]
+testpaths = ['test']
+cache_dir = '.venv/.pytest_cache'

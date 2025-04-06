@@ -1,0 +1,7 @@
+{
+  "rcon": {
+    "save": "/server-save",
+    "say": "",
+    "stop": "/quit"
+  }
+}

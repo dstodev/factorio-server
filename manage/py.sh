@@ -6,26 +6,29 @@ this_dir="$(dirname -- "$(readlink -f -- "$0")")"
 relative_path="$(realpath --relative-to="$cwd" "$this_dir")"
 relative_basename="$relative_path/$(basename "$0")"
 
+PYTHON_VERSION="${PYTHON_VERSION:-3.10}"
+
+VERBOSE="${VERBOSE:-0}"
+export VERBOSE
+
 help() {
 	cat <<-EOF
 		This script sets up and provides access to a Python virtual environment.
 
-		Usage: $(basename "$0") [OPTION]... [ -- COMMAND [ARG]... ]
+		Usage: $(basename "$0") [OPTION]... [ -- [COMMAND] [ARG]...]
 		  -h, --help      Print this message.
 		  -v, --verbose   Print verbose messages.
 
 		  -r, --refresh   Reinitialize the virtual environment.
+		                  Repeat to fully rebuild the environment.
 		  -s, --shell     Start a shell in the virtual environment.
 
-		  -- COMMAND [ ARG... ]   Run a command in the environment.
+		  -- [COMMAND] [ARG]...   Run a command in the environment.
 
 		Examples:
-		  $relative_basename -- -m unittest
 		  $relative_basename -- -m manage
-		  $relative_basename -s -- python -m unittest
-		  $relative_basename -s -- manage
-		  $relative_basename -s -- python -m manage.cli
-		  $relative_basename -r
+		  $relative_basename -s -- pytest
+		  $relative_basename -vrrs --
 	EOF
 }
 
@@ -43,7 +46,6 @@ fi
 
 eval set -- "$canonical"
 
-VERBOSE="${VERBOSE:-0}"
 refresh=0
 
 while :; do
@@ -54,7 +56,6 @@ while :; do
 		;;
 	-v | --verbose)
 		VERBOSE=$((VERBOSE + 1))
-		export VERBOSE
 		;;
 
 	-r | --refresh)
@@ -79,7 +80,8 @@ umask 0002
 this_dir="$(dirname -- "$(readlink -f -- "$0")")"
 source_dir="$(readlink -f -- "$this_dir/..")"
 
-venv_dir="$this_dir/.venv"
+venv_basename='.venv'
+venv_dir="$this_dir/$venv_basename"
 build_dir="$venv_dir/.build"
 
 PYTHONPYCACHEPREFIX="$venv_dir/.pycache"
@@ -90,8 +92,12 @@ cd "$this_dir" || exit 1
 # shellcheck source=script/util.sh
 source "$source_dir/script/util.sh"
 
-py="$(py_interpreter 3.10)"
-verbose "-- Using python interpreter: $py"
+vflag="$(flag_verbose)"
+qflag="$(flag_quiet)"
+
+pretty_rm() {
+	rm ${vflag:+"$vflag"} --force --recursive "$1" | tail --lines 1 | sed 's/^/-- /'
+}
 
 venv_activate() {
 	# shellcheck disable=SC1091
@@ -99,25 +105,40 @@ venv_activate() {
 }
 
 venv_init() {
-	echo "-- Initializing python virtual environment: $venv_dir"
+	echo '-- Initializing...'
+	verbose "-- Initializing python virtual environment: $venv_dir"
+
+	# Remove venv_dir from PATH before searching for Python
+	# Important if running with -rr from an already-acitvated environment
+	PATH="$(echo "$PATH" | tr ':' '\n' | grep -v "$venv_dir" | tr '\n' ':' | sed 's/:$//')"
+
+	py="$(py_interpreter "$PYTHON_VERSION")"
+	verbose "-- System interpreter: $py"
 
 	"$py" -m venv "$venv_dir"
 	venv_activate
-	# After venv activate, python and pip are available as commands from the venv
-	pip install --upgrade pip
 
-	rm --force --recursive --verbose "$build_dir" | tail --lines 1
+	verbose "-- Activated interpreter: $(which python)"
+
+	# After venv activate, python and pip are available as commands from the venv
+	pip ${qflag:+"$qflag"} install --upgrade pip
+
+	pretty_rm "$build_dir"
 
 	find "$source_dir" -name pyproject.toml | while read -r pyproject; do
-		echo "-- Installing project: $pyproject"
+		verbose "-- Installing project: $pyproject"
 		dir="$(dirname -- "$pyproject")"
 		stem=$(basename -- "$dir")
 
 		mkdir --parents "$build_dir/$stem"
 		ln --relative --symbolic "$dir"/* "$build_dir/$stem"/
-		pip install --editable "$build_dir/$stem"
+		pip ${qflag:+"$qflag"} install --editable "$build_dir/$stem"'[dev]'
 	done
 }
+
+if [ "$refresh" -gt 1 ]; then
+	pretty_rm "$venv_dir"
+fi
 
 if [ -d "$venv_dir/bin" ] && [ "$refresh" -eq 0 ]; then
 	venv_activate
@@ -126,9 +147,11 @@ else
 fi
 
 if "$shell"; then
-	shell_cmd=$(cat /proc/$PPID/cmdline | tr '\0' ' ')
+	shell_cmd='/bin/bash'
+	rcfile_ps1="export PS1='($venv_basename) \$(basename \"\$(pwd)\")\$ '"
+
 	if [ "$#" -eq 0 ]; then
-		exec $shell_cmd
+		exec $shell_cmd --rcfile <(echo "$rcfile_ps1") -i
 	fi
 	exec $shell_cmd -c -- "$(printf '%q ' "$@")"
 fi
