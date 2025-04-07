@@ -80,23 +80,25 @@ umask 0002
 this_dir="$(dirname -- "$(readlink -f -- "$0")")"
 source_dir="$(readlink -f -- "$this_dir/..")"
 
-venv_basename='.venv'
-venv_dir="$this_dir/$venv_basename"
+venv_stem='.venv'
+venv_dir="$this_dir/$venv_stem"
 build_dir="$venv_dir/.build"
 
+set -o allexport
 PYTHONPYCACHEPREFIX="$venv_dir/.pycache"
-export PYTHONPYCACHEPREFIX
+PYTEST_ADDOPTS="-o cache_dir=$venv_dir/.pytest_cache"
+set +o allexport
 
 cd "$this_dir" || exit 1
 
 # shellcheck source=script/util.sh
 source "$source_dir/script/util.sh"
 
-vflag="$(flag_verbose)"
-qflag="$(flag_quiet)"
+fv="$(flag_verbose)"
+fq="$(flag_quiet)"
 
 pretty_rm() {
-	rm ${vflag:+"$vflag"} --force --recursive "$1" | tail --lines 1 | sed 's/^/-- /'
+	rm ${fv:+"$fv"} --force --recursive "$1" | tail --lines 1 | sed 's/^/-- /'
 }
 
 venv_activate() {
@@ -105,8 +107,7 @@ venv_activate() {
 }
 
 venv_init() {
-	echo '-- Initializing...'
-	verbose "-- Initializing python virtual environment: $venv_dir"
+	echo "-- Initializing Python virtual environment: $venv_dir"
 
 	# Remove venv_dir from PATH before searching for Python
 	# Important if running with -rr from an already-acitvated environment
@@ -121,18 +122,18 @@ venv_init() {
 	verbose "-- Activated interpreter: $(which python)"
 
 	# After venv activate, python and pip are available as commands from the venv
-	pip ${qflag:+"$qflag"} install --upgrade pip
+	pip ${fq:+"$fq"} install --upgrade pip
 
 	pretty_rm "$build_dir"
 
-	find "$source_dir" -name pyproject.toml | while read -r pyproject; do
+	find "$source_dir" -type f -name pyproject.toml | while read -r pyproject; do
 		verbose "-- Installing project: $pyproject"
 		dir="$(dirname -- "$pyproject")"
 		stem=$(basename -- "$dir")
 
 		mkdir --parents "$build_dir/$stem"
 		ln --relative --symbolic "$dir"/* "$build_dir/$stem"/
-		pip ${qflag:+"$qflag"} install --editable "$build_dir/$stem"'[dev]'
+		pip ${fq:+"$fq"} install --editable "$build_dir/$stem"'[dev]'
 	done
 }
 
@@ -148,7 +149,7 @@ fi
 
 if "$shell"; then
 	shell_cmd='/bin/bash'
-	rcfile_ps1="export PS1='($venv_basename) \$(basename \"\$(pwd)\")\$ '"
+	rcfile_ps1="export PS1='($venv_stem) \$(basename \"\$(pwd)\")\$ '"
 
 	if [ "$#" -eq 0 ]; then
 		exec $shell_cmd --rcfile <(echo "$rcfile_ps1") -i

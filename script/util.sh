@@ -24,9 +24,7 @@ verbose() {
 }
 
 flag_verbose() {
-	if [ "${VERBOSE:-0}" -gt 0 ]; then
-		echo '-v'
-	fi
+	verbose '-v'
 }
 
 flag_quiet() {

@@ -1,66 +1,80 @@
 import json
+import pathlib
 
-from manage import BACKUP_DIR, CFG_DIR, SHELF_DIR
+from manage import paths
+
+
+def force_dir(dir: pathlib.Path):
+    dir.mkdir(parents=True, exist_ok=True)
+    assert dir.is_dir(), f'Directory {dir} does not exist.'
+    return dir
+
+
+def assert_file(file: pathlib.Path):
+    assert file.is_file(), f'File {file} does not exist.'
+    return file
 
 
 class Game:
     def __init__(self, name: str):
         self.name = name
-        self._config_data = None
+        self._cfg_data = None
 
-    def config_path(self):
-        name = self.name
-        path = CFG_DIR / name / f'{name}.json'
-        assert path.is_file(), f'Config file {path} does not exist.'
-        return path
+    def cfg_dir(self):
+        dir = paths.get('cfg') / self.name
+        return force_dir(dir)
 
-    def config_data(self):
+    def backup_dir(self):
+        dir = paths.get('backup') / self.name
+        return force_dir(dir)
+
+    def shelf_dir(self):
+        dir = paths.get('shelf') / self.name
+        return force_dir(dir)
+
+    def cfg_file(self):
+        cfg = self.cfg_dir() / f'{self.name}.json'
+        return assert_file(cfg)
+
+    def cfg_data(self):
         name = self.name
-        data = self._config_data
+        data = self._cfg_data
+
         if data is None:
             try:
-                path = self.config_path()
-                with open(path, 'r') as file:
+                cfg = self.cfg_file()
+
+                with open(cfg, 'r') as file:
                     data = json.load(file)
+
             except json.JSONDecodeError:
-                raise ValueError(f'{name} config {path} does not contain valid JSON.')
+                raise ValueError(f'{name} cfg {cfg} does not contain valid JSON.')
+
             except Exception as e:
                 raise e
 
             if not isinstance(data, dict):
-                raise ValueError(f'Game config {path} does not contain valid JSON.')
+                raise ValueError(f'Game cfg {cfg} does not contain valid JSON.')
 
-        self._config_data = data
+        self._cfg_data = data
         return data
 
+    def dockerfile(self):
+        dockerfile = self.cfg_dir() / f'{self.name}.dockerfile'
+        return assert_file(dockerfile)
+
     def start_script(self):
-        path = CFG_DIR / self.name / 'start.sh'
-        assert path.is_file(), f'Start script {path} does not exist.'
-        return path
+        script = self.cfg_dir() / 'start.sh'
+        return assert_file(script)
 
     def download_script(self):
-        path = CFG_DIR / self.name / 'download.sh'
-        assert path.is_file(), f'Download script {path} does not exist.'
-        return path
+        script = self.cfg_dir() / 'download.sh'
+        return assert_file(script)
 
     def backup_script(self):
-        path = CFG_DIR / self.name / 'backup.sh'
-        assert path.is_file(), f'Backup script {path} does not exist.'
-        return path
+        script = self.cfg_dir() / 'backup.sh'
+        return assert_file(script)
 
     def restore_script(self):
-        path = CFG_DIR / self.name / 'restore.sh'
-        assert path.is_file(), f'Restore script {path} does not exist.'
-        return path
-
-    def backup_dir(self):
-        path = BACKUP_DIR / self.name
-        path.mkdir(parents=True, exist_ok=True)
-        assert path.is_dir(), f'Backup path {path} does not exist.'
-        return path
-
-    def shelf_dir(self):
-        path = SHELF_DIR / self.name
-        path.mkdir(parents=True, exist_ok=True)
-        assert path.is_dir(), f'Shelf {path} does not exist.'
-        return path
+        script = self.cfg_dir() / 'restore.sh'
+        return assert_file(script)
