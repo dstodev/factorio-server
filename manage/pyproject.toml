@@ -5,7 +5,7 @@ requires-python = ">=3.10"
 dependencies = ['docker']
 
 [project.scripts]
-manage = 'manage.main:main'
+manage = 'cli.main:main'
 
 [project.optional-dependencies]
 dev = ['pytest', 'pytest-cov', 'pytest-mock']
@@ -17,3 +17,7 @@ build-backend = 'setuptools.build_meta'
 # See: https://docs.pytest.org/en/stable/reference/customize.html#pyproject-toml
 [tool.pytest.ini_options]
 testpaths = ['test']
+addopts = '--cov=manage --cov-report=lcov:.venv/lcov.info --cov-report=term'
+
+[tool.coverage.run]
+data_file = '.venv/.coverage'

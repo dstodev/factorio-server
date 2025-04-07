@@ -26,7 +26,7 @@ help() {
 		  -- [COMMAND] [ARG]...   Run a command in the environment.
 
 		Examples:
-		  $relative_basename -- -m manage
+		  $relative_basename -- -m cli
 		  $relative_basename -s -- pytest
 		  $relative_basename -vrrs --
 	EOF
@@ -129,15 +129,14 @@ venv_init() {
 	find "$source_dir" -type f -name pyproject.toml | while read -r pyproject; do
 		verbose "-- Installing project: $pyproject"
 		dir="$(dirname -- "$pyproject")"
-		stem=$(basename -- "$dir")
-
-		mkdir --parents "$build_dir/$stem"
-		ln --relative --symbolic "$dir"/* "$build_dir/$stem"/
-		pip ${fq:+"$fq"} install --editable "$build_dir/$stem"'[dev]'
+		pip ${fq:+"$fq"} install --editable "$dir"'[dev]'
 	done
 }
 
 if [ "$refresh" -gt 1 ]; then
+	find "$this_dir" -type d -name "*.egg-info" | while read -r egg_info; do
+		pretty_rm "$egg_info"
+	done
 	pretty_rm "$venv_dir"
 fi
 

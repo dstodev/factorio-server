@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-from manage import cli, paths
+from cli import cli
+
+from manage import paths
 from manage.game import Game
 
 

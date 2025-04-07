@@ -1,3 +1,4 @@
+import json
 from functools import partial
 
 import pytest
@@ -88,3 +89,19 @@ def test_game_files(tmp_path, mocker, method_name, expected_stem):
     result = getattr(game, method_name)()
 
     assert result == expected_cfg_file, f'Expected {expected_cfg_file}, received {result}'
+
+
+def test_cfg_data(tmp_path, mocker):
+    mocker.patch('manage.game.assert_file', side_effect=lambda f: f)
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test_game'
+    game = Game(name)
+
+    expected_data = {'key': 'value'}
+
+    mocker.patch('builtins.open', mocker.mock_open(read_data=json.dumps(expected_data)))
+
+    result = game.cfg_data()
+
+    assert result == expected_data, f'Expected {expected_data}, received {result}'

@@ -41,20 +41,10 @@ class Game:
         data = self._cfg_data
 
         if data is None:
-            try:
-                cfg = self.cfg_file()
+            cfg = self.cfg_file()
 
-                with open(cfg, 'r') as file:
-                    data = json.load(file)
-
-            except json.JSONDecodeError:
-                raise ValueError(f'{name} cfg {cfg} does not contain valid JSON.')
-
-            except Exception as e:
-                raise e
-
-            if not isinstance(data, dict):
-                raise ValueError(f'Game cfg {cfg} does not contain valid JSON.')
+            with open(cfg, 'r') as file:
+                data = json.load(file)
 
         self._cfg_data = data
         return data
