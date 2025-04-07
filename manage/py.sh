@@ -101,6 +101,14 @@ pretty_rm() {
 	rm ${fv:+"$fv"} --force --recursive "$1" | tail --lines 1 | sed 's/^/-- /'
 }
 
+clean() {
+	if [ $# -gt 0 ]; then
+		find "$this_dir" "$@" | while read -r file; do
+			pretty_rm "$file"
+		done
+	fi
+}
+
 venv_activate() {
 	# shellcheck disable=SC1091
 	source "$venv_dir/bin/activate"
@@ -134,9 +142,7 @@ venv_init() {
 }
 
 if [ "$refresh" -gt 1 ]; then
-	find "$this_dir" -type d -name "*.egg-info" | while read -r egg_info; do
-		pretty_rm "$egg_info"
-	done
+	clean -type d -name '*.egg-info'
 	pretty_rm "$venv_dir"
 fi
 
