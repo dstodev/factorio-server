@@ -1,3 +1,5 @@
+'''Paths to important project directories.'''
+
 from pathlib import Path
 
 this_dir = Path(__file__).resolve().parent
@@ -6,6 +8,22 @@ repo_dir = project_dir.parent.parent
 
 
 def get(which: str = '', root: Path = repo_dir) -> Path:
+    '''Get the path to a project directory:
+
+    :param which: Name of the directory to get:
+
+        - `'src'`: Repo root
+        - `'backup'`: Game backups
+        - `'cfg'`: Game configurations
+        - `'docker'`: Docker directory
+        - `'rcon'`: RCON client
+        - `'shelf'`: Game shelf directory
+
+    :type which: str
+
+    :param root: Root directory to to base the project directory on.
+    :type root: pathlib.Path
+    '''
     return {
         'src': root,
 

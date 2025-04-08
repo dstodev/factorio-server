@@ -82,12 +82,12 @@ source_dir="$(readlink -f -- "$this_dir/..")"
 
 venv_stem='.venv'
 venv_dir="$this_dir/$venv_stem"
-build_dir="$venv_dir/.build"
 
-set -o allexport
 PYTHONPYCACHEPREFIX="$venv_dir/.pycache"
+export PYTHONPYCACHEPREFIX
+
 PYTEST_ADDOPTS="-o cache_dir=$venv_dir/.pytest_cache"
-set +o allexport
+export PYTEST_ADDOPTS
 
 cd "$this_dir" || exit 1
 
@@ -132,8 +132,6 @@ venv_init() {
 	# After venv activate, python and pip are available as commands from the venv
 	pip ${fq:+"$fq"} install --upgrade pip
 
-	pretty_rm "$build_dir"
-
 	find "$source_dir" -type f -name pyproject.toml | while read -r pyproject; do
 		verbose "-- Installing project: $pyproject"
 		dir="$(dirname -- "$pyproject")"
@@ -142,13 +140,13 @@ venv_init() {
 }
 
 if [ "$refresh" -gt 1 ]; then
-	clean -type d -name '*.egg-info'
 	pretty_rm "$venv_dir"
 fi
 
 if [ -d "$venv_dir/bin" ] && [ "$refresh" -eq 0 ]; then
 	venv_activate
 else
+	clean -type d -name '*.egg-info'
 	venv_init # calls venv_activate
 fi
 

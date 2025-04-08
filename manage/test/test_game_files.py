@@ -1,19 +1,21 @@
+'''Tests for GameFiles class and related functions in manage/game_files.py'''
+
 import json
 from functools import partial
 
 import pytest
 
 from manage import paths
-from manage.game import Game, assert_file, force_dir
+from manage.game_files import GameFiles, assert_file, force_dir
 
 
 def test_force_dir_creates_dir(tmp_path):
     target_dir = tmp_path / 'test_dir'
     assert not target_dir.exists(), f'Directory {target_dir} should not exist before call.'
 
-    dir = force_dir(target_dir)
+    path = force_dir(target_dir)
 
-    assert dir == target_dir, f'Expected {target_dir}, received {dir}'
+    assert path == target_dir, f'Expected {target_dir}, received {path}'
     assert target_dir.is_dir(), f'Directory {target_dir} was not created.'
 
 
@@ -24,9 +26,9 @@ def test_force_dir_does_not_recreate_existing_dir(tmp_path):
     target_file.touch()
     assert target_file.is_file(), f'File {target_file} should exist before call.'
 
-    dir = force_dir(target_dir)
+    path = force_dir(target_dir)
 
-    assert dir == target_dir, f'Expected {target_dir}, received {dir}'
+    assert path == target_dir, f'Expected {target_dir}, received {path}'
     assert target_file.is_file(), f'File {target_file} should still exist after call.'
 
 
@@ -43,9 +45,9 @@ def test_assert_file_success(tmp_path):
     target_file.touch()
     assert target_file.is_file(), f'File {target_file} should exist before call.'
 
-    dir = assert_file(target_file)
+    path = assert_file(target_file)
 
-    assert dir == target_file, f'Expected {target_file}, received {dir}'
+    assert path == target_file, f'Expected {target_file}, received {path}'
 
 
 @pytest.mark.parametrize('method,expected_dir', [
@@ -57,7 +59,7 @@ def test_game_dirs(tmp_path, mocker, method, expected_dir):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
     name = 'test_game'
-    game = Game(name)
+    game = GameFiles(name)
 
     expected_cfg = paths.get(expected_dir) / name
 
@@ -79,7 +81,7 @@ def test_game_files(tmp_path, mocker, method_name, expected_stem):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
     name = 'test_game'
-    game = Game(name)
+    game = GameFiles(name)
 
     cfg_dir = game.cfg_dir()
 
@@ -92,11 +94,11 @@ def test_game_files(tmp_path, mocker, method_name, expected_stem):
 
 
 def test_cfg_data(tmp_path, mocker):
-    mocker.patch('manage.game.assert_file', side_effect=lambda f: f)
+    mocker.patch('manage.game_files.assert_file', side_effect=lambda f: f)
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
     name = 'test_game'
-    game = Game(name)
+    game = GameFiles(name)
 
     expected_data = {'key': 'value'}
 

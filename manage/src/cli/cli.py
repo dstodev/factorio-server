@@ -1,7 +1,10 @@
+'''CLI argument parser.'''
+
 import argparse
 
 
 def args():
+    '''Get user-specified command-line options.'''
     parser = argparse.ArgumentParser(prog='manage',
                                      description='Server management suite',
                                      epilog='')

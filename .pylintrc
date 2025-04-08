@@ -1,0 +1,2 @@
+[MAIN]
+no-docstring-rgx=^(Test|test_|main$)

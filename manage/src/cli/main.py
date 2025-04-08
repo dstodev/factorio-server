@@ -1,11 +1,9 @@
-# import docker
-
-from pathlib import Path
+'''CLI entrypoint to the manage module.'''
 
 from cli import cli
 
 from manage import paths
-from manage.game import Game
+from manage.game_files import GameFiles
 
 
 def main():
@@ -18,25 +16,27 @@ def main():
 
     games = {}
 
-    for dir in Path(paths.get('cfg')).iterdir():
-        if dir.is_dir():
-            name = dir.name
+    for path in paths.get('cfg').iterdir():
+        if path.is_dir():
+            name = path.name
             print(f'Found game: {name}')
-            game = Game(name)
+            files = GameFiles(name)
 
-            print(game.cfg_dir())
-            print(game.backup_dir())
-            print(game.shelf_dir())
+            print(files.cfg_dir())
+            print(files.backup_dir())
+            print(files.shelf_dir())
 
-            print(game.cfg_file())
-            print(game.cfg_data())
-            print(game.dockerfile())
-            print(game.start_script())
-            print(game.download_script())
-            print(game.backup_script())
-            print(game.restore_script())
+            print(files.cfg_file())
+            print(files.cfg_data())
+            print(files.dockerfile())
+            print(files.start_script())
+            print(files.download_script())
+            print(files.backup_script())
+            print(files.restore_script())
 
-            games[name] = game
+            games[name] = {
+                'files': files,
+            }
 
     # print(client.containers.run('hello-world').decode('utf-8'))
 

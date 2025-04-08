@@ -12,6 +12,9 @@
 		"python.defaultInterpreterPath": "${workspaceFolder}/manage/.venv/bin/python",
 		"python.testing.autoTestDiscoverOnSaveEnabled": false,
 
+		"python.envFile": "${workspaceFolder}/.env",
+		"python.testing.cwd": "${workspaceFolder}/manage",
+
 		"coverage-gutters.coverageBaseDir": "manage/.venv",
 		"coverage-gutters.ignoredPathGlobs": "**/{node_modules,venv,vendor}/**",
 
