@@ -8,8 +8,8 @@
 			"type": "shell",
 			"command": "manage/py.sh",
 			"args": [
-				"--shell",
 				"--",
+				"-m",
 				"pytest",
 			],
 			"problemMatcher": [ "$python" ],

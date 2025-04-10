@@ -33,7 +33,7 @@ def test_force_dir_does_not_recreate_existing_dir(tmp_path):
 
 
 def test_assert_file_failure(tmp_path):
-    target_file = tmp_path / 'non_existent_file.txt'
+    target_file = tmp_path / 'non-existent-file.txt'
     assert not target_file.exists(), f'File {target_file} should not exist before call.'
 
     with pytest.raises(AssertionError):
@@ -41,7 +41,7 @@ def test_assert_file_failure(tmp_path):
 
 
 def test_assert_file_success(tmp_path):
-    target_file = tmp_path / 'test_file.txt'
+    target_file = tmp_path / 'test-file.txt'
     target_file.touch()
     assert target_file.is_file(), f'File {target_file} should exist before call.'
 

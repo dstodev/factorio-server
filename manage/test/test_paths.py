@@ -1,3 +1,5 @@
+'''Test for well-defined project paths.'''
+
 from functools import partial
 
 from manage import paths
