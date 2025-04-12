@@ -39,7 +39,7 @@ class _Printer:
             print(f'  {message}', **kwargs)
 
     def preamble(self):
-        '''Print the preamble once.'''
+        '''Print the preamble one time per instance.'''
         if not self._printed_preamble:
             print(f'\n{self._prefix}:')
             self._printed_preamble = True

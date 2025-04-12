@@ -4,19 +4,39 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "Pytest: manage",
+			"label": "Manage: Run Pytest",
 			"type": "shell",
-			"command": "manage/py.sh",
-			"args": [
-				"--",
-				"-m",
-				"pytest",
-			],
+			"icon": { "id": "beaker", "color": "terminal.ansiGreen" },
+			"command": "./py.sh",
+			"args": [ "--", "-m", "pytest" ],
 			"problemMatcher": [ "$python" ],
-			"group": {
-				"kind": "test",
-				"isDefault": true
+			"group": { "kind": "test", "isDefault": true },
+			"options": { "cwd": "${workspaceFolder}/manage" },
+			"presentation": {
+				"clear": true,
+				"panel": "dedicated",
+				"showReuseMessage": false,
 			}
+		},
+		{
+			"label": "Manage: Run CLI",
+			"icon": { "id": "terminal" },
+			"type": "shell",
+			"command": "./py.sh",
+			"args": [ "--", "-m", "cli" ],
+			"problemMatcher": [ "$python" ],
+			"options": { "cwd": "${workspaceFolder}/manage" },
+			"presentation": { "clear": true }
+		},
+		{
+			"label": "Manage: Run CLI: Help",
+			"icon": { "id": "terminal" },
+			"type": "shell",
+			"command": "./py.sh",
+			"args": [ "--", "-m", "cli", "--help" ],
+			"problemMatcher": [ "$python" ],
+			"options": { "cwd": "${workspaceFolder}/manage" },
+			"presentation": { "clear": true }
 		}
 	]
 }

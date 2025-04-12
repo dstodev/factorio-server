@@ -5,12 +5,28 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "Debug: pytest",
+			"name": "Debug: Run Pytest",
 			"type": "debugpy",
 			"request": "launch",
 			"module": "pytest",
 			"cwd": "${workspaceFolder}/manage",
 			"args": [ "--no-cov" ], // breakpoints do not work with coverage
+		},
+		{
+			"name": "Debug: Run CLI",
+			"type": "debugpy",
+			"request": "launch",
+			"module": "cli",
+			"cwd": "${workspaceFolder}/manage",
+			"args": "${input:argstr}"
+		}
+	],
+	"inputs": [
+		{
+			"id": "argstr",
+			"type": "promptString",
+			"description": "Arguments to pass to the CLI",
+			"default": "--help"
 		}
 	]
 }

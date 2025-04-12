@@ -92,8 +92,8 @@ source_dir="$(readlink -f -- "$this_dir/..")"
 # shellcheck source=script/util.sh
 source "$source_dir/script/util.sh"
 
-fv="$(flag_verbose)"
-fq="$(flag_quiet)"
+fv="$(flag_verbose)" # flag_verbose() from util.sh
+fq="$(flag_quiet)"   # flag_quiet() from util.sh
 
 pretty_rm() {
 	rm ${fv:+"$fv"} --force --recursive "$1" | tail --lines 1 | sed 's/^/-- /'
@@ -119,7 +119,7 @@ venv_init() {
 	# Important if running with -rr from an already-acitvated environment
 	PATH="$(echo "$PATH" | tr ':' '\n' | grep -v "$venv_dir" | tr '\n' ':' | sed 's/:$//')"
 
-	py="$(py_interpreter "$PYTHON_VERSION")"
+	py="$(py_interpreter "$PYTHON_VERSION")" # py_interpreter() from util.sh
 	verbose "-- System interpreter: $py"
 
 	"$py" -m venv "$venv_dir"

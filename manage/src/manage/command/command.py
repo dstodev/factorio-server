@@ -23,8 +23,9 @@ class Schedule:
 
         :param action: The action to add.
         :type action: Command
-        :raises TypeError: If action does not implement Command interface.
+        :raises AssertionError: If action does not implement Command interface.
         '''
+        assert action is not self, 'Cannot add self to schedule'
         assert isinstance(action, Command), 'Action must implement Command interface'
         self._actions.append(action)
 

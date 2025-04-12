@@ -1,5 +1,7 @@
 '''Test the Command interface & related Schedule class.'''
 
+import pytest
+
 from manage.command import Command, Schedule
 
 
@@ -14,8 +16,8 @@ class DummyCommand:
         '''No-op'''
 
 
-class StoreExecuted:
-    '''Store how many times this command is executed.'''
+class CallCount:
+    '''Implements the Command interface, storing the number of times execute() is called.'''
 
     def __init__(self):
         '''Start at zero.'''
@@ -36,15 +38,59 @@ def test_command():
 
 
 def test_schedule():
-    schedule = Schedule()
+    cmd1 = CallCount()
+    assert cmd1.count() == 0
 
-    cmd1 = StoreExecuted()
+    schedule = Schedule()
     schedule.add_action(cmd1)
     schedule.execute()
     assert cmd1.count() == 1
 
-    cmd2 = StoreExecuted()
+    cmd2 = CallCount()
+    assert cmd2.count() == 0
+
     schedule.add_action(cmd2)
     schedule.execute()
     assert cmd1.count() == 2
     assert cmd2.count() == 1
+
+
+def test_schedule_duplicate():
+    cmd = CallCount()
+    schedule = Schedule()
+    schedule.add_action(cmd)
+    schedule.add_action(cmd)
+    schedule.execute()
+    assert cmd.count() == 2
+
+
+def test_schedule_type_error():
+    schedule = Schedule()
+
+    with pytest.raises(AssertionError):
+        schedule.add_action(NotCommand())
+
+
+def test_schedules_are_commands():
+    cmd = CallCount()
+    schedule1 = Schedule()
+    schedule1.add_action(cmd)
+
+    schedule2 = Schedule()
+    schedule2.add_action(schedule1)
+
+    schedule2.execute()
+
+    assert cmd.count() == 1
+
+    schedule2.add_action(cmd)
+    schedule2.execute()
+
+    assert cmd.count() == 3
+
+
+def test_add_self_as_action():
+    schedule = Schedule()
+
+    with pytest.raises(AssertionError):
+        schedule.add_action(schedule)
