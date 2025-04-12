@@ -23,7 +23,7 @@ class GameFiles:
     '''Access game-specific configuration files and directories.'''
 
     def __init__(self, name: str):
-        '''Constructor
+        '''Get files and directories for a game.
 
         :param name: Name of the game.
         :type name: str

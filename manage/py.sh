@@ -1,21 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-cwd="$(pwd -P)"
-this_dir="$(dirname -- "$(readlink -f -- "$0")")"
-relative_path="$(realpath --relative-to="$cwd" "$this_dir")"
-relative_basename="$relative_path/$(basename "$0")"
-
 PYTHON_VERSION="${PYTHON_VERSION:-3.10}"
 
-VERBOSE="${VERBOSE:-0}"
-export VERBOSE
+this_dir="$(dirname -- "$(readlink -f -- "$0")")"
+relative_path="$(realpath --relative-to="$(pwd -P)" "$this_dir")"
+this_name="$(basename "$0")"
 
 help() {
 	cat <<-EOF
 		This script sets up and provides access to a Python virtual environment.
 
-		Usage: $(basename "$0") [OPTION]... [ -- [COMMAND] [ARG]...]
+		Usage: $this_name [OPTION]... [-- [COMMAND] [ARG]...]
 		  -h, --help      Print this message.
 		  -v, --verbose   Print verbose messages.
 
@@ -26,9 +22,9 @@ help() {
 		  -- [COMMAND] [ARG]...   Run a command in the environment.
 
 		Examples:
-		  $relative_basename -- -m cli
-		  $relative_basename -s -- pytest
-		  $relative_basename -vrrs --
+		  $relative_path/$this_name -- -m cli
+		  $relative_path/$this_name -s -- pytest
+		  $relative_path/$this_name -vrrs --
 	EOF
 }
 
@@ -45,6 +41,9 @@ if [ "${status-0}" -ne 0 ]; then
 fi
 
 eval set -- "$canonical"
+
+VERBOSE="${VERBOSE:-0}"
+export VERBOSE
 
 refresh=0
 
@@ -77,9 +76,6 @@ shell="${shell-false}"
 
 umask 0002
 
-this_dir="$(dirname -- "$(readlink -f -- "$0")")"
-source_dir="$(readlink -f -- "$this_dir/..")"
-
 venv_stem='.venv'
 venv_dir="$this_dir/$venv_stem"
 
@@ -90,6 +86,8 @@ PYTEST_ADDOPTS="-o cache_dir=$venv_dir/.pytest_cache"
 export PYTEST_ADDOPTS
 
 cd "$this_dir" || exit 1
+
+source_dir="$(readlink -f -- "$this_dir/..")"
 
 # shellcheck source=script/util.sh
 source "$source_dir/script/util.sh"

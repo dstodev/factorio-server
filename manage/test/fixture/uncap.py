@@ -4,7 +4,7 @@ import pytest
 
 
 @pytest.fixture
-def uncap(capsys, request):
+def uncap(capsys, request) -> '_Printer':
     '''Print a message even if output is normally captured.
 
     Example:
@@ -32,11 +32,11 @@ class _Printer:
         self._capsys = capsys
         self._printed_preamble = False
 
-    def __call__(self, message: str):
+    def __call__(self, message: str, **kwargs):
         '''Print a message.'''
         with self._capsys.disabled():
             self.preamble()
-            print(f'  {message}')
+            print(f'  {message}', **kwargs)
 
     def preamble(self):
         '''Print the preamble once.'''

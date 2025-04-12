@@ -5,17 +5,14 @@ import pytest
 from manage import shell
 
 
-def test_run_file(tmp_path, uncap):
-    file = tmp_path / 'script.sh'
-    file.write_text('\n'.join((
-        '#!/bin/bash',
-        'echo "Hello,"',
-        'echo "World!" >&2',
-        '')))
+def test_run_file(tmp_file, uncap):
+    file = tmp_file('script.sh',
+                    '#!/bin/bash',
+                    'echo "Hello,"',
+                    'echo "World!" >&2',
+                    mode=0o744)  # -rwxr--r--
 
     uncap(file)
-
-    file.chmod(0o744)  # -rwxr--r--
 
     output = shell.run_file(file)
 
@@ -23,18 +20,15 @@ def test_run_file(tmp_path, uncap):
     assert output.stderr == 'World!\n'
 
 
-def test_run_file_error(tmp_path, uncap):
-    file = tmp_path / 'script.sh'
-    file.write_text('\n'.join((
-        '#!/bin/bash',
-        'echo "Hello,"',
-        'echo "World!" >&2',
-        'exit 1',
-        '')))
+def test_run_file_error(tmp_file, uncap):
+    file = tmp_file('script.sh',
+                    '#!/bin/bash',
+                    'echo "Hello,"',
+                    'echo "World!" >&2',
+                    'exit 1',
+                    mode=0o744)  # -rwxr--r--
 
     uncap(file)
-
-    file.chmod(0o744)  # -rwxr--r--
 
     try:
         shell.run_file(file)
@@ -44,17 +38,14 @@ def test_run_file_error(tmp_path, uncap):
         assert e.stderr == 'World!\n'
 
 
-def test_run_file_args(tmp_path, uncap):
-    file = tmp_path / 'script.sh'
-    file.write_text('\n'.join((
-        '#!/bin/bash',
-        'echo "$1"',
-        'echo "$2"',
-        '')))
+def test_run_file_args(tmp_file, uncap):
+    file = tmp_file('script.sh',
+                    '#!/bin/bash',
+                    'echo "$1"',
+                    'echo "$2"',
+                    mode=0o744)  # -rwxr--r--
 
     uncap(file)
-
-    file.chmod(0o744)  # -rwxr--r--
 
     output = shell.run_file(file, 'Hello,', 'World!')
 
@@ -62,10 +53,10 @@ def test_run_file_args(tmp_path, uncap):
     assert output.stderr == ''
 
 
-def test_run_file_no_execute_permission(tmp_path):
-    file = tmp_path / 'text-file.txt'
-    file.write_text('Hello, World!')
-    file.chmod(0o644)  # -rw-r--r--
+def test_run_file_no_execute_permission(tmp_file):
+    file = tmp_file('text-file.txt',
+                    'Hello, World!',
+                    mode=0o644)  # -rw-r--r--
 
     with pytest.raises(PermissionError):
         shell.run_file(file)
