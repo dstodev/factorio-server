@@ -31,6 +31,11 @@ class GameFiles:
         self.name = name
         self._cfg_data = None
 
+    def server_dir(self) -> pathlib.Path:
+        '''Get the path to the game server's runtime directory.'''
+        path = paths.get('server-hot') / self.name
+        return force_dir(path)
+
     def cfg_dir(self) -> pathlib.Path:
         '''Get the path to the game's configuration directory.'''
         path = paths.get('cfg') / self.name

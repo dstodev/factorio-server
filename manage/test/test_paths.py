@@ -9,7 +9,7 @@ def test_paths(tmp_path):
     get = partial(paths.get, root=tmp_path)
 
     assert get('src') == tmp_path
-
+    assert get('server-hot') == tmp_path / 'server-files'
     assert get('backup') == tmp_path / 'backup'
     assert get('cfg') == tmp_path / 'cfg'
     assert get('docker') == tmp_path / 'docker'

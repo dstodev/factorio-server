@@ -2,6 +2,21 @@
 	// See https://go.microsoft.com/fwlink/?LinkId=733558
 	// for the documentation about the tasks.json format
 	"version": "2.0.0",
+
+	// Defaults for all tasks
+	"options": {
+		"cwd": "${workspaceFolder}/manage",
+	},
+	"presentation": {
+		"clear": true,
+		"echo": true,
+		"focus": true,
+		"panel": "shared",
+		"reveal": "always",
+		"showReuseMessage": true,
+	},
+
+	// Tasks
 	"tasks": [
 		{
 			"label": "Manage: Run Pytest",
@@ -11,9 +26,7 @@
 			"args": [ "--", "-m", "pytest" ],
 			"problemMatcher": [ "$python" ],
 			"group": { "kind": "test", "isDefault": true },
-			"options": { "cwd": "${workspaceFolder}/manage" },
 			"presentation": {
-				"clear": true,
 				"panel": "dedicated",
 				"showReuseMessage": false,
 			}
@@ -25,18 +38,41 @@
 			"command": "./py.sh",
 			"args": [ "--", "-m", "cli" ],
 			"problemMatcher": [ "$python" ],
-			"options": { "cwd": "${workspaceFolder}/manage" },
-			"presentation": { "clear": true }
 		},
 		{
-			"label": "Manage: Run CLI: Help",
+			"label": "Manage: Run CLI: help",
 			"icon": { "id": "terminal" },
 			"type": "shell",
 			"command": "./py.sh",
 			"args": [ "--", "-m", "cli", "--help" ],
 			"problemMatcher": [ "$python" ],
-			"options": { "cwd": "${workspaceFolder}/manage" },
-			"presentation": { "clear": true }
+		},
+		{
+			"label": "Manage: Python shell",
+			"icon": { "id": "python" },
+			"type": "shell",
+			"command": "./py.sh",
+			"args": [ ],
+			"problemMatcher": [ "$python" ],
+			"presentation": { "group": "pyshell", }
+		},
+		{
+			"label": "Manage: Python shell: rebuild",
+			"icon": { "id": "python" },
+			"type": "shell",
+			"command": "./py.sh",
+			"args": [ "-vrr" ],
+			"problemMatcher": [ "$python" ],
+			"presentation": { "group": "pyshell" }
+		},
+		{
+			"label": "Manage: Environment Shell",
+			"icon": { "id": "python" },
+			"type": "shell",
+			"command": "./py.sh",
+			"args": [ "-s" ],
+			"problemMatcher": [ "$python" ],
+			"presentation": { "group": "pyshell" }
 		}
 	]
 }

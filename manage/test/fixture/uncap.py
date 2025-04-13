@@ -20,7 +20,7 @@ def uncap(capsys, request) -> '_Printer':
           Hello,
           World!
     '''
-    return _Printer(request.node.nodeid, capsys)
+    return _Printer(f'{request.node.nodeid}', capsys)
 
 
 class _Printer:

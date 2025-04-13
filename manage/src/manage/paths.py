@@ -13,6 +13,7 @@ def get(which: str = '', root: Path = repo_dir) -> Path:
     :param which: Name of the directory to get:
 
         - `'src'`: Repo root
+        - `'server-hot'`: Server directory; server may be actively running here
         - `'backup'`: Game backups
         - `'cfg'`: Game configurations
         - `'docker'`: Docker directory
@@ -26,7 +27,7 @@ def get(which: str = '', root: Path = repo_dir) -> Path:
     '''
     return {
         'src': root,
-
+        'server-hot': root / 'server-files',
         'backup': root / 'backup',
         'cfg': root / 'cfg',
         'docker': root / 'docker',

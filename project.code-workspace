@@ -12,6 +12,7 @@
 
 		"python.defaultInterpreterPath": "${workspaceFolder}/manage/.venv/bin/python",
 		"python.envFile": "${workspaceFolder}/.env",
+		"python.terminal.activateEnvironment": false,
 		"python.testing.autoTestDiscoverOnSaveEnabled": false,
 		"python.testing.cwd": "${workspaceFolder}/manage",
 		"python.testing.pytestArgs": [ "--no-cov" ], // breakpoints do not work with coverage

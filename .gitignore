@@ -7,7 +7,7 @@
 /shelf*/
 
 secret
-tmp*
+/tmp*
 
 .screenrc
 

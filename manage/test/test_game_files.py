@@ -51,6 +51,7 @@ def test_assert_file_success(tmp_path):
 
 
 @pytest.mark.parametrize('method,expected_dir', [
+    ('server_dir', 'server-files'),
     ('cfg_dir', 'cfg'),
     ('backup_dir', 'backup'),
     ('shelf_dir', 'shelf'),
@@ -61,7 +62,7 @@ def test_game_dirs(tmp_path, mocker, method, expected_dir):
     name = 'test_game'
     game = GameFiles(name)
 
-    expected_cfg = paths.get(expected_dir) / name
+    expected_cfg = tmp_path / expected_dir / name
 
     result = getattr(game, method)()
 
