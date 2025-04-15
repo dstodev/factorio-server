@@ -21,13 +21,13 @@ class ScriptCommand:
         self.last_result = None
 
     def execute(self) -> None:
-        '''Run the script with provided arguments.'''
+        '''Run the script with stored arguments.'''
         self.last_result = shell.run_file(self.script, *self.args)
 
     def get_result(self) -> shell.Result | None:
-        '''Get the result of the last executed command.
+        '''Get the result of the last call to execute().
 
-        :return: The result of the last executed command.
+        :return: The result of the last call to execute(), if performed.
         :rtype: shell.Result
         '''
         return self.last_result

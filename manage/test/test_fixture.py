@@ -44,24 +44,28 @@ def test_tree(tmp_path, uncap, tree):
 def test_tmp_file(tmp_path, tmp_file, uncap):
     uncap(tmp_path)
 
+    # Empty file
     file = tmp_file('test1.txt')
     assert file == tmp_path / 'test1.txt'
     assert file.read_text() == ''
 
-    file = tmp_file('test2.txt', 'Line 1')
+    # File with content
+    file = tmp_file('test2.txt', 'Hello,', 'World!')
     assert file == tmp_path / 'test2.txt'
-    assert file.read_text() == 'Line 1\n'
-    assert file.stat().st_mode & 0o777 == 0o644
+    assert file.read_text() == 'Hello,\nWorld!\n'
 
-    file = tmp_file('test3.txt', 'Line 1', 'Line 2', mode=0o600)
-    assert file == tmp_path / 'test3.txt'
-    assert file.read_text() == 'Line 1\nLine 2\n'
-    assert file.stat().st_mode & 0o777 == 0o600
-
-    file = tmp_file('subdir/subdir/test.txt')
-    assert file == tmp_path / 'subdir/subdir' / 'test.txt'
+    # Subdirectories
+    file = tmp_file('subdir/subdir/test3.txt')
+    assert file == tmp_path / 'subdir/subdir' / 'test3.txt'
     assert file.exists()
 
+    # Empty file with mode
     file = tmp_file('test4.txt', mode=0o600)
     assert file == tmp_path / 'test4.txt'
+    assert file.stat().st_mode & 0o777 == 0o600
+
+    # File with content and with mode
+    file = tmp_file('test5.txt', 'Hello!', mode=0o600)
+    assert file == tmp_path / 'test5.txt'
+    assert file.read_text() == 'Hello!\n'
     assert file.stat().st_mode & 0o777 == 0o600

@@ -69,7 +69,6 @@ def test_game_files(tmp_path, mocker, method_name, expected_stem):
     cfg_dir = game.cfg_dir()
 
     expected_cfg_file = cfg_dir / expected_stem
-    expected_cfg_file.touch()  # pass assertion for file existence
 
     result = getattr(game, method_name)()
 

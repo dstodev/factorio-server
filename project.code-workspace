@@ -20,9 +20,6 @@
 
 		"python.analysis.typeCheckingMode": "standard",
 
-		"coverage-gutters.coverageBaseDir": "manage/.venv",
-		"coverage-gutters.ignoredPathGlobs": "**/{node_modules,venv,vendor}/**",
-
 		"files.exclude": {
 			"**/*.egg-info": true,
 
