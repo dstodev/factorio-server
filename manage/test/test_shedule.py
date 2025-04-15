@@ -68,7 +68,7 @@ def test_schedule_type_error():
     schedule = Schedule()
 
     with pytest.raises(AssertionError):
-        schedule.add_action(NotCommand())
+        schedule.add_action(NotCommand())  # type: ignore
 
 
 def test_schedules_are_commands():

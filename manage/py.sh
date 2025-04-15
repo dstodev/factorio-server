@@ -85,7 +85,7 @@ export PYTHONPYCACHEPREFIX
 PYTEST_ADDOPTS="-o cache_dir=$venv_dir/.pytest_cache"
 export PYTEST_ADDOPTS
 
-cd "$this_dir" || exit 1
+cd "$this_dir"
 
 source_dir="$(readlink -f -- "$this_dir/..")"
 

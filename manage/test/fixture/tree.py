@@ -1,8 +1,7 @@
 '''Set up file structures for testing.'''
 
-import collections
-import os
 import pathlib
+from collections.abc import Iterable
 
 import pytest
 
@@ -56,13 +55,12 @@ def tree(tmp_path):
 
             if isinstance(value, dict):
                 _create_tree(value, path)
-            elif value is None:
+            elif value is None or value == '':
                 path.touch()
             else:
-                sep = os.linesep
-                if isinstance(value, collections.abc.Iterable) \
+                if isinstance(value, Iterable) \
                         and not isinstance(value, (str, bytes)):
-                    value = sep.join(value)
-                path.write_text(value + sep)
+                    value = '\n'.join(value)
+                path.write_text(str(value) + '\n')
 
     return _create_tree

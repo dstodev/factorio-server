@@ -12,6 +12,7 @@ def test_tree(tmp_path, uncap, tree):
                 'Line 2'
             ],
             'file3.txt': None,
+            'file4.txt': '',
             'subdir': {
                 'file.txt': 'a',
             }
@@ -30,6 +31,7 @@ def test_tree(tmp_path, uncap, tree):
     assert (tmp_path / 'dir1' / 'file1.txt').read_text() == 'Hello, World!\n'
     assert (tmp_path / 'dir1' / 'file2.txt').read_text() == 'Line 1\nLine 2\n'
     assert (tmp_path / 'dir1' / 'file3.txt').read_text() == ''
+    assert (tmp_path / 'dir1' / 'file4.txt').read_text() == ''
     assert (tmp_path / 'dir1' / 'subdir' / 'file.txt').read_text() == 'a\n'
 
     assert (tmp_path / 'dir2' / 'file1.txt').read_text() == 'b\n'
@@ -59,3 +61,7 @@ def test_tmp_file(tmp_path, tmp_file, uncap):
     file = tmp_file('subdir/subdir/test.txt')
     assert file == tmp_path / 'subdir/subdir' / 'test.txt'
     assert file.exists()
+
+    file = tmp_file('test4.txt', mode=0o600)
+    assert file == tmp_path / 'test4.txt'
+    assert file.stat().st_mode & 0o777 == 0o600

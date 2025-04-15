@@ -6,7 +6,7 @@ from functools import partial
 import pytest
 
 from manage import paths
-from manage.game_files import GameFiles, assert_file, force_dir
+from manage.game_files import GameFiles, force_dir
 
 
 def test_force_dir_creates_dir(tmp_path):
@@ -30,24 +30,6 @@ def test_force_dir_does_not_recreate_existing_dir(tmp_path):
 
     assert path == target_dir, f'Expected {target_dir}, received {path}'
     assert target_file.is_file(), f'File {target_file} should still exist after call.'
-
-
-def test_assert_file_failure(tmp_path):
-    target_file = tmp_path / 'non-existent-file.txt'
-    assert not target_file.exists(), f'File {target_file} should not exist before call.'
-
-    with pytest.raises(AssertionError):
-        assert_file(target_file)
-
-
-def test_assert_file_success(tmp_path):
-    target_file = tmp_path / 'test-file.txt'
-    target_file.touch()
-    assert target_file.is_file(), f'File {target_file} should exist before call.'
-
-    path = assert_file(target_file)
-
-    assert path == target_file, f'Expected {target_file}, received {path}'
 
 
 @pytest.mark.parametrize('method,expected_dir', [
@@ -95,7 +77,6 @@ def test_game_files(tmp_path, mocker, method_name, expected_stem):
 
 
 def test_cfg_data(tmp_path, mocker):
-    mocker.patch('manage.game_files.assert_file', side_effect=lambda f: f)
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
     name = 'test_game'

@@ -8,13 +8,14 @@ from typing import NamedTuple
 assert CalledProcessError is not None  # suppress unused import
 
 
-class Output(NamedTuple):
+class Result(NamedTuple):
     '''Collected output from running a program.'''
+    exit_status: int
     stdout: str
     stderr: str
 
 
-def run_file(script: pathlib.Path, *args: str) -> Output:
+def run_file(script: pathlib.Path, *args: str) -> Result:
     '''Run a script with provided arguments.
 
     :param script: The script to run.
@@ -22,7 +23,5 @@ def run_file(script: pathlib.Path, *args: str) -> Output:
     :param args: Arguments to pass to the script.
     :type args: str
     '''
-
-    result = subprocess.run([script, *args], check=True, capture_output=True, text=True)
-
-    return Output(result.stdout, result.stderr)
+    result = subprocess.run([script, *args], check=False, capture_output=True, text=True)
+    return Result(result.returncode, result.stdout, result.stderr)

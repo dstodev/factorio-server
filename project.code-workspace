@@ -18,6 +18,8 @@
 		"python.testing.pytestArgs": [ "--no-cov" ], // breakpoints do not work with coverage
 		"python.testing.pytestEnabled": true,
 
+		"python.analysis.typeCheckingMode": "standard",
+
 		"coverage-gutters.coverageBaseDir": "manage/.venv",
 		"coverage-gutters.ignoredPathGlobs": "**/{node_modules,venv,vendor}/**",
 

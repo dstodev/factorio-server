@@ -13,12 +13,6 @@ def force_dir(path: pathlib.Path) -> pathlib.Path:
     return path
 
 
-def assert_file(file: pathlib.Path) -> pathlib.Path:
-    '''Assert a file exists.'''
-    assert file.is_file(), f'File {file} does not exist.'
-    return file
-
-
 class GameFiles:
     '''Access game-specific configuration files and directories.'''
 
@@ -54,7 +48,7 @@ class GameFiles:
     def cfg_file(self) -> pathlib.Path:
         '''Get the path to the game's configuration file.'''
         path = self.cfg_dir() / f'{self.name}.json'
-        return assert_file(path)
+        return path
 
     def cfg_data(self) -> dict:
         '''Get the game's configuration data.'''
@@ -72,24 +66,24 @@ class GameFiles:
     def dockerfile(self) -> pathlib.Path:
         '''Get the path to the game server Dockerfile.'''
         dockerfile = self.cfg_dir() / f'{self.name}.dockerfile'
-        return assert_file(dockerfile)
+        return dockerfile
 
     def start_script(self) -> pathlib.Path:
         '''Get the path to the game server start script.'''
         script = self.cfg_dir() / 'start.sh'
-        return assert_file(script)
+        return script
 
     def download_script(self) -> pathlib.Path:
         '''Get the path to the game server download script.'''
         script = self.cfg_dir() / 'download.sh'
-        return assert_file(script)
+        return script
 
     def backup_script(self) -> pathlib.Path:
         '''Get the path to the game server backup script.'''
         script = self.cfg_dir() / 'backup.sh'
-        return assert_file(script)
+        return script
 
     def restore_script(self) -> pathlib.Path:
         '''Get the path to the game server restore script.'''
         script = self.cfg_dir() / 'restore.sh'
-        return assert_file(script)
+        return script
