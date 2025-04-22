@@ -22,7 +22,7 @@ def get(which: str = '', root: Path = repo_dir) -> Path:
 
     :type which: str
 
-    :param root: Root directory to to base the project directory on.
+    :param root: Root directory to base the project directory on.
     :type root: pathlib.Path
     '''
     return {

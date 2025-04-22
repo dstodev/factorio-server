@@ -29,6 +29,7 @@ help() {
 }
 
 canonical=$(
+	# Requires util-linux getopt(1) to support long options like GNU getopt_long(3)
 	getopt --name "$(basename "$0")" \
 		--options hvrs \
 		--longoptions help,verbose,refresh,shell \

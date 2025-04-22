@@ -1,2 +1,5 @@
+'''Defines the Docker class as a tool for running Docker containers.'''
+
+
 class Docker:
-    pass
+    '''Facilitate running Docker containers.'''

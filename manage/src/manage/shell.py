@@ -15,13 +15,13 @@ class Result(NamedTuple):
     stderr: str
 
 
-def run_file(script: pathlib.Path, *args: str) -> Result:
-    '''Run a script with provided arguments.
+def run_file(path: pathlib.Path, *args: str) -> Result:
+    '''Run a file with provided arguments.
 
-    :param script: The script to run.
-    :type script: str
-    :param args: Arguments to pass to the script.
+    :param path: The file to run.
+    :type script: pathlib.Path
+    :param args: Arguments to pass to the file.
     :type args: str
     '''
-    result = subprocess.run([script, *args], check=False, capture_output=True, text=True)
+    result = subprocess.run([path, *args], check=False, capture_output=True, text=True)
     return Result(result.returncode, result.stdout, result.stderr)

@@ -1,89 +1,87 @@
 '''Game-specific file and directory tools.'''
 
 import json
-import pathlib
+from pathlib import Path
 
 from manage import paths
 
 
-def force_dir(path: pathlib.Path) -> pathlib.Path:
+def force_dir(path: Path) -> Path:
     '''Get the path to a directory, creating it if it doesn't exist.'''
     path.mkdir(parents=True, exist_ok=True)
     assert path.is_dir(), f'Directory {path} does not exist.'
     return path
 
 
-class GameFiles:
-    '''Access game-specific configuration files and directories.'''
+def cfg_dir(game: str) -> Path:
+    '''Get the path to the game's configuration directory.'''
+    path = paths.get('cfg') / game
+    return force_dir(path)
 
-    def __init__(self, name: str):
-        '''Get files and directories for a game.
 
-        :param name: Name of the game.
-        :type name: str
-        '''
-        self.name = name
-        self._cfg_data = None
+def backup_dir(game: str) -> Path:
+    '''Get the path to the game's backup directory.'''
+    path = paths.get('backup') / game
+    return force_dir(path)
 
-    def server_dir(self) -> pathlib.Path:
-        '''Get the path to the game server's runtime directory.'''
-        path = paths.get('server-hot') / self.name
-        return force_dir(path)
 
-    def cfg_dir(self) -> pathlib.Path:
-        '''Get the path to the game's configuration directory.'''
-        path = paths.get('cfg') / self.name
-        return force_dir(path)
+def server_dir(game: str) -> Path:
+    '''Get the path to the game's runtime directory.
+    The server may be actively running here.
+    '''
+    path = paths.get('server-hot') / game
+    return force_dir(path)
 
-    def backup_dir(self) -> pathlib.Path:
-        '''Get the path to the game's backup directory.'''
-        path = paths.get('backup') / self.name
-        return force_dir(path)
 
-    def shelf_dir(self) -> pathlib.Path:
-        '''Get the path to the game's shelf directory.'''
-        path = paths.get('shelf') / self.name
-        return force_dir(path)
+def shelf_dir(game: str) -> Path:
+    '''Get the path to the game's shelf directory.'''
+    path = paths.get('shelf') / game
+    return force_dir(path)
 
-    def cfg_file(self) -> pathlib.Path:
-        '''Get the path to the game's configuration file.'''
-        path = self.cfg_dir() / f'{self.name}.json'
-        return path
 
-    def cfg_data(self) -> dict:
-        '''Get the game's configuration data.'''
-        data = self._cfg_data
+def cfg_file(game: str) -> Path:
+    '''Get the path to the game's configuration file.'''
+    path = cfg_dir(game) / f'{game}.json'
+    return path
 
-        if data is None:
-            cfg = self.cfg_file()
 
-            with open(cfg, 'r', encoding='utf-8') as file:
-                data = json.load(file)
+def cfg_data(game: str) -> dict:
+    '''Get the game's configuration data.'''
 
-        self._cfg_data = data
-        return data
+    cfg = cfg_file(game)
+    data = {}
 
-    def dockerfile(self) -> pathlib.Path:
-        '''Get the path to the game server Dockerfile.'''
-        dockerfile = self.cfg_dir() / f'{self.name}.dockerfile'
-        return dockerfile
+    with open(cfg, 'r', encoding='utf-8') as file:
+        data = json.load(file)
 
-    def start_script(self) -> pathlib.Path:
-        '''Get the path to the game server start script.'''
-        script = self.cfg_dir() / 'start.sh'
-        return script
+    return data
 
-    def download_script(self) -> pathlib.Path:
-        '''Get the path to the game server download script.'''
-        script = self.cfg_dir() / 'download.sh'
-        return script
 
-    def backup_script(self) -> pathlib.Path:
-        '''Get the path to the game server backup script.'''
-        script = self.cfg_dir() / 'backup.sh'
-        return script
+def dockerfile(game: str) -> Path:
+    '''Get the path to the game server Dockerfile.'''
+    dockerfile_ = cfg_dir(game) / f'{game}.dockerfile'
+    return dockerfile_
 
-    def restore_script(self) -> pathlib.Path:
-        '''Get the path to the game server restore script.'''
-        script = self.cfg_dir() / 'restore.sh'
-        return script
+
+def backup_script(game: str) -> Path:
+    '''Get the path to the server backup script.'''
+    script = cfg_dir(game) / 'backup.sh'
+    return script
+
+
+def download_script(game: str) -> Path:
+    '''Get the path to the server download script.'''
+    script = cfg_dir(game) / 'download.sh'
+    return script
+
+
+def restore_script(game: str) -> Path:
+    '''Get the path to the server restore script.'''
+    script = cfg_dir(game) / 'restore.sh'
+    return script
+
+
+def start_script(game: str) -> Path:
+    '''Get the path to the server start script.'''
+    script = cfg_dir(game) / 'start.sh'
+    return script
