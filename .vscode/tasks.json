@@ -23,7 +23,12 @@
 			"type": "shell",
 			"icon": { "id": "beaker", "color": "terminal.ansiGreen" },
 			"command": "./py.sh",
-			"args": [ "--", "-m", "pytest" ],
+			"args": [ "--", "-m", "pytest",
+				"--cov=manage",
+				"--cov-report=lcov:.venv/lcov.info",
+				"--cov-report=term",
+				"--no-cov-on-fail"
+			],
 			"problemMatcher": [ "$python" ],
 			"group": { "kind": "test", "isDefault": true },
 			"presentation": {

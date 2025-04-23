@@ -17,7 +17,6 @@ build-backend = 'setuptools.build_meta'
 # See: https://docs.pytest.org/en/stable/reference/customize.html#pyproject-toml
 [tool.pytest.ini_options]
 testpaths = ['test']
-addopts = '--cov=manage --cov-report=lcov:.venv/lcov.info --cov-report=term --no-cov-on-fail'
 
 [tool.coverage.run]
 data_file = '.venv/.coverage'

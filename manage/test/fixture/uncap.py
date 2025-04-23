@@ -7,6 +7,8 @@ import pytest
 def uncap(capsys, request) -> '_Printer':
     '''Print a message even if output is normally captured.
 
+    This function "uncaptures" the message.
+
     Example:
 
     .. code-block:: python
