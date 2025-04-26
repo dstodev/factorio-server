@@ -14,7 +14,7 @@
 		"python.envFile": "${workspaceFolder}/.env",
 		"python.terminal.activateEnvironment": false,
 		"python.testing.cwd": "${workspaceFolder}/manage",
-		//"python.testing.pytestArgs": [ "--no-cov" ], // breakpoints do not work with coverage
+		"python.testing.pytestArgs": [ "-n", "6" ], // -n auto causes problems with vscode's test results
 		"python.testing.pytestEnabled": true,
 
 		"python.analysis.typeCheckingMode": "standard",

@@ -1,5 +1,7 @@
 '''Represent a Docker container.'''
 
+import os
+from multiprocessing import Process
 from pathlib import Path
 from typing import NamedTuple
 
@@ -9,13 +11,34 @@ from docker.models.images import Image
 from docker.types import Mount
 
 import docker  # https://docker-py.readthedocs.io/en/stable/index.html
+from manage import PROJECT_NAME
 from manage.shell import Result
 
-THIS_FILE = Path(__file__)
-THIS_DIR = THIS_FILE.parent
-LOG_ENTRYPOINT = THIS_DIR / 'log-entrypoint.sh'
 
-assert LOG_ENTRYPOINT.is_file(), f'Log entrypoint script not found: {LOG_ENTRYPOINT}'
+def monitor(container_id: str, log_path: Path, auto_rm: bool = False):  # pragma: no cover
+    '''Monitor a container, writing stdout & stderr to a file, and optionally
+    clean up the container when done.
+
+    This intended to run in a separate process to continue running as long as
+    the container is running.
+    '''
+    client = docker.from_env()
+    container = client.containers.get(container_id)
+
+    generator = container.logs(stream=True, follow=True, stdout=True, stderr=True)
+
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(log_path, 'a', encoding='utf-8') as logfile:
+        for line in generator:
+            logfile.write(f'{line.decode("utf-8")}')
+            logfile.flush()
+
+        if auto_rm:
+            logfile.write(f'({PROJECT_NAME}) removing container {container_id}\n')
+            container.remove()
+
+        logfile.write(f'({PROJECT_NAME}) closing logfile writer\n')
 
 
 class Bind(NamedTuple):
@@ -39,6 +62,8 @@ class RunContainer:
 
         self.image: Image | None = None
 
+        self.monitor: Process | None = None
+
     def run(self,
             cmd: list[str] | None = None,
             entrypoint: list[str] | None = None,
@@ -54,25 +79,6 @@ class RunContainer:
 
         binds = self.binds
 
-        if log_file is not None:
-            if entrypoint is None:
-                entrypoint = []
-
-            log_file.parent.mkdir(parents=True, exist_ok=True)
-            log_file.touch(exist_ok=True, mode=0o644)
-            assert log_file.is_file(), f'Log file not found: {log_file}'
-
-            binds.append(Bind(host=log_file,
-                              guest=Path('/log'),
-                              writeable=True))
-
-            binds.append(Bind(host=LOG_ENTRYPOINT,
-                              guest=Path(f'/{LOG_ENTRYPOINT.name}'),
-                              writeable=False))
-
-            new_entrypoint = [f'/{LOG_ENTRYPOINT.name}', '/log', *entrypoint]
-            entrypoint = new_entrypoint
-
         mounts: list[Mount] = []
 
         for bind in binds:
@@ -86,11 +92,20 @@ class RunContainer:
                                           command=cmd,
                                           entrypoint=entrypoint,
                                           detach=True,
-                                          mounts=mounts,
-                                          auto_remove=not wait)
+                                          mounts=mounts)
+
+        if log_file is None:
+            log_file = Path(os.devnull)
+
+        self.monitor = Process(target=monitor,
+                               args=(container.id, log_file, not wait),
+                               daemon=False)
+        self.monitor.start()
 
         if wait:
             wait_result = container.wait(timeout=10)
+            self.monitor.join(timeout=10)
+            assert self.monitor.exitcode is not None
 
             assert 'StatusCode' in wait_result
 

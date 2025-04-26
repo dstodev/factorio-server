@@ -8,7 +8,7 @@ dependencies = ['docker']
 manage = 'cli.main:main'
 
 [project.optional-dependencies]
-dev = ['pytest', 'pytest-cov', 'pytest-mock']
+dev = ['pytest', 'pytest-cov', 'pytest-mock', 'pytest-xdist']
 
 [build-system]
 requires = ['setuptools']
