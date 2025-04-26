@@ -131,7 +131,7 @@ class TestContainer:
 
         guest_path = Path('/src/some-script.sh')
 
-        bind = Bind(host=script, guest=guest_path, writeable=False)
+        bind = Bind(host=script, guest=guest_path, writeable=False)  # TODO: Test writable flag
 
         container = RunContainer(self.container_name, dockerfile, binds=[bind])
 

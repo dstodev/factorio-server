@@ -1,16 +1,21 @@
 '''Represent a Docker container.'''
 
-import os
 from pathlib import Path
 from typing import NamedTuple
 
-from docker.errors import BuildError, NotFound
+from docker.errors import BuildError
 from docker.models.containers import Container
 from docker.models.images import Image
 from docker.types import Mount
 
 import docker  # https://docker-py.readthedocs.io/en/stable/index.html
 from manage.shell import Result
+
+THIS_FILE = Path(__file__)
+THIS_DIR = THIS_FILE.parent
+LOG_ENTRYPOINT = THIS_DIR / 'log-entrypoint.sh'
+
+assert LOG_ENTRYPOINT.is_file(), f'Log entrypoint script not found: {LOG_ENTRYPOINT}'
 
 
 class Bind(NamedTuple):
@@ -47,11 +52,32 @@ class RunContainer:
         self.build_source_image()
         assert self.image is not None
 
+        binds = self.binds
+
+        if log_file is not None:
+            if entrypoint is None:
+                entrypoint = []
+
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+            log_file.touch(exist_ok=True, mode=0o644)
+            assert log_file.is_file(), f'Log file not found: {log_file}'
+
+            binds.append(Bind(host=log_file,
+                              guest=Path('/log'),
+                              writeable=True))
+
+            binds.append(Bind(host=LOG_ENTRYPOINT,
+                              guest=Path(f'/{LOG_ENTRYPOINT.name}'),
+                              writeable=False))
+
+            new_entrypoint = [f'/{LOG_ENTRYPOINT.name}', '/log', *entrypoint]
+            entrypoint = new_entrypoint
+
         mounts: list[Mount] = []
 
-        for bind in self.binds:
-            mounts.append(Mount(target=str(bind.guest),
-                                source=str(bind.host),
+        for bind in binds:
+            mounts.append(Mount(source=str(bind.host),
+                                target=str(bind.guest),
                                 type='bind',
                                 read_only=not bind.writeable))
 
@@ -62,12 +88,6 @@ class RunContainer:
                                           detach=True,
                                           mounts=mounts,
                                           auto_remove=not wait)
-
-        if log_file is not None:
-            assert container.id is not None
-            details = client.api.inspect_container(container.id)
-            log_source = Path(details['LogPath'])
-            os.link(log_source, log_file)  # TODO: This doesn't work because logs are owned by root
 
         if wait:
             wait_result = container.wait(timeout=10)
