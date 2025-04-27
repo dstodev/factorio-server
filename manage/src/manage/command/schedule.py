@@ -1,11 +1,11 @@
-'''Defines the Schedule class to represent a sequence of actions to perform.'''
+'''Command to perform a sequence of actions.'''
 
 from manage.command.command import Command
 
 
 class Schedule:
     '''Schedule represents a sequence of actions to perform.
-    It is itself a Command, but cannot be added to itself.
+    Schedule is a Command, but you cannot add a schedule to itself.
     '''
 
     def __init__(self):

@@ -27,7 +27,9 @@
 				"--cov=manage",
 				"--cov-report=lcov:.venv/lcov.info",
 				"--cov-report=term",
-				"--no-cov-on-fail"
+				"--no-cov-on-fail",
+				"-n", "auto",
+				"--dist", "worksteal",
 			],
 			"problemMatcher": [ "$python" ],
 			"group": { "kind": "test", "isDefault": true },

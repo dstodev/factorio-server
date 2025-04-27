@@ -7,7 +7,7 @@ project_dir = this_dir.parent
 repo_dir = project_dir.parent.parent
 
 
-def get(which: str = '', root: Path = repo_dir) -> Path:
+def get(which: str = '', root: Path | str = repo_dir) -> Path:
     '''Get the path to a project directory:
 
     :param which: Name of the directory to get:
@@ -25,6 +25,8 @@ def get(which: str = '', root: Path = repo_dir) -> Path:
     :param root: Root directory to base the project directory on.
     :type root: pathlib.Path
     '''
+    root = Path(root)
+
     return {
         'src': root,
         'server-hot': root / 'server-files',

@@ -10,7 +10,7 @@
 			"request": "launch",
 			"module": "pytest",
 			"cwd": "${workspaceFolder}/manage",
-			"args": [ "--no-cov" ], // breakpoints do not work with coverage
+			"args": [ ],
 		},
 		{
 			"name": "Debug: Run CLI",

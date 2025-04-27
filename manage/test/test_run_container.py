@@ -110,7 +110,7 @@ class TestContainer:
 
         container = RunContainer(self.container_name, dockerfile)
 
-        result = container.run(entrypoint=['echo', '1', '2'], cmd=['3', '4'])
+        result = container.run(entrypoint=['echo', '1', '2'], command=['3', '4'])
 
         assert isinstance(result, Result)
         assert result.exit_status == 0
@@ -131,7 +131,7 @@ class TestContainer:
         uncap(dockerfile)
         uncap(script)
 
-        guest_script = Path('/src/some-script.sh')
+        guest_script = '/src/some-script.sh'
 
         bind = Bind(host=script, guest=guest_script, writeable=False)
 
@@ -140,7 +140,7 @@ class TestContainer:
         assert container.name == self.container_name
         assert container.dockerfile == dockerfile
 
-        result = container.run(cmd=[str(guest_script)])
+        result = container.run(command=[guest_script])
 
         assert isinstance(result, Result)
         assert result.exit_status == 1
@@ -165,7 +165,7 @@ class TestContainer:
         uncap(dockerfile)
         uncap(script)
 
-        guest_script = Path('/src/some-script.sh')
+        guest_script = '/src/some-script.sh'
 
         bind = Bind(host=script, guest=guest_script, writeable=False)
 
@@ -182,7 +182,7 @@ class TestContainer:
         assert container.name == self.container_name
         assert container.dockerfile == dockerfile
 
-        result = container.run(cmd=[str(guest_script)])
+        result = container.run(command=[guest_script])
 
         assert isinstance(result, Result)
         assert f'{initial_uid}' in result.stdout
@@ -192,7 +192,7 @@ class TestContainer:
 
         container.build_args = {'USER_ID': next_uid, 'GROUP_ID': next_gid}
 
-        result = container.run(cmd=[str(guest_script)])
+        result = container.run(command=[guest_script])
 
         assert isinstance(result, Result)
         assert f'{next_uid}' in result.stdout
@@ -221,11 +221,11 @@ class TestContainer:
         uncap(dockerfile)
         uncap(script)
 
-        guest_script = Path('/src/some-script.sh')
+        guest_script = '/src/some-script.sh'
 
         bind = Bind(host=script, guest=guest_script, writeable=False)
-        bind_writeable = Bind(host=writeable, guest=Path('/writeable'), writeable=True)
-        bind_not_writeable = Bind(host=not_writeable, guest=Path('/not-writeable'), writeable=False)
+        bind_writeable = Bind(host=writeable, guest='/writeable', writeable=True)
+        bind_not_writeable = Bind(host=not_writeable, guest='/not-writeable', writeable=False)
 
         container = RunContainer(self.container_name, dockerfile, binds=[bind,
                                                                          bind_writeable,
@@ -234,7 +234,7 @@ class TestContainer:
         assert container.name == self.container_name
         assert container.dockerfile == dockerfile
 
-        result = container.run(cmd=[str(guest_script)])
+        result = container.run(command=[guest_script])
 
         assert isinstance(result, Result)
         assert result.exit_status != 0
@@ -254,7 +254,7 @@ class TestContainer:
         container = RunContainer(self.container_name, dockerfile)
 
         result = container.run(entrypoint=['/bin/sh', '-c'],
-                               cmd=['echo Hello, && echo World! >&2'],
+                               command=['echo Hello, && echo World! >&2'],
                                log_file=log_file)
 
         assert isinstance(result, Result)
@@ -278,7 +278,7 @@ class TestContainer:
         container = RunContainer(self.container_name, dockerfile)
 
         result = container.run(entrypoint=['/bin/sh', '-c'],
-                               cmd=['echo Hello, && echo World! >&2'],
+                               command=['echo Hello, && echo World! >&2'],
                                wait=False)
 
         assert isinstance(result, Container)
@@ -314,7 +314,7 @@ class TestContainer:
         container = RunContainer(self.container_name, dockerfile)
 
         result = container.run(entrypoint=['/bin/sh', '-c'],
-                               cmd=['echo Hello, && echo World! >&2'],
+                               command=['echo Hello, && echo World! >&2'],
                                log_file=log_file,
                                wait=False)
 

@@ -1,4 +1,4 @@
-'''Defines the ScriptCommand class to run a script as a Command.'''
+'''Command to run a script.'''
 
 import pathlib
 

@@ -40,21 +40,18 @@ def test_force_dir_does_not_recreate_existing_dir(tmp_path):
 def test_game_dirs(tmp_path, mocker, func_name, expected_dir):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    game = 'test_game'
+    game = 'test-game'
 
     expected_cfg = tmp_path / expected_dir / game
-
-    assert not expected_cfg.exists(), f'Directory {expected_cfg} should not exist before call.'
 
     result = getattr(game_files, func_name)(game)
 
     assert result == expected_cfg, f'Expected {expected_cfg}, received {result}'
-    assert result.is_dir(), f'Directory {expected_cfg} must exist as a directory.'
 
 
 @pytest.mark.parametrize('func_name,expected_stem', [
-    ('cfg_file', 'test_game.json'),
-    ('dockerfile', 'test_game.dockerfile'),
+    ('cfg_file', 'server.json'),
+    ('dockerfile', 'server.dockerfile'),
     ('backup_script', 'backup.sh'),
     ('download_script', 'download.sh'),
     ('restore_script', 'restore.sh'),
@@ -63,23 +60,20 @@ def test_game_dirs(tmp_path, mocker, func_name, expected_dir):
 def test_game_files(tmp_path, mocker, func_name, expected_stem):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    game = 'test_game'
+    game = 'test-game'
 
     cfg_dir = tmp_path / 'cfg' / game
     expected_cfg_file = cfg_dir / expected_stem
 
-    assert not cfg_dir.exists(), f'Directory {cfg_dir} should not exist before call.'
-
     result = getattr(game_files, func_name)(game)
 
     assert result == expected_cfg_file, f'Expected {expected_cfg_file}, received {result}'
-    result.touch()  # Assert a file can be created at the path (intermediate directories exist)
 
 
 def test_cfg_data(tmp_path, mocker):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    game = 'test_game'
+    game = 'test-game'
 
     expected_data = {'key': 'value'}
 

@@ -1,0 +1,11 @@
+{
+  "rcon": {
+    "save": "/server-save",
+    "say": "",
+    "stop": "/quit"
+  },
+  "port": {
+    "game": 34197,
+    "rcon": 34207
+  }
+}

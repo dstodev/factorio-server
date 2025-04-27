@@ -47,7 +47,7 @@ class Bind(NamedTuple):
     Each Bind is similar to a `-v` parameter to e.g. `docker run -v host/path:guest/path`.
     '''
     host: Path
-    guest: Path
+    guest: Path | str
     writeable: bool = False
 
 
@@ -70,7 +70,7 @@ class RunContainer:
         self.monitor: Process | None = None
 
     def run(self,
-            cmd: list[str] | None = None,
+            command: list[str] | None = None,
             entrypoint: list[str] | None = None,
             log_file: Path | None = None,
             wait: bool = True) -> Result | Container:
@@ -79,7 +79,7 @@ class RunContainer:
         If wait is True, wait for the container to finish and return the result.
         Otherwise, return the container.
         '''
-        self.build_source_image()
+        _build_output = self.build_source_image()
         assert self.image is not None
 
         binds = self.binds
@@ -94,7 +94,7 @@ class RunContainer:
 
         client = docker.from_env()
         container = client.containers.run(self.image,
-                                          command=cmd,
+                                          command=command,
                                           entrypoint=entrypoint,
                                           detach=True,
                                           mounts=mounts)
@@ -111,6 +111,7 @@ class RunContainer:
             wait_result = container.wait(timeout=10)
             self.monitor.join(timeout=10)
             assert self.monitor.exitcode is not None
+            self.monitor = None
 
             assert 'StatusCode' in wait_result
 

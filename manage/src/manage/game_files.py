@@ -6,9 +6,9 @@ from pathlib import Path
 from manage import paths
 
 
-def force_dir(path: Path) -> Path:
+def force_dir(path: Path, **kwargs) -> Path:
     '''Get the path to a directory, creating it if it doesn't exist.'''
-    path.mkdir(parents=True, exist_ok=True)
+    path.mkdir(parents=True, exist_ok=True, **kwargs)
     assert path.is_dir(), f'Directory {path} does not exist.'
     return path
 
@@ -16,13 +16,13 @@ def force_dir(path: Path) -> Path:
 def cfg_dir(game: str) -> Path:
     '''Get the path to the game's configuration directory.'''
     path = paths.get('cfg') / game
-    return force_dir(path)
+    return path
 
 
 def backup_dir(game: str) -> Path:
     '''Get the path to the game's backup directory.'''
     path = paths.get('backup') / game
-    return force_dir(path)
+    return path
 
 
 def server_dir(game: str) -> Path:
@@ -30,18 +30,18 @@ def server_dir(game: str) -> Path:
     The server may be actively running here.
     '''
     path = paths.get('server-hot') / game
-    return force_dir(path)
+    return path
 
 
 def shelf_dir(game: str) -> Path:
     '''Get the path to the game's shelf directory.'''
     path = paths.get('shelf') / game
-    return force_dir(path)
+    return path
 
 
 def cfg_file(game: str) -> Path:
     '''Get the path to the game's configuration file.'''
-    path = cfg_dir(game) / f'{game}.json'
+    path = cfg_dir(game) / 'server.json'
     return path
 
 
@@ -59,7 +59,7 @@ def cfg_data(game: str) -> dict:
 
 def dockerfile(game: str) -> Path:
     '''Get the path to the game server Dockerfile.'''
-    dockerfile_ = cfg_dir(game) / f'{game}.dockerfile'
+    dockerfile_ = cfg_dir(game) / 'server.dockerfile'
     return dockerfile_
 
 
