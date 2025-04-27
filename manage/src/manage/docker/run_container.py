@@ -54,10 +54,15 @@ class Bind(NamedTuple):
 class RunContainer:
     '''Create and manage a Docker container.'''
 
-    def __init__(self, name: str, dockerfile_path: Path, binds: list[Bind] | None = None):
+    def __init__(self,
+                 name: str,
+                 dockerfile_path: Path,
+                 build_args: dict[str, str] | None = None,
+                 binds: list[Bind] | None = None):
         '''Initialize with persistent settings like name and image.'''
         self.name = name
         self.dockerfile = dockerfile_path
+        self.build_args = build_args or {}
         self.binds = binds or []
 
         self.image: Image | None = None
@@ -129,6 +134,7 @@ class RunContainer:
             self.image, logs = client.images.build(path=str(self.dockerfile.parent),
                                                    dockerfile=self.dockerfile.name,
                                                    tag=self.name,
+                                                   buildargs=self.build_args,
                                                    rm=True)
         except BuildError as e:
             raise BuildError(e.msg, e.build_log) from None

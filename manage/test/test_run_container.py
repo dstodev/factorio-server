@@ -147,6 +147,59 @@ class TestContainer:
         assert result.stdout == f'Path: {guest_script}\n'
         assert result.stderr == 'User: 0\n'
 
+    def test_container_run_change_buildargs(self, tmp_file, uncap):
+        dockerfile = tmp_file('test-image.dockerfile',
+                              'FROM alpine:latest',
+                              'ARG USER_ID',
+                              'ARG GROUP_ID',
+                              'RUN addgroup -g $GROUP_ID testuser \\',
+                              '&& adduser -u $USER_ID -D -G testuser testuser',
+                              'USER testuser',)
+
+        script = tmp_file('test-script.sh',
+                          '#!/bin/sh',
+                          'echo User: $(id -u)',
+                          'echo Group: $(id -g)',
+                          mode=0o744)
+
+        uncap(dockerfile)
+        uncap(script)
+
+        guest_script = Path('/src/some-script.sh')
+
+        bind = Bind(host=script, guest=guest_script, writeable=False)
+
+        initial_uid = '30120'
+        initial_gid = '30121'
+        next_uid = '30122'
+        next_gid = '30123'
+
+        container = RunContainer(self.container_name,
+                                 dockerfile,
+                                 build_args={'USER_ID': initial_uid, 'GROUP_ID': initial_gid},
+                                 binds=[bind])
+
+        assert container.name == self.container_name
+        assert container.dockerfile == dockerfile
+
+        result = container.run(cmd=[str(guest_script)])
+
+        assert isinstance(result, Result)
+        assert f'{initial_uid}' in result.stdout
+        assert f'{initial_gid}' in result.stdout
+        assert f'{next_uid}' not in result.stdout
+        assert f'{next_gid}' not in result.stdout
+
+        container.build_args = {'USER_ID': next_uid, 'GROUP_ID': next_gid}
+
+        result = container.run(cmd=[str(guest_script)])
+
+        assert isinstance(result, Result)
+        assert f'{next_uid}' in result.stdout
+        assert f'{next_gid}' in result.stdout
+        assert f'{initial_uid}' not in result.stdout
+        assert f'{initial_gid}' not in result.stdout
+
     def test_container_run_bind_script_not_writable(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
                               'FROM alpine:latest')
@@ -167,8 +220,6 @@ class TestContainer:
 
         uncap(dockerfile)
         uncap(script)
-        uncap(writeable)
-        uncap(not_writeable)
 
         guest_script = Path('/src/some-script.sh')
 
