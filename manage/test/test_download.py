@@ -1,7 +1,6 @@
 '''Tests for build_args function'''
 
 import json
-import stat
 from functools import partial
 
 from manage import paths
@@ -20,7 +19,6 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
                           'RUN addgroup -g $group_id $group_name \\',
                           '  && adduser -u $user_id -D -G $group_name $user_name',
                           'USER $user_name')
-    # Note: does not set USER testuser at the end! Needs to start as root.
 
     script = tmp_file('cfg/test-game/download.sh',
                       '#!/bin/sh',
@@ -47,15 +45,13 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
 
     uncap(expected_server_dir)
 
-    game = 'test-game'
+    name = 'test-game'
 
-    download = Download(game)
+    download = Download(name)
 
     download.execute()
 
     assert expected_server_dir.is_dir(), 'Server directory was not created'
-    assert expected_server_dir.parent.stat().st_mode & stat.S_ISVTX, 'Sticky bit was not set on server parent directory'
-    assert expected_server_dir.parent.stat().st_mode & 0o777 == 0o777, 'Server parent directory was not created mode=0o777'
 
     assert expected_server_dir.stat().st_uid == expected_uid, f'Server directory user id is not {expected_uid}'
     assert expected_server_dir.stat().st_gid == expected_gid, f'Server directory group id is not {expected_gid}'

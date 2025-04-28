@@ -1,10 +1,8 @@
 '''Command to download the server files.'''
 
-import os
 import stat
 
-from manage import game_files
-from manage.docker.build_args import build_args
+from manage import game
 from manage.docker.run_container import Bind, RunContainer
 from manage.shell import Result
 
@@ -27,28 +25,24 @@ class Download:
     class will only call it when populating a fresh server directory.
     '''
 
-    def __init__(self, game: str) -> None:
+    def __init__(self, name: str) -> None:
         '''Initialize the download command.
 
-        :param game: The game to download.
-        :type game: str
+        :param name: The game to download.
+        :type name: str
         '''
-        self.game = game
+        self.game = name
 
-        self.server_dir = game_files.server_dir(game)
+        self.server_dir = game.server_dir(name)
 
         binds = [
-            Bind(host=self.server_dir.parent,
-                 guest='/parent',
-                 writeable=True),
-            Bind(host=game_files.download_script(game),
-                 guest='/download.sh',
-                 writeable=False),
+            Bind(host=self.server_dir.parent, guest='/parent', writeable=True),
+            Bind(host=game.download_script(name), guest='/download.sh', writeable=False),
         ]
 
-        self.container = RunContainer(name=game,
-                                      dockerfile_path=game_files.dockerfile(game),
-                                      build_args=build_args(game),
+        self.container = RunContainer(name=name,
+                                      dockerfile_path=game.dockerfile(name),
+                                      build_args=game.build_args(name),
                                       binds=binds)
 
     def execute(self) -> None:
@@ -57,23 +51,27 @@ class Download:
         if not self.server_dir.exists():
             # Ensure the shared server root directory exists
             parent_dir = self.server_dir.parent
-            old_umask = os.umask(0o000)  # set umask to 0o000 to allow full permissions
-            # create with full permissions (needs o+w so server user can write)
-            parent_dir.mkdir(parents=True, exist_ok=True, mode=0o777)
-            os.umask(old_umask)  # reset umask to previous value
-            os.chmod(parent_dir, os.stat(parent_dir).st_mode | stat.S_ISVTX)  # set sticky bit
+            parent_dir.mkdir(parents=True, exist_ok=True)
 
-            # root must must align with guest value for server_dir_parent bind mount in __init__
-            guest_server_dir = f'/parent/{self.game}'
+            backup_mode = parent_dir.stat().st_mode
 
-            result = self.container.run(
-                entrypoint=['/bin/sh', '-c'],
-                command=[' && '.join((
-                    # create the server directory in the container so it is owned by the server user
-                    f'mkdir {guest_server_dir}',
-                    'cp /download.sh /tmp/download.sh',
-                    f'/tmp/download.sh {guest_server_dir}',
-                ))])
+            try:
+                # Temporarily set full permissions (o+w so server user can write) & set sticky bit
+                parent_dir.chmod(backup_mode | 0o777 | stat.S_ISVTX)
+
+                # /parent must must align with guest value for server_dir.parent bind mount in __init__
+                guest_server_dir = f'/parent/{self.game}'
+
+                result = self.container.run(
+                    entrypoint=['/bin/sh', '-c'],
+                    command=[' && '.join((
+                        # Create the server directory in the container so it is owned by the server user
+                        f'mkdir {guest_server_dir}',
+                        'cp /download.sh /tmp/download.sh',
+                        f'/tmp/download.sh {guest_server_dir}',
+                    ))])
+            finally:
+                parent_dir.chmod(backup_mode)
 
             assert isinstance(result, Result)
 
