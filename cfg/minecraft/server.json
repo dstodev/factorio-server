@@ -1,0 +1,15 @@
+{
+  "rcon": {
+    "save": "/server-save",
+    "say": "",
+    "stop": "/quit"
+  },
+  "port": {
+    "game": 34120,
+    "rcon": 34240
+  },
+  "user": {
+    "name": "server-user:30120",
+    "group": "server-group:30120"
+  }
+}

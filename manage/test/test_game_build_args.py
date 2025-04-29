@@ -70,7 +70,7 @@ def test_build_args_only_user(tmp_path, mocker, uncap):
             "name": "server-user:30121",
             "group": "server-group:30122"
         }
-    }, indent=2))
+    }, indent=2) + '\n')
 
     uncap(cfg_file)
 

@@ -673,13 +673,13 @@ bool test_packet()
 	//          -----------  ----------  ----------  -  -
 	expected = {10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 	test_to_byte_buffer("", expected);
-	success &= assert_eq(14, expected.size());
+	success &= assert_eq(14u, expected.size());
 
 	//          size         id          type        body                   null
 	//          -----------  ----------  ----------  ---------------------  -
 	expected = {14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'a', 'b', 'c', 'd', 0, 0};
 	test_to_byte_buffer("abcd", expected);
-	success &= assert_eq(18, expected.size());
+	success &= assert_eq(18u, expected.size());
 
 	auto test_from_byte_buffer = [&](std::vector<uint8_t> const& buffer) {
 		Packet packet(0);

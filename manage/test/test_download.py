@@ -41,22 +41,22 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
     uncap(script)
     uncap(server_json)
 
-    expected_server_dir = tmp_path / 'server-files/test-game'
-
-    uncap(expected_server_dir)
-
     name = 'test-game'
 
     download = Download(name)
 
     download.execute()
 
-    assert expected_server_dir.is_dir(), 'Server directory was not created'
+    expected_server_dir = tmp_path / 'server-files/test-game'
 
-    assert expected_server_dir.stat().st_uid == expected_uid, f'Server directory user id is not {expected_uid}'
-    assert expected_server_dir.stat().st_gid == expected_gid, f'Server directory group id is not {expected_gid}'
+    uncap(expected_server_dir)
+
+    assert expected_server_dir.is_dir()
+    assert expected_server_dir.stat().st_uid == expected_uid
+    assert expected_server_dir.stat().st_gid == expected_gid
 
     expected_server_file = expected_server_dir / 'some-server-file'
-    assert expected_server_file.is_file(), 'Server file was not created'
-    assert expected_server_file.stat().st_uid == expected_uid, f'Server file user id is not {expected_uid}'
-    assert expected_server_file.stat().st_gid == expected_gid, f'Server file group id is not {expected_gid}'
+
+    assert expected_server_file.is_file()
+    assert expected_server_file.stat().st_uid == expected_uid
+    assert expected_server_file.stat().st_gid == expected_gid

@@ -7,7 +7,7 @@ RUN apt update \
 	# 	wget \
 	&& apt clean
 
-ARG server_port
+ARG game_port
 ARG rcon_port
 ARG user_id
 ARG user_name
@@ -19,7 +19,7 @@ RUN groupadd --gid $group_id $group_name \
 	--gid $group_id \
 	$user_name
 
-EXPOSE $server_port/udp
+EXPOSE $game_port/udp
 EXPOSE $rcon_port/tcp
 
 WORKDIR /server-files/

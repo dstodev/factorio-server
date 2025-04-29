@@ -1,6 +1,7 @@
 '''Game-specific file and directory tools.'''
 
 import json
+import shutil
 from pathlib import Path
 from typing import NamedTuple
 
@@ -143,3 +144,35 @@ def user(name: str) -> User:
     name, uid = user_['name'].split(':')
     group, gid = user_['group'].split(':')
     return User(name=name, uid=int(uid), group=group, gid=int(gid))
+
+
+def docker_context(dockerfile_: Path,
+                   context_dir: Path,
+                   context_files: list[Path] | None = None) -> Path:
+    '''Prepare the Docker context inside of context_dir.
+
+    Creates copies in context_dir of all files around the dockerfile & those
+    listed in context_files. Unfortunately, lightweight symlinks cannot be used
+    instead, because Docker will not use them.
+
+    Returns a Path to the dockerfile in the context_dir.
+    '''
+    assert context_dir.is_dir(), f'Context directory must exist: {context_dir}'
+
+    context_files = context_files or []
+
+    for file in dockerfile_.parent.iterdir():
+        copy_file(file, context_dir / file.name)
+
+    for file in context_files:
+        copy_file(file, context_dir / file.name)
+
+    return context_dir / dockerfile_.name
+
+
+def copy_file(src: Path, dst: Path):
+    '''Copy a file or directory.'''
+    if src.is_dir():
+        shutil.copytree(src, dst)
+    else:
+        shutil.copy(src, dst)

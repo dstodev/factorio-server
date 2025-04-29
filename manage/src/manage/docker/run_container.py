@@ -1,6 +1,7 @@
 '''Represent a Docker container.'''
 
 import os
+import tempfile
 from multiprocessing import Process
 from pathlib import Path
 from typing import NamedTuple
@@ -11,7 +12,7 @@ from docker.models.images import Image
 from docker.types import Mount
 
 import docker  # https://docker-py.readthedocs.io/en/stable/index.html
-from manage import PROJECT_NAME
+from manage import PROJECT_NAME, game
 from manage.shell import Result
 
 
@@ -58,14 +59,17 @@ class RunContainer:
                  name: str,
                  dockerfile_path: Path,
                  build_args: dict[str, str] | None = None,
-                 binds: list[Bind] | None = None):
+                 binds: list[Bind] | None = None,
+                 context_files: list[Path] | None = None):
         '''Initialize with persistent settings like name and image.'''
         self.name = name
         self.dockerfile = dockerfile_path
         self.build_args = build_args or {}
         self.binds = binds or []
+        self.context_files = context_files or []
 
         self.image: Image | None = None
+        self.container: Container | None = None
 
         self.monitor: Process | None = None
 
@@ -76,12 +80,46 @@ class RunContainer:
             wait: bool = True) -> Result | Container:
         '''Run the container with the given command.
 
+        A monitor process is spawned to watch the container's output and log it
+        to a file. Even when no log_file is specified, the monitor lives until
+        the container stops logging output. This happens when the server stops,
+        letting the monitor process clean up the container.
+
+        If wait=False, the container is returned, and the monitor process
+        removes the container after it stops. This means the container may be
+        removed at any time. You therefore may not rely on functions like
+        container.logs(), which need the container to exist, even if you call
+        wait() on the container later, since it may already have been removed.
+
         If wait is True, wait for the container to finish and return the result.
-        Otherwise, return the container.
         '''
         _build_output = self.build_source_image()
         assert self.image is not None
 
+        client = docker.from_env()
+        self.container = client.containers.run(image=self.image,
+                                               command=command,
+                                               entrypoint=entrypoint,
+                                               detach=True,
+                                               mounts=self.build_mounts())
+
+        if log_file is None:
+            log_file = Path(os.devnull)
+
+        self.monitor = Process(target=monitor,
+                               args=(self.container.id, log_file, not wait),
+                               daemon=False)
+        self.monitor.start()
+
+        if wait:
+            result = self.wait()
+            assert result is not None
+            return result
+
+        return self.container
+
+    def build_mounts(self) -> list[Mount]:
+        '''Return a list of mounts for the container based on self.binds'''
         binds = self.binds
 
         mounts: list[Mount] = []
@@ -92,26 +130,16 @@ class RunContainer:
                                 type='bind',
                                 read_only=not bind.writeable))
 
-        client = docker.from_env()
-        container = client.containers.run(self.image,
-                                          command=command,
-                                          entrypoint=entrypoint,
-                                          detach=True,
-                                          mounts=mounts)
+        return mounts
 
-        if log_file is None:
-            log_file = Path(os.devnull)
+    def wait(self, timeout: int = 10) -> Result | None:
+        '''Wait for the container to finish and return the result.'''
+        container = self.container
+        self.container = None
 
-        self.monitor = Process(target=monitor,
-                               args=(container.id, log_file, not wait),
-                               daemon=False)
-        self.monitor.start()
-
-        if wait:
-            wait_result = container.wait(timeout=10)
-            self.monitor.join(timeout=10)
-            assert self.monitor.exitcode is not None
-            self.monitor = None
+        if container:
+            wait_result = container.wait(timeout=timeout)
+            self.stop_monitor()
 
             assert 'StatusCode' in wait_result
 
@@ -123,7 +151,14 @@ class RunContainer:
 
             return Result(exit_status, stdout, stderr)
 
-        return container
+    def stop_monitor(self, timeout: int = 10):
+        '''Stop the monitor process.'''
+        monitor_ = self.monitor
+        self.monitor = None
+
+        if monitor_:
+            monitor_.join(timeout=timeout)
+            assert monitor_.exitcode is not None
 
     def build_source_image(self) -> str:
         '''Build the image, returning the output of the build process.
@@ -131,14 +166,17 @@ class RunContainer:
         '''
         client = docker.from_env()
 
-        try:
-            self.image, logs = client.images.build(path=str(self.dockerfile.parent),
-                                                   dockerfile=self.dockerfile.name,
-                                                   tag=self.name,
-                                                   buildargs=self.build_args,
-                                                   rm=True)
-        except BuildError as e:
-            raise BuildError(e.msg, e.build_log) from None
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dockerfile = game.docker_context(self.dockerfile, Path(tmpdir), self.context_files)
+
+            try:
+                self.image, logs = client.images.build(path=str(dockerfile.parent),
+                                                       dockerfile=dockerfile.name,
+                                                       tag=self.name,
+                                                       buildargs=self.build_args,
+                                                       rm=True)
+            except BuildError as e:
+                raise BuildError(e.msg, e.build_log) from None
 
         output = []
 

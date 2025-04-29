@@ -10,12 +10,12 @@ from manage import game, paths
 
 def test_force_dir_creates_dir(tmp_path):
     target_dir = tmp_path / 'test_dir'
-    assert not target_dir.exists(), f'Directory {target_dir} should not exist before call.'
+    assert not target_dir.exists()
 
     path = game.force_dir(target_dir)
 
-    assert path == target_dir, f'Expected {target_dir}, received {path}'
-    assert target_dir.is_dir(), f'Directory {target_dir} was not created.'
+    assert path == target_dir
+    assert target_dir.is_dir()
 
 
 def test_force_dir_does_not_recreate_existing_dir(tmp_path):
@@ -23,12 +23,12 @@ def test_force_dir_does_not_recreate_existing_dir(tmp_path):
     target_dir.mkdir(parents=True, exist_ok=True)
     target_file = target_dir / 'test_file.txt'
     target_file.touch()
-    assert target_file.is_file(), f'File {target_file} should exist before call.'
+    assert target_file.is_file()
 
     path = game.force_dir(target_dir)
 
-    assert path == target_dir, f'Expected {target_dir}, received {path}'
-    assert target_file.is_file(), f'File {target_file} should still exist after call.'
+    assert path == target_dir
+    assert target_file.is_file()
 
 
 @pytest.mark.parametrize('func_name,expected_dir', [
@@ -46,7 +46,7 @@ def test_game_dirs(tmp_path, mocker, func_name, expected_dir):
 
     result = getattr(game, func_name)(name)
 
-    assert result == expected_cfg, f'Expected {expected_cfg}, received {result}'
+    assert result == expected_cfg
 
 
 @pytest.mark.parametrize('func_name,expected_stem', [
@@ -67,7 +67,7 @@ def test_game(tmp_path, mocker, func_name, expected_stem):
 
     result = getattr(game, func_name)(name)
 
-    assert result == expected_cfg_file, f'Expected {expected_cfg_file}, received {result}'
+    assert result == expected_cfg_file
 
 
 def test_cfg_data(tmp_path, mocker):
@@ -81,4 +81,50 @@ def test_cfg_data(tmp_path, mocker):
 
     result = game.cfg_data(name)
 
-    assert result == expected_data, f'Expected {expected_data}, received {result}'
+    assert result == expected_data
+
+
+def test_docker_context(tmp_path):
+    docker_dir = tmp_path / 'docker'
+    docker_dir.mkdir()
+
+    dockerfile = docker_dir / 'server.dockerfile'
+    dockerfile.touch()
+
+    (docker_dir / 'file.txt').touch()  # related by adjacency to dockerfile
+
+    context_dir = tmp_path / 'context'
+    context_dir.mkdir()
+
+    dockerfile = game.docker_context(dockerfile, context_dir)
+
+    assert len(list(dockerfile.parent.iterdir())) == 2
+
+    assert (context_dir / 'server.dockerfile').exists()
+    assert (context_dir / 'file.txt').exists()
+
+
+def test_docker_context_extra_files(tmp_path):
+    docker_dir = tmp_path / 'docker'
+    docker_dir.mkdir()
+
+    dockerfile = docker_dir / 'server.dockerfile'
+    dockerfile.touch()
+
+    unrelated_dir = tmp_path / 'unrelated'
+    unrelated_dir.mkdir()
+
+    unrelated_file = unrelated_dir / 'file.txt'
+    unrelated_file.touch()
+
+    context_dir = tmp_path / 'context'
+    context_dir.mkdir()
+
+    # Add unrelated_file twice; once by adding its directory, and again by adding it directly.
+    dockerfile = game.docker_context(dockerfile, context_dir, context_files=[unrelated_dir, unrelated_file])
+
+    assert dockerfile.parent == context_dir
+    assert len(list(dockerfile.parent.iterdir())) == 3
+    assert (context_dir / 'server.dockerfile').exists()
+    assert (context_dir / 'unrelated/file.txt').exists()  # copy directory
+    assert (context_dir / 'file.txt').exists()  # copy file

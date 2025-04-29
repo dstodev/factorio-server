@@ -279,7 +279,7 @@ class TestContainer:
 
         result = container.run(entrypoint=['/bin/sh', '-c'],
                                command=['echo Hello, && echo World! >&2'],
-                               wait=False)
+                               wait=False)  # test name refers to this wait
 
         assert isinstance(result, Container)
 
@@ -289,18 +289,17 @@ class TestContainer:
         container.monitor.join(timeout=10)
         assert container.monitor.exitcode is not None
 
+        # Assert container is deleted after exit
+        with pytest.raises(NotFound):
+            assert docker_container.id is not None
+            client = docker.from_env()
+            client.containers.get(docker_container.id)
+
         assert 'StatusCode' in wait_result
 
         exit_status = wait_result['StatusCode']
 
         assert exit_status == 0
-
-        assert docker_container.id is not None
-
-        # Assert container is deleted after exit
-        with pytest.raises(NotFound):
-            client = docker.from_env()
-            client.containers.get(docker_container.id)
 
     def test_container_run_log_no_wait(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
@@ -316,7 +315,7 @@ class TestContainer:
         result = container.run(entrypoint=['/bin/sh', '-c'],
                                command=['echo Hello, && echo World! >&2'],
                                log_file=log_file,
-                               wait=False)
+                               wait=False)  # test name refers to this wait
 
         assert isinstance(result, Container)
 
@@ -325,6 +324,12 @@ class TestContainer:
         assert container.monitor is not None
         container.monitor.join(timeout=10)
         assert container.monitor.exitcode is not None
+
+        # Assert container is deleted after exit
+        with pytest.raises(NotFound):
+            assert docker_container.id is not None
+            client = docker.from_env()
+            client.containers.get(docker_container.id)
 
         with log_file.open() as f:
             log_content = f.read()
@@ -339,10 +344,3 @@ class TestContainer:
         exit_status = wait_result['StatusCode']
 
         assert exit_status == 0
-
-        assert docker_container.id is not None
-
-        # Assert container is deleted after exit
-        with pytest.raises(NotFound):
-            client = docker.from_env()
-            client.containers.get(docker_container.id)
