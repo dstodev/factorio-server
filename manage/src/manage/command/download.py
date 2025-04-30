@@ -31,8 +31,6 @@ class Download:
         :param name: The game to download.
         :type name: str
         '''
-        self.game = name
-
         self.server_dir = game.server_dir(name)
 
         binds = [
@@ -59,8 +57,8 @@ class Download:
                 # Temporarily set full permissions (o+w so server user can write) & set sticky bit
                 parent_dir.chmod(backup_mode | 0o777 | stat.S_ISVTX)
 
-                # /parent must must align with guest value for server_dir.parent bind mount in __init__
-                guest_server_dir = f'/parent/{self.game}'
+                # /parent aligns with guest value for server_dir.parent bind mount in __init__
+                guest_server_dir = '/parent/hot'
 
                 self.container.start(
                     entrypoint=['/bin/sh', '-c'],

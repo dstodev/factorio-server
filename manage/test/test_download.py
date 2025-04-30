@@ -1,6 +1,7 @@
 '''Tests for build_args function'''
 
 import json
+import os
 from functools import partial
 
 from manage import paths
@@ -47,9 +48,12 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
 
     download.execute()
 
-    expected_server_dir = tmp_path / 'server-files/test-game'
+    expected_server_dir = tmp_path / 'server-files' / name / 'hot'
 
     uncap(expected_server_dir)
+
+    assert expected_server_dir.parent.stat().st_uid == os.getuid()
+    assert expected_server_dir.parent.stat().st_gid == os.getgid()
 
     assert expected_server_dir.is_dir()
     assert expected_server_dir.stat().st_uid == expected_uid

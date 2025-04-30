@@ -44,6 +44,9 @@ def test_game_dirs(tmp_path, mocker, func_name, expected_dir):
 
     expected_cfg = tmp_path / expected_dir / name
 
+    if func_name == 'server_dir':
+        expected_cfg = expected_cfg / 'hot'
+
     result = getattr(game, func_name)(name)
 
     assert result == expected_cfg
@@ -57,7 +60,7 @@ def test_game_dirs(tmp_path, mocker, func_name, expected_dir):
     ('restore_script', 'restore.sh'),
     ('start_script', 'start.sh'),
 ])
-def test_game(tmp_path, mocker, func_name, expected_stem):
+def test_game_files(tmp_path, mocker, func_name, expected_stem):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
     name = 'test-game'

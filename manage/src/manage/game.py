@@ -31,7 +31,7 @@ def server_dir(name: str) -> Path:
     '''Get the path to the game's runtime directory.
     The server may be actively running here.
     '''
-    path = paths.get('server-hot') / name
+    path = paths.get('server-hot') / name / 'hot'
     return path
 
 

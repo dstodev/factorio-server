@@ -175,7 +175,7 @@ class ServerContainer:
 
         if monitor_:
             monitor_.join(timeout=timeout)
-            assert monitor_.exitcode is not None
+            assert monitor_.exitcode is not None, 'Monitor process is still running!'
 
     def build_source_image(self) -> str:
         '''Build the image, returning the output of the build process.
