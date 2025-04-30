@@ -3,7 +3,7 @@
 import stat
 
 from manage import game
-from manage.docker.run_container import Bind, RunContainer
+from manage.docker.server_container import Bind, ServerContainer
 from manage.shell import Result
 
 
@@ -40,10 +40,10 @@ class Download:
             Bind(host=game.download_script(name), guest='/download.sh', writeable=False),
         ]
 
-        self.container = RunContainer(name=name,
-                                      dockerfile_path=game.dockerfile(name),
-                                      build_args=game.build_args(name),
-                                      binds=binds)
+        self.container = ServerContainer(name=name,
+                                         dockerfile_path=game.dockerfile(name),
+                                         build_args=game.build_args(name),
+                                         binds=binds)
 
     def execute(self) -> None:
         '''Run the download script.'''
@@ -62,7 +62,7 @@ class Download:
                 # /parent must must align with guest value for server_dir.parent bind mount in __init__
                 guest_server_dir = f'/parent/{self.game}'
 
-                result = self.container.run(
+                self.container.start(
                     entrypoint=['/bin/sh', '-c'],
                     command=[' && '.join((
                         # Create the server directory in the container so it is owned by the server user
@@ -70,6 +70,7 @@ class Download:
                         'cp /download.sh /tmp/download.sh',
                         f'/tmp/download.sh {guest_server_dir}',
                     ))])
+                result = self.container.wait()
             finally:
                 parent_dir.chmod(backup_mode)
 

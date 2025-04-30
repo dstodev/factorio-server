@@ -1,14 +1,12 @@
 '''Test Container actions.'''
 
 
-from pathlib import Path
-
 import pytest
 from docker.errors import BuildError, NotFound
-from docker.models.containers import Container
 
 import docker
-from manage.docker.run_container import Bind, RunContainer
+from manage import PROJECT_NAME
+from manage.docker.server_container import Bind, ServerContainer
 from manage.shell import Result
 
 
@@ -27,7 +25,6 @@ class TestContainer:
         try:
             container = client.containers.get(self.container_name)  # Raises NotFound
             container.remove(force=True)  # pragma: no cover
-            container.wait()  # pragma: no cover
         except NotFound:
             pass
 
@@ -43,7 +40,7 @@ class TestContainer:
 
         uncap(dockerfile)
 
-        container = RunContainer(self.container_name, dockerfile)
+        container = ServerContainer(self.container_name, dockerfile)
 
         assert container.name == self.container_name
         assert container.dockerfile == dockerfile
@@ -62,7 +59,7 @@ class TestContainer:
 
         uncap(dockerfile)
 
-        container = RunContainer(self.container_name, dockerfile)
+        container = ServerContainer(self.container_name, dockerfile)
 
         assert container.name == self.container_name
         assert container.dockerfile == dockerfile
@@ -94,7 +91,7 @@ class TestContainer:
 
         uncap(dockerfile)
 
-        container = RunContainer(self.container_name, dockerfile)
+        container = ServerContainer(self.container_name, dockerfile)
 
         assert container.name == self.container_name
         assert container.dockerfile == dockerfile
@@ -102,22 +99,33 @@ class TestContainer:
         with pytest.raises(BuildError):
             container.build_source_image()
 
-    def test_container_run(self, tmp_file, uncap):
+    def test_container_start(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
                               'FROM alpine:latest')
 
         uncap(dockerfile)
 
-        container = RunContainer(self.container_name, dockerfile)
+        container = ServerContainer(self.container_name, dockerfile)
 
-        result = container.run(entrypoint=['echo', '1', '2'], command=['3', '4'])
+        container.start(entrypoint=['echo', '1', '2'],
+                        command=['3', '4'])
+
+        assert container.container is not None
+        assert container.container.name == self.container_name
+
+        assert container.monitor is not None
+
+        result = container.wait()
+
+        assert container.container is None
+        assert container.monitor is None
 
         assert isinstance(result, Result)
         assert result.exit_status == 0
         assert result.stdout == '1 2 3 4\n'
         assert result.stderr == ''
 
-    def test_container_run_bind_script(self, tmp_file, uncap):
+    def test_container_start_bind_script(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
                               'FROM alpine:latest')
 
@@ -135,32 +143,34 @@ class TestContainer:
 
         bind = Bind(host=script, guest=guest_script, writeable=False)
 
-        container = RunContainer(self.container_name, dockerfile, binds=[bind])
+        container = ServerContainer(self.container_name, dockerfile, binds=[bind])
 
         assert container.name == self.container_name
         assert container.dockerfile == dockerfile
 
-        result = container.run(command=[guest_script])
+        container.start(command=[guest_script])
+
+        result = container.wait()
 
         assert isinstance(result, Result)
         assert result.exit_status == 1
         assert result.stdout == f'Path: {guest_script}\n'
         assert result.stderr == 'User: 0\n'
 
-    def test_container_run_change_buildargs(self, tmp_file, uncap):
+    def test_container_start_change_buildargs(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
                               'FROM alpine:latest',
-                              'ARG USER_ID',
-                              'ARG GROUP_ID',
-                              'RUN addgroup -g $GROUP_ID testuser \\',
-                              '&& adduser -u $USER_ID -D -G testuser testuser',
+                              'ARG user_id',
+                              'ARG group_id',
+                              'RUN addgroup -g $group_id testuser \\',
+                              '  && adduser -u $user_id -D -G testuser testuser',
                               'USER testuser',)
 
         script = tmp_file('test-script.sh',
                           '#!/bin/sh',
-                          'echo User: $(id -u)',
-                          'echo Group: $(id -g)',
-                          mode=0o744)
+                          'echo User: "$(id -u)"',
+                          'echo Group: "$(id -g)"',
+                          mode=0o755)
 
         uncap(dockerfile)
         uncap(script)
@@ -174,15 +184,17 @@ class TestContainer:
         next_uid = '30122'
         next_gid = '30123'
 
-        container = RunContainer(self.container_name,
-                                 dockerfile,
-                                 build_args={'USER_ID': initial_uid, 'GROUP_ID': initial_gid},
-                                 binds=[bind])
+        container = ServerContainer(self.container_name,
+                                    dockerfile,
+                                    build_args={'user_id': initial_uid, 'group_id': initial_gid},
+                                    binds=[bind])
 
         assert container.name == self.container_name
         assert container.dockerfile == dockerfile
 
-        result = container.run(command=[guest_script])
+        container.start(command=[guest_script])
+
+        result = container.wait()
 
         assert isinstance(result, Result)
         assert f'{initial_uid}' in result.stdout
@@ -190,9 +202,11 @@ class TestContainer:
         assert f'{next_uid}' not in result.stdout
         assert f'{next_gid}' not in result.stdout
 
-        container.build_args = {'USER_ID': next_uid, 'GROUP_ID': next_gid}
+        container.build_args = {'user_id': next_uid, 'group_id': next_gid}
 
-        result = container.run(command=[guest_script])
+        container.start(command=[guest_script])
+
+        result = container.wait()
 
         assert isinstance(result, Result)
         assert f'{next_uid}' in result.stdout
@@ -200,7 +214,7 @@ class TestContainer:
         assert f'{initial_uid}' not in result.stdout
         assert f'{initial_gid}' not in result.stdout
 
-    def test_container_run_bind_script_not_writable(self, tmp_file, uncap):
+    def test_container_start_bind_script_not_writable(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
                               'FROM alpine:latest')
 
@@ -227,20 +241,38 @@ class TestContainer:
         bind_writeable = Bind(host=writeable, guest='/writeable', writeable=True)
         bind_not_writeable = Bind(host=not_writeable, guest='/not-writeable', writeable=False)
 
-        container = RunContainer(self.container_name, dockerfile, binds=[bind,
-                                                                         bind_writeable,
-                                                                         bind_not_writeable])
+        container = ServerContainer(self.container_name, dockerfile, binds=[bind,
+                                                                            bind_writeable,
+                                                                            bind_not_writeable])
 
         assert container.name == self.container_name
         assert container.dockerfile == dockerfile
 
-        result = container.run(command=[guest_script])
+        container.start(command=[guest_script])
+
+        result = container.wait()
 
         assert isinstance(result, Result)
         assert result.exit_status != 0
         assert result.stdout == ''
         assert '/writeable' not in result.stderr
         assert '/not-writeable' in result.stderr
+
+    def test_container_start_already_running(self, tmp_file, uncap):
+        dockerfile = tmp_file('test-image.dockerfile',
+                              'FROM alpine:latest')
+
+        uncap(dockerfile)
+
+        container = ServerContainer(self.container_name, dockerfile)
+
+        container.start(command=['tail', '-f', '/dev/null'])  # Run until manually stopped
+
+        with pytest.raises(RuntimeError, match='Container is already running'):
+            container.start(command=['echo', 'Hello!'])
+
+        assert container.container is not None
+        container.container.stop(timeout=0)
 
     def test_container_log(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
@@ -251,11 +283,17 @@ class TestContainer:
         uncap(dockerfile)
         uncap(log_file)
 
-        container = RunContainer(self.container_name, dockerfile)
+        container = ServerContainer(self.container_name, dockerfile)
 
-        result = container.run(entrypoint=['/bin/sh', '-c'],
-                               command=['echo Hello, && echo World! >&2'],
-                               log_file=log_file)
+        assert container.log_file is None
+
+        container.start(entrypoint=['/bin/sh', '-c'],
+                        command=['echo Hello, && echo World! >&2'],
+                        log_file=log_file)
+
+        assert container.log_file == log_file
+
+        result = container.wait()
 
         assert isinstance(result, Result)
         assert result.exit_status == 0
@@ -269,78 +307,95 @@ class TestContainer:
         assert 'World!' in log_content
         assert 'closing logfile writer' in log_content
 
-    def test_container_run_no_wait(self, tmp_file, uncap):
+    def test_container_attach_existing(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
                               'FROM alpine:latest')
 
-        uncap(dockerfile)
-
-        container = RunContainer(self.container_name, dockerfile)
-
-        result = container.run(entrypoint=['/bin/sh', '-c'],
-                               command=['echo Hello, && echo World! >&2'],
-                               wait=False)  # test name refers to this wait
-
-        assert isinstance(result, Container)
-
-        docker_container = result
-        wait_result = docker_container.wait(timeout=10)
-        assert container.monitor is not None
-        container.monitor.join(timeout=10)
-        assert container.monitor.exitcode is not None
-
-        # Assert container is deleted after exit
-        with pytest.raises(NotFound):
-            assert docker_container.id is not None
-            client = docker.from_env()
-            client.containers.get(docker_container.id)
-
-        assert 'StatusCode' in wait_result
-
-        exit_status = wait_result['StatusCode']
-
-        assert exit_status == 0
-
-    def test_container_run_log_no_wait(self, tmp_file, uncap):
-        dockerfile = tmp_file('test-image.dockerfile',
-                              'FROM alpine:latest')
-
-        log_file = dockerfile.parent / 'test.log'
+        log_file = dockerfile.parent / 'log.txt'
 
         uncap(dockerfile)
         uncap(log_file)
 
-        container = RunContainer(self.container_name, dockerfile)
+        container = ServerContainer(self.container_name, dockerfile)
 
-        result = container.run(entrypoint=['/bin/sh', '-c'],
-                               command=['echo Hello, && echo World! >&2'],
-                               log_file=log_file,
-                               wait=False)  # test name refers to this wait
+        container.start(entrypoint=['echo', '1', '2'],
+                        command=['3', '4'],
+                        log_file=log_file)
 
-        assert isinstance(result, Container)
+        container = ServerContainer(self.container_name, dockerfile)
 
-        docker_container = result
-        wait_result = docker_container.wait(timeout=10)
-        assert container.monitor is not None
-        container.monitor.join(timeout=10)
-        assert container.monitor.exitcode is not None
+        assert container.container is not None
+        assert container.container.name == self.container_name
 
-        # Assert container is deleted after exit
-        with pytest.raises(NotFound):
-            assert docker_container.id is not None
-            client = docker.from_env()
-            client.containers.get(docker_container.id)
+        # Reattach behavior is intended for use between processes.
+        # There is not a clean way to preserve the log file and monitor as
+        # data between process runs (container reattachments), but the monitor
+        # is still running & log file is still populating from the first run.
+        assert container.monitor is None  # Cannot reattach monitor
+        assert container.log_file is None  # Cannot reattach log file
 
-        with log_file.open() as f:
-            log_content = f.read()
+        # Once the Docker container closes, the monitor stops and the log file
+        # closes. It does not matter which process or instance of the
+        # ServerContainer class stops the container.
+        result = container.wait()
 
-        assert 'Hello,' in log_content
-        assert 'World!' in log_content
-        assert f'removing container {docker_container.id}' in log_content
-        assert 'closing logfile writer' in log_content
+        assert container.container is None
+        assert container.monitor is None
 
-        assert 'StatusCode' in wait_result
+        assert isinstance(result, Result)
+        assert result.exit_status == 0
+        assert result.stdout == '1 2 3 4\n'
+        assert result.stderr == ''
 
-        exit_status = wait_result['StatusCode']
+        assert log_file.read_text() == f'1 2 3 4\n({PROJECT_NAME}) closing logfile writer\n'
 
-        assert exit_status == 0
+    def test_execute(self, tmp_file, uncap):
+        dockerfile = tmp_file('test-image.dockerfile',
+                              'FROM alpine:latest')
+
+        uncap(dockerfile)
+
+        container = ServerContainer(self.container_name, dockerfile)
+
+        container.start(command=['tail', '-f', '/dev/null'])  # Run until manually stopped
+
+        assert container.container is not None
+
+        result = container.execute(['pkill', 'tail'])  # SIGTERM the tail process
+
+        assert result is not None
+        assert result.exit_code == 0
+        assert result.output == ''
+
+        result = container.wait()
+
+        assert container.container is None
+
+        assert isinstance(result, Result)
+        assert result.exit_status == 143  # 143 = 128 + 15 (SIGTERM)
+
+    def test_execute_not_started(self, tmp_file, uncap):
+        dockerfile = tmp_file('test-image.dockerfile',
+                              'FROM alpine:latest')
+
+        uncap(dockerfile)
+
+        container = ServerContainer(self.container_name, dockerfile)
+
+        with pytest.raises(RuntimeError, match='Container has not started'):
+            container.execute(['echo', 'Hello!'])
+
+    def test_execute_not_running(self, tmp_file, uncap):
+        dockerfile = tmp_file('test-image.dockerfile',
+                              'FROM alpine:latest')
+
+        uncap(dockerfile)
+
+        container = ServerContainer(self.container_name, dockerfile)
+
+        container.start(command=['echo', 'Hello!'])
+        assert container.container is not None
+        container.container.wait()
+
+        with pytest.raises(RuntimeError, match='Container is not running'):
+            container.execute(['echo', 'Hello!'])
