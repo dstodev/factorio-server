@@ -1,11 +1,13 @@
 '''Test Container actions.'''
 
 
-import pytest
-from docker.errors import BuildError, NotFound
+from test.util_docker import clean_docker
 
-import docker
-from manage import PROJECT_NAME
+import pytest
+from docker.errors import BuildError
+
+from manage import PROJECT_NAME, paths
+from manage.docker.image import build
 from manage.docker.server_container import Bind, ServerContainer
 from manage.shell import Result
 
@@ -20,18 +22,7 @@ class TestContainer:
 
     def teardown_method(self, _method):
         '''Clean up containers and images that were left behind.'''
-        client = docker.from_env()
-
-        try:
-            container = client.containers.get(self.container_name)  # Raises NotFound
-            container.remove(force=True)  # pragma: no cover
-        except NotFound:
-            pass
-
-        try:
-            client.images.remove(self.container_name, force=True)
-        except NotFound:
-            pass
+        clean_docker(self.container_name)
 
     def test_container_build_image(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
@@ -98,6 +89,45 @@ class TestContainer:
 
         with pytest.raises(BuildError):
             container.build_source_image()
+
+    def test_can_base_on_rcon_image(self, tmp_file, uncap):
+        expected_uid = 30120
+        expected_gid = 30121
+        expected_uname = 'test-user'
+        expected_gname = 'test-group'
+
+        dockerfile = tmp_file('test-image.dockerfile',
+                              'FROM rcon:latest',
+                              f'RUN test "$(id -u)" = "{expected_uid}"',
+                              f'RUN test "$(id -g)" = "{expected_gid}"',
+                              f'RUN test "$(id -un)" = "{expected_uname}"',
+                              f'RUN test "$(id -gn)" = "{expected_gname}"')
+
+        uncap(dockerfile)
+
+        build_args = {
+            'user_id': f'{expected_uid}',
+            'group_id': f'{expected_gid}',
+            'user_name': f'{expected_uname}',
+            'group_name': f'{expected_gname}',
+        }
+
+        build(paths.get('rcon') / 'rcon.dockerfile', 'rcon', build_args)
+
+        container = ServerContainer(self.container_name, dockerfile)
+
+        result = container.build_source_image()
+
+        uncap(result)
+
+        assert 'FROM rcon:latest' in result
+        assert 'Successfully built' in result
+        assert f'Successfully tagged {self.container_name}:latest' in result
+
+        assert f'{expected_uid}' in result
+        assert f'{expected_gid}' in result
+        assert f'{expected_uname}' in result
+        assert f'{expected_gname}' in result
 
     def test_container_start(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
@@ -179,14 +209,15 @@ class TestContainer:
 
         bind = Bind(host=script, guest=guest_script, writeable=False)
 
-        initial_uid = '30120'
-        initial_gid = '30121'
-        next_uid = '30122'
-        next_gid = '30123'
+        initial_uid = 30120
+        initial_gid = 30121
+        next_uid = 30122
+        next_gid = 30123
 
         container = ServerContainer(self.container_name,
                                     dockerfile,
-                                    build_args={'user_id': initial_uid, 'group_id': initial_gid},
+                                    build_args={'user_id': f'{initial_uid}',
+                                                'group_id': f'{initial_gid}'},
                                     binds=[bind])
 
         assert container.name == self.container_name
@@ -202,7 +233,14 @@ class TestContainer:
         assert f'{next_uid}' not in result.stdout
         assert f'{next_gid}' not in result.stdout
 
-        container.build_args = {'user_id': next_uid, 'group_id': next_gid}
+        # Store the current ID because it is about to be replaced by a new image
+        # with different build arguments. This is used to clean up the image
+        # later.
+        assert container.image is not None
+        assert container.image.id is not None
+        old_image_id = container.image.id
+
+        container.build_args = {'user_id': f'{next_uid}', 'group_id': f'{next_gid}'}
 
         container.start(command=[guest_script])
 
@@ -213,6 +251,8 @@ class TestContainer:
         assert f'{next_gid}' in result.stdout
         assert f'{initial_uid}' not in result.stdout
         assert f'{initial_gid}' not in result.stdout
+
+        clean_docker(old_image_id)
 
     def test_container_start_bind_script_not_writable(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',

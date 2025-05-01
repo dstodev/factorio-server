@@ -6,13 +6,14 @@ from multiprocessing import Process
 from pathlib import Path
 from typing import NamedTuple
 
-from docker.errors import APIError, BuildError, NotFound
+from docker.errors import APIError, NotFound
 from docker.models.containers import Container
 from docker.models.images import Image
 from docker.types import Mount
 
 import docker  # https://docker-py.readthedocs.io/en/stable/index.html
-from manage import PROJECT_NAME, game
+from manage import PROJECT_NAME, game, paths
+from manage.docker.image import build, build_logs_to_str
 from manage.shell import Result
 
 
@@ -104,6 +105,7 @@ class ServerContainer:
         assert self.image is not None
 
         client = docker.from_env()
+
         self.container = client.containers.run(name=self.name,
                                                image=self.image,
                                                command=command,
@@ -181,22 +183,10 @@ class ServerContainer:
         '''Build the image, returning the output of the build process.
         Build errors are raised as exceptions.
         '''
-        client = docker.from_env()
-
         with tempfile.TemporaryDirectory() as tmpdir:
             dockerfile = game.docker_context(self.dockerfile, Path(tmpdir), self.context_files)
 
-            self.image, logs = client.images.build(path=str(dockerfile.parent),
-                                                   dockerfile=dockerfile.name,
-                                                   tag=self.name,
-                                                   buildargs=self.build_args,
-                                                   rm=True)
-
-        output = []
-
-        for entry in logs:
-            if isinstance(entry, dict):
-                if 'stream' in entry:
-                    output.append(entry['stream'])
-
-        return ''.join(output)
+            self.image, logs = build(dockerfile,
+                                     name=self.name,
+                                     build_args=self.build_args)
+        return logs

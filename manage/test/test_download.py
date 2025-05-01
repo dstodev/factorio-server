@@ -3,12 +3,15 @@
 import json
 import os
 from functools import partial
+from shutil import copytree
+from test.util_docker import clean_docker
 
 from manage import paths
 from manage.command.download import Download
 
 
 def test_download(mocker, tmp_path, tmp_file, uncap):
+    copytree(paths.get('rcon'), tmp_path / 'rcon')
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
     dockerfile = tmp_file('cfg/test-game/server.dockerfile',
@@ -27,8 +30,8 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
                       'touch "$server_dir/some-server-file"',
                       mode=0o744)
 
-    expected_uid = 30121
-    expected_gid = 30122
+    expected_uid = 30120
+    expected_gid = 30121
 
     server_json = tmp_file('cfg/test-game/server.json',
                            json.dumps({
@@ -64,3 +67,5 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
     assert expected_server_file.is_file()
     assert expected_server_file.stat().st_uid == expected_uid
     assert expected_server_file.stat().st_gid == expected_gid
+
+    clean_docker(name)
