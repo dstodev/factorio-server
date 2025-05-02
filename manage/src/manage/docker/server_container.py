@@ -12,8 +12,8 @@ from docker.models.images import Image
 from docker.types import Mount
 
 import docker  # https://docker-py.readthedocs.io/en/stable/index.html
-from manage import PROJECT_NAME, game, paths
-from manage.docker.image import build, build_logs_to_str
+from manage import PROJECT_NAME, game
+from manage.docker.image import build
 from manage.shell import Result
 
 

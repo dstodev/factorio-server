@@ -4,7 +4,7 @@ SRC := main.cxx
 CXX := g++
 CXXFLAGS := -std=c++17 -O3 -Wall -Wextra
 
-DOCKERFILE := rcon.dockerfile
+DOCKERFILE := Dockerfile
 DOCKER_IMAGE := rcon:latest
 
 all: $(CLIENT) image

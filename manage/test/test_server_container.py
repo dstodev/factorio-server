@@ -112,7 +112,7 @@ class TestContainer:
             'group_name': f'{expected_gname}',
         }
 
-        build(paths.get('rcon') / 'rcon.dockerfile', 'rcon', build_args)
+        build(paths.get('rcon') / 'Dockerfile', 'rcon', build_args)
 
         container = ServerContainer(self.container_name, dockerfile)
 

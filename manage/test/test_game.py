@@ -32,20 +32,19 @@ def test_force_dir_does_not_recreate_existing_dir(tmp_path):
 
 
 @pytest.mark.parametrize('func_name,expected_dir', [
-    ('cfg_dir', 'cfg'),
-    ('backup_dir', 'backup'),
-    ('server_dir', 'server-files'),
-    ('shelf_dir', 'shelf'),
+    ('cfg_dir', 'cfg/{}'),
+    ('backup_dir', 'backup/{}'),
+    ('server_dir', 'server-files/{}/hot'),
+    ('shelf_dir', 'shelf/{}'),
 ])
 def test_game_dirs(tmp_path, mocker, func_name, expected_dir):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
     name = 'test-game'
 
-    expected_cfg = tmp_path / expected_dir / name
+    expected_dir = expected_dir.format(name)
 
-    if func_name == 'server_dir':
-        expected_cfg = expected_cfg / 'hot'
+    expected_cfg = tmp_path / expected_dir
 
     result = getattr(game, func_name)(name)
 
@@ -124,7 +123,9 @@ def test_docker_context_extra_files(tmp_path):
     context_dir.mkdir()
 
     # Add unrelated_file twice; once by adding its directory, and again by adding it directly.
-    dockerfile = game.docker_context(dockerfile, context_dir, context_files=[unrelated_dir, unrelated_file])
+    dockerfile = game.docker_context(dockerfile,
+                                     context_dir,
+                                     context_files=[unrelated_dir, unrelated_file])
 
     assert dockerfile.parent == context_dir
     assert len(list(dockerfile.parent.iterdir())) == 3

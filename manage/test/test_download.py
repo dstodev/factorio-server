@@ -3,15 +3,13 @@
 import json
 import os
 from functools import partial
-from shutil import copytree
 from test.util_docker import clean_docker
 
-from manage import paths
-from manage.command.download import Download
+from manage import game, paths
+from manage.command import Download
 
 
 def test_download(mocker, tmp_path, tmp_file, uncap):
-    copytree(paths.get('rcon'), tmp_path / 'rcon')
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
     dockerfile = tmp_file('cfg/test-game/server.dockerfile',
@@ -51,7 +49,7 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
 
     download.execute()
 
-    expected_server_dir = tmp_path / 'server-files' / name / 'hot'
+    expected_server_dir = game.server_dir(name)
 
     uncap(expected_server_dir)
 

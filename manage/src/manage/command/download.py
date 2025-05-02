@@ -10,7 +10,7 @@ from manage.shell import Result
 class Download:
     '''Run the download script for the game.
 
-    The game's download script runs in and ephemeral container based on the
+    The game's download script runs in an ephemeral container based on the
     server image, and assumes it is running as a non-root server user. The
     script receives one argument: the path to the server root directory to
     populate.
@@ -34,7 +34,7 @@ class Download:
         self.server_dir = game.server_dir(name)
 
         binds = [
-            Bind(host=self.server_dir.parent, guest='/parent', writeable=True),
+            Bind(host=self.server_dir.parent, guest='/game', writeable=True),
             Bind(host=game.download_script(name), guest='/download.sh', writeable=False),
         ]
 
@@ -57,13 +57,14 @@ class Download:
                 # Temporarily set full permissions (o+w so server user can write) & set sticky bit
                 parent_dir.chmod(backup_mode | 0o777 | stat.S_ISVTX)
 
-                # /parent aligns with guest value for server_dir.parent bind mount in __init__
-                guest_server_dir = '/parent/hot'
+                # /game aligns with guest value for server_dir.parent bind mount in __init__
+                guest_server_dir = '/game/hot'
 
                 self.container.start(
                     entrypoint=['/bin/sh', '-c'],
                     command=[' && '.join((
-                        # Create the server directory in the container so it is owned by the server user
+                        # Create the server directory in the container so it is
+                        # owned by the server user.
                         f'mkdir {guest_server_dir}',
                         'cp /download.sh /tmp/download.sh',
                         f'/tmp/download.sh {guest_server_dir}',
