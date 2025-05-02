@@ -25,7 +25,7 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
     script = tmp_file('cfg/test-game/download.sh',
                       '#!/bin/sh',
                       'server_dir="$1"',
-                      'touch "$server_dir/some-server-file"',
+                      'touch "$server_dir/some-file"',
                       mode=0o744)
 
     expected_uid = 30120
@@ -49,18 +49,18 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
 
     download.execute()
 
-    expected_server_dir = game.server_dir(name)
+    server_hot = game.server_dir(name)
 
-    uncap(expected_server_dir)
+    uncap(server_hot)
 
-    assert expected_server_dir.parent.stat().st_uid == os.getuid()
-    assert expected_server_dir.parent.stat().st_gid == os.getgid()
+    assert server_hot.is_dir()
+    assert server_hot.stat().st_uid == expected_uid
+    assert server_hot.stat().st_gid == expected_gid
 
-    assert expected_server_dir.is_dir()
-    assert expected_server_dir.stat().st_uid == expected_uid
-    assert expected_server_dir.stat().st_gid == expected_gid
+    assert server_hot.parent.stat().st_uid == os.getuid()
+    assert server_hot.parent.stat().st_gid == os.getgid()
 
-    expected_server_file = expected_server_dir / 'some-server-file'
+    expected_server_file = server_hot / 'some-file'
 
     assert expected_server_file.is_file()
     assert expected_server_file.stat().st_uid == expected_uid
