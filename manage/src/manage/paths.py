@@ -19,6 +19,7 @@ def get(which: str = '', root: Path | str = repo_dir) -> Path:
         - `'docker'`: Docker directory
         - `'rcon'`: RCON client
         - `'shelf'`: Game shelf directory
+        - `'logs'`: Game logs
 
     :type which: str
 
@@ -35,4 +36,5 @@ def get(which: str = '', root: Path | str = repo_dir) -> Path:
         'docker': root / 'docker',
         'rcon': root / 'rcon',
         'shelf': root / 'shelf',
+        'logs': root / 'logs',
     }[which]

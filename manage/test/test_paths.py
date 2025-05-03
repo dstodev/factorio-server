@@ -15,3 +15,4 @@ def test_paths(tmp_path):
     assert get('docker') == tmp_path / 'docker'
     assert get('rcon') == tmp_path / 'rcon'
     assert get('shelf') == tmp_path / 'shelf'
+    assert get('logs') == tmp_path / 'logs'

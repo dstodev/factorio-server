@@ -1,4 +1,4 @@
-'''Tests for build_args function'''
+'''Test the Start Command.'''
 
 import json
 import os
@@ -6,13 +6,13 @@ from functools import partial
 from test.util_docker import clean_docker
 
 from manage import game, paths
-from manage.command import Download
+from manage.command import Download, Start
 
 
-def test_download(mocker, tmp_path, tmp_file, uncap):
+def test_start(mocker, tmp_path, tmp_file, uncap):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    name = 'test-game-download'
+    name = 'test-game-start'
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest',
@@ -24,11 +24,18 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
                           '  && adduser -u $user_id -D -G $group_name $user_name',
                           'USER $user_name')
 
-    script = tmp_file(f'cfg/{name}/download.sh',
-                      '#!/bin/sh',
-                      'server_dir="$1"',
-                      'echo "$1" > "$server_dir/some-file"',
-                      mode=0o744)
+    start = tmp_file(f'cfg/{name}/start.sh',
+                     '#!/bin/sh',
+                     'echo "Server started!"',
+                     'echo "$1"',
+                     'test -f "$1/some-file"',
+                     mode=0o744)
+
+    download = tmp_file(f'cfg/{name}/download.sh',
+                        '#!/bin/sh',
+                        'server_dir="$1"',
+                        'touch "$server_dir/some-file"',
+                        mode=0o744)
 
     expected_uid = 30120
     expected_gid = 30121
@@ -42,29 +49,38 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
                            }, indent=2))
 
     uncap(dockerfile)
-    uncap(script)
+    uncap(start)
+    uncap(download)
     uncap(server_json)
 
     try:
         download = Download(name)
         download.execute()
+
+        start = Start(name)
+        start.execute(auto_rm=False)
+
+        result = start.container.wait()
+
     finally:
         clean_docker(name)
+
+    assert result is not None
+    assert result.exit_status == 0
 
     server_hot = game.server_dir(name)
 
     uncap(server_hot)
 
-    assert server_hot.is_dir()
-    assert server_hot.stat().st_uid == expected_uid
-    assert server_hot.stat().st_gid == expected_gid
+    log = game.logs_dir(name) / 'server.log'
 
-    assert server_hot.parent.stat().st_uid == os.getuid()
-    assert server_hot.parent.stat().st_gid == os.getgid()
+    uncap(log)
 
-    expected_server_file = server_hot / 'some-file'
+    assert log.is_file()
+    assert log.stat().st_uid == os.getuid()
+    assert log.stat().st_gid == os.getgid()
 
-    assert expected_server_file.is_file()
-    assert expected_server_file.stat().st_uid == expected_uid
-    assert expected_server_file.stat().st_gid == expected_gid
-    assert expected_server_file.read_text() == '/game/hot\n'
+    content = log.read_text(encoding='utf-8')
+    assert 'Server started!\n' in content
+    assert '/game/hot\n' in content
+    assert 'closing logfile writer\n' in content

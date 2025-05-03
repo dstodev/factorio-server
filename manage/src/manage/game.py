@@ -31,6 +31,12 @@ def backup_dir(name: str) -> Path:
     return path
 
 
+def logs_dir(name: str) -> Path:
+    '''Get the path to the game's logs directory.'''
+    path = paths.get('logs') / name
+    return path
+
+
 def server_dir(name: str) -> Path:
     '''Get the path to the game's runtime directory.
     The server may be actively running here.

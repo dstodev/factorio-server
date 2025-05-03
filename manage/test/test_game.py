@@ -35,6 +35,7 @@ def test_force_dir_does_not_recreate_existing_dir(tmp_path):
 @pytest.mark.parametrize('func_name,expected_dir', [
     ('cfg_dir', 'cfg/{}'),
     ('backup_dir', 'backup/{}'),
+    ('logs_dir', 'logs/{}'),
     ('server_dir', 'server-files/{}/hot'),
     ('shelf_dir', 'shelf/{}'),
 ])

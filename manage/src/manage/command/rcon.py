@@ -1,7 +1,5 @@
 '''Command to use the RCON client.'''
 
-from pathlib import Path
-
 from manage.docker.container import GameContainer
 
 

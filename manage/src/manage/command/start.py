@@ -1,12 +1,11 @@
 '''Command to start a server.'''
 
-from manage import game, paths
+from manage import game
 from manage.docker.container import Bind, GameContainer
-from manage.docker.util import build_image
 
 
 class Start:
-    '''Start a server.'''
+    '''Start a server by running its start script in a persistent container.'''
 
     def __init__(self, name: str) -> None:
         '''Initialize the Start command.
@@ -21,12 +20,25 @@ class Start:
 
         binds = [
             Bind(host=self.server_dir.parent, guest='/game', writeable=True),
-            Bind(host=game.download_script(name), guest='/download.sh', writeable=False),
+            Bind(host=game.start_script(name), guest='/start.sh', writeable=False),
         ]
 
         image, _logs = game.docker_image(name)
 
         self.container = GameContainer(name, image, binds)
 
-    def execute(self) -> None:
-        pass
+    def execute(self, auto_rm: bool = True) -> None:
+        '''Start the server.
+
+        auto_rm is not normally accessible since function implements the Command
+        protocol, which does not take any arguments. The flag exists for tests.
+        '''
+        command = ' && '.join([
+            'cp /start.sh /tmp/start.sh',
+            '/tmp/start.sh /game/hot'
+        ])
+
+        self.container.start(entrypoint=['/bin/sh', '-c'],
+                             command=[command],
+                             log_file=game.logs_dir(self.name) / 'server.log',
+                             auto_rm=auto_rm)

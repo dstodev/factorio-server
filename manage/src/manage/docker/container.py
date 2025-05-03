@@ -1,7 +1,6 @@
 '''Represent a Docker container.'''
 
 import os
-import tempfile
 from multiprocessing import Process
 from pathlib import Path
 from typing import NamedTuple
@@ -12,8 +11,7 @@ from docker.models.images import Image
 from docker.types import Mount
 
 import docker  # https://docker-py.readthedocs.io/en/stable/index.html
-from manage import PROJECT_NAME, game
-from manage.docker.util import build_image
+from manage import PROJECT_NAME
 from manage.shell import Result
 
 
@@ -181,7 +179,6 @@ class GameContainer:
 
     def wait(self, timeout: int = 10) -> Result | None:
         '''Wait for the container to finish.
-
 
         :param timeout: Time to wait before raising an exception. Default is 10.
         :type timeout: int

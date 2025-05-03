@@ -185,7 +185,7 @@ class TestContainer:
 
         assert 'Hello,' in log_content
         assert 'World!' in log_content
-        assert 'closing logfile writer' in log_content
+        assert 'closing logfile writer\n' in log_content
 
     def test_container_reattach(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
@@ -220,9 +220,9 @@ class TestContainer:
 
         # Once the Docker container closes, the monitor stops and the log file
         # closes. It does not matter which process or instance of the
-        # ServerContainer class stops the container.
-        # Hack: give the monitor to the new container so that when it waits, it
-        # deterministically closes the log file.
+        # ServerContainer class stops the container. Hack: give the monitor to
+        # the new container so calling wait() deterministically stops the
+        # monitor to guarantee logfile closure.
         container.monitor = monitor
         result = container.wait()
 
