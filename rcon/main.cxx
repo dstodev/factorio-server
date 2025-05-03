@@ -36,10 +36,11 @@ clang-format on */
 
 uint16_t constexpr DEFAULT_RCON_PORT = 25575;
 int constexpr TOTAL_PACKET_SIZE = 4100;
+int constexpr DEFAULT_TIMEOUT_MS = 100;
 
 bool test();
 auto split_hoststr(std::string const& host_str) -> std::tuple<std::string, uint16_t>;
-auto get_password(int timeout_ms = 5000) -> std::string;
+auto get_password(int timeout_ms = DEFAULT_TIMEOUT_MS) -> std::string;
 auto to_little_endian(uint32_t value) -> std::array<uint8_t, sizeof(uint32_t)>;
 auto from_little_endian(std::array<uint8_t, sizeof(uint32_t)> const& bytes) -> uint32_t;
 bool is_big_endian();
@@ -199,7 +200,7 @@ public:
 		}
 	}
 
-	bool authenticate(std::string const& password, int timeout_ms = 5000)
+	bool authenticate(std::string const& password, int timeout_ms = DEFAULT_TIMEOUT_MS)
 	{
 		auto id = _id.generate();
 		Packet packet(id);
@@ -232,7 +233,7 @@ public:
 		return success;
 	}
 
-	bool command(std::string const& command, int timeout_ms = 5000)
+	bool command(std::string const& command, int timeout_ms = DEFAULT_TIMEOUT_MS)
 	{
 		auto id = _id.generate();
 		Packet packet(id);
@@ -294,7 +295,7 @@ public:
 		return true;
 	}
 
-	bool recv(Packet& packet, int timeout_ms = 5000)
+	bool recv(Packet& packet, int timeout_ms = DEFAULT_TIMEOUT_MS)
 	{
 		if (!connect_to_server()) {
 			return false;
@@ -413,7 +414,7 @@ int main(int argc, char const* argv[])
 	};
 
 	if (argc < 2) {
-		std::cout << "RCON client " << basename << "\n\n"
+		std::cout << "RCON client: " << basename << "\n\n"
 		          << "Usage: " << basename << " host[:port] [command] <<< rcon_password\n"
 		          << "   or: echo rcon_password | " << basename << " host[:port] [command]\n"
 		          << "   or: cat file_with_rcon_password | " << basename << " host[:port] [command]\n"

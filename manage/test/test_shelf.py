@@ -1,9 +1,11 @@
+'''Test the Shelf Command.'''
+
 import json
 import os
 from functools import partial
 from test.util_docker import clean_docker
 
-from manage import game, paths
+from manage import paths
 from manage.command import Download, Shelf
 
 
@@ -75,44 +77,44 @@ def test_shelf_twice(mocker, tmp_path, tmp_file, uncap):
 def test_shelf_permissions(mocker, tmp_path, tmp_file, uncap):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    dockerfile = tmp_file('cfg/test-game/server.dockerfile',
-                          'FROM alpine:latest',
-                          'ARG user_id',
-                          'ARG user_name',
-                          'ARG group_id',
-                          'ARG group_name',
-                          'RUN addgroup -g $group_id $group_name \\',
-                          '  && adduser -u $user_id -D -G $group_name $user_name',
-                          'USER $user_name')
+    name = 'test-game-shelf-permissions'
 
-    script = tmp_file('cfg/test-game/download.sh',
-                      '#!/bin/sh',
-                      'server_dir="$1"',
-                      'touch "$server_dir/some-file"',
-                      mode=0o744)
+    try:
+        dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
+                              'FROM alpine:latest',
+                              'ARG user_id',
+                              'ARG user_name',
+                              'ARG group_id',
+                              'ARG group_name',
+                              'RUN addgroup -g $group_id $group_name \\',
+                              '  && adduser -u $user_id -D -G $group_name $user_name',
+                              'USER $user_name')
 
-    expected_uid = 30120
-    expected_gid = 30121
+        script = tmp_file(f'cfg/{name}/download.sh',
+                          '#!/bin/sh',
+                          'server_dir="$1"',
+                          'touch "$server_dir/some-file"',
+                          mode=0o744)
 
-    server_json = tmp_file('cfg/test-game/server.json',
-                           json.dumps({
-                               'user': {
-                                   'name': f'server-user:{expected_uid}',
-                                   'group': f'server-group:{expected_gid}'
-                               }
-                           }, indent=2))
+        expected_uid = 30120
+        expected_gid = 30121
 
-    uncap(dockerfile)
-    uncap(script)
-    uncap(server_json)
+        server_json = tmp_file(f'cfg/{name}/server.json',
+                               json.dumps({
+                                   'user': {
+                                       'name': f'server-user:{expected_uid}',
+                                       'group': f'server-group:{expected_gid}'
+                                   }
+                               }, indent=2))
 
-    name = 'test-game'
+        uncap(dockerfile)
+        uncap(script)
+        uncap(server_json)
 
-    download = Download(name)
-
-    download.execute()
-
-    clean_docker(name)
+        download = Download(name)
+        download.execute()
+    finally:
+        clean_docker(name)
 
     shelf = Shelf(name)
     shelf.execute()

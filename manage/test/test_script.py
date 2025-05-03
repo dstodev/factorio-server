@@ -1,9 +1,9 @@
 '''Test running scripts from a Command-conforming class.'''
 
-from manage.command import ScriptCommand
+from manage.command import Script
 
 
-def test_script_command(tmp_file):
+def test_script(tmp_file):
     script = tmp_file('my_script.sh',
                       '#!/bin/bash',
                       'echo "$1"',
@@ -12,7 +12,7 @@ def test_script_command(tmp_file):
 
     args = ['Hello,', 'World!']
 
-    command = ScriptCommand(script, *args)
+    command = Script(script, *args)
     command.execute()
 
     result = command.get_result()

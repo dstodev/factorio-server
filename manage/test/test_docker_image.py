@@ -2,7 +2,7 @@
 
 from test.util_docker import clean_docker
 
-from manage.docker import image
+from manage.docker import build_image
 
 
 def test_image_build(request, tmp_file, uncap):
@@ -25,7 +25,7 @@ def test_image_build(request, tmp_file, uncap):
         'arg': 'value'
     }
 
-    image_, log = image.build(dockerfile, name, build_args)
+    image_, log = build_image(dockerfile, name, build_args)
 
     uncap(log)
 

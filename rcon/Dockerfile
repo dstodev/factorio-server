@@ -19,9 +19,11 @@ RUN groupadd --gid $group_id $group_name \
 ARG rcon_port=34240
 EXPOSE $rcon_port/tcp
 
+WORKDIR /root
+COPY . .
+RUN make test \
+	&& make install \
+	&& make clean
+
 USER $user_name
 WORKDIR /home/$user_name
-
-COPY --chown=$user_id:$group_id . .
-
-RUN make test

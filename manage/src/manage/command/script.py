@@ -5,11 +5,11 @@ import pathlib
 from manage import shell
 
 
-class ScriptCommand:
+class Script:
     '''Implements the Command interface to run a script.'''
 
     def __init__(self, script: pathlib.Path, *args: str) -> None:
-        '''Initialize the script command.
+        '''Initialize the Script command.
 
         :param script: The script to run when executed.
         :type script: pathlib.Path

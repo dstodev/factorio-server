@@ -13,7 +13,7 @@ from docker.types import Mount
 
 import docker  # https://docker-py.readthedocs.io/en/stable/index.html
 from manage import PROJECT_NAME, game
-from manage.docker.image import build
+from manage.docker.util import build_image
 from manage.shell import Result
 
 
@@ -62,7 +62,24 @@ class ServerContainer:
                  build_args: dict[str, str] | None = None,
                  binds: list[Bind] | None = None,
                  context_files: list[Path] | None = None):
-        '''Initialize with persistent settings like name and image.'''
+        '''Initialize with persistent settings like name and image.
+
+
+        :param name: The name of the container.
+        :type name: str
+        :param dockerfile_path: The path to the Dockerfile. Its parent directory
+            is the Docker context.
+        :type dockerfile_path: Path
+        :param build_args: Build arguments to pass to the Dockerfile. Defaults
+            to None.
+        :type build_args: dict[str, str] | None
+        :param binds: A list of Bind tuples defining files and directories to
+            mount into the container.
+        :type binds: list[Bind] | None
+        :param context_files: A list of files to copy into the Docker context.
+            Default is None.
+        :type context_files: list[Path] | None
+        '''
         self.name = name
         self.dockerfile = dockerfile_path
         self.build_args = build_args or {}
@@ -97,6 +114,20 @@ class ServerContainer:
         "at any time", and functions like self.container.logs() are no longer
         reliable, since logs will be removed alongside the container. (But the
         monitor will have already logged the output to a file.)
+
+        :param command: The command to run in the container. Default is None.
+        :type command: list[str] | None
+        :param entrypoint: The entrypoint to run in the container. Default is
+            None.
+        :type entrypoint: list[str] | None
+        :param log_file: The file to log the container's output to. Default is
+            None.
+        :type log_file: Path | None
+        :param auto_rm: Whether to remove the container after it stops. Defaults
+            to False.
+        :type auto_rm: bool
+        :raises RuntimeError: The container is already running. Use execute() to
+            send additional commands.
         '''
         if self.container is not None:
             raise RuntimeError('Container is already running!')
@@ -124,18 +155,20 @@ class ServerContainer:
                                daemon=False)
         self.monitor.start()
 
-    def execute(self, command: list[str] | None = None):
-        '''Execute a command in the container.'''
-        if self.container is None:
-            raise RuntimeError('Container has not started!')
+    def build_source_image(self) -> str:
+        '''Build the image, returning the output of the build process.
 
-        if command is not None:
-            try:
-                result = self.container.exec_run(command, stdout=True, stderr=True)
-                result = type(result)(result.exit_code, result.output.decode('utf-8'))
-                return result
-            except APIError as e:
-                raise RuntimeError('Container is not running!') from e
+        Build errors are raised as exceptions.
+        '''
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dockerfile = game.docker_context(self.dockerfile,
+                                             Path(tmpdir),
+                                             self.context_files)
+
+            self.image, logs = build_image(dockerfile,
+                                           name=self.name,
+                                           build_args=self.build_args)
+        return logs
 
     def build_mounts(self) -> list[Mount]:
         '''Return a list of mounts for the container based on self.binds'''
@@ -151,8 +184,32 @@ class ServerContainer:
 
         return mounts
 
+    def execute(self, command: list[str] | None = None):
+        '''Execute a command in the container.
+
+        :param command: The command to run in the container. Default is None.
+        '''
+        if self.container is None:
+            raise RuntimeError('Container does not exist!')
+
+        if command is not None:
+            try:
+                result = self.container.exec_run(command, stdout=True, stderr=True)
+                result = type(result)(result.exit_code, result.output.decode('utf-8'))
+                return result
+            except APIError as e:
+                raise RuntimeError('Container is not running!') from e
+
     def wait(self, timeout: int = 10) -> Result | None:
-        '''Wait for the container to finish and return the result.'''
+        '''Wait for the container to finish.
+
+
+        :param timeout: Time to wait before raising an exception. Default is 10.
+        :type timeout: int
+        :return: The exit status and logs from the container, or None if the
+            container is not running.
+        :rtype: Result | None
+        '''
         container = self.container
         self.container = None
 
@@ -178,15 +235,3 @@ class ServerContainer:
         if monitor_:
             monitor_.join(timeout=timeout)
             assert monitor_.exitcode is not None, 'Monitor process is still running!'
-
-    def build_source_image(self) -> str:
-        '''Build the image, returning the output of the build process.
-        Build errors are raised as exceptions.
-        '''
-        with tempfile.TemporaryDirectory() as tmpdir:
-            dockerfile = game.docker_context(self.dockerfile, Path(tmpdir), self.context_files)
-
-            self.image, logs = build(dockerfile,
-                                     name=self.name,
-                                     build_args=self.build_args)
-        return logs

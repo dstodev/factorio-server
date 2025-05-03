@@ -8,9 +8,9 @@ from docker.models.images import Image
 import docker
 
 
-def build(dockerfile: Path,
-          name: str,
-          build_args: dict[str, str] | None = None) -> tuple[Image, str]:
+def build_image(dockerfile: Path,
+                name: str,
+                build_args: dict[str, str] | None = None) -> tuple[Image, str]:
     '''Build an image.'''
     client = docker.from_env()
     image, logs = client.images.build(path=str(dockerfile.parent),

@@ -3,7 +3,7 @@
 import stat
 
 from manage import game
-from manage.docker.server_container import Bind, ServerContainer
+from manage.docker import Bind, ServerContainer
 from manage.shell import Result
 
 
@@ -26,7 +26,7 @@ class Download:
     '''
 
     def __init__(self, name: str) -> None:
-        '''Initialize the download command.
+        '''Initialize the Download command.
 
         :param name: The game to download.
         :type name: str

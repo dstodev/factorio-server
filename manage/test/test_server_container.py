@@ -7,7 +7,7 @@ import pytest
 from docker.errors import BuildError
 
 from manage import PROJECT_NAME, paths
-from manage.docker.image import build
+from manage.docker import build_image
 from manage.docker.server_container import Bind, ServerContainer
 from manage.shell import Result
 
@@ -112,7 +112,7 @@ class TestContainer:
             'group_name': f'{expected_gname}',
         }
 
-        build(paths.get('rcon') / 'Dockerfile', 'rcon', build_args)
+        build_image(paths.get('rcon') / 'Dockerfile', 'rcon', build_args)
 
         container = ServerContainer(self.container_name, dockerfile)
 
@@ -347,7 +347,7 @@ class TestContainer:
         assert 'World!' in log_content
         assert 'closing logfile writer' in log_content
 
-    def test_container_attach_existing(self, tmp_file, uncap):
+    def test_container_reattach(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
                               'FROM alpine:latest')
 
@@ -422,7 +422,7 @@ class TestContainer:
 
         container = ServerContainer(self.container_name, dockerfile)
 
-        with pytest.raises(RuntimeError, match='Container has not started'):
+        with pytest.raises(RuntimeError, match='Container does not exist'):
             container.execute(['echo', 'Hello!'])
 
     def test_execute_not_running(self, tmp_file, uncap):

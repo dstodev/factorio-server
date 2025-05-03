@@ -7,7 +7,7 @@ class Shelf:
     '''Put a game server instance on the shelf.'''
 
     def __init__(self, name: str) -> None:
-        '''Initialize the shelf command.
+        '''Initialize the Shelf command.
 
         :param name: The game to put on the shelf.
         :type name: str
