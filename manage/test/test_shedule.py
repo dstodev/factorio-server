@@ -67,7 +67,7 @@ def test_schedule_duplicate():
 def test_schedule_type_error():
     schedule = Schedule()
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError, match='Action must implement Command interface'):
         schedule.add_action(NotCommand())  # type: ignore
 
 
@@ -92,5 +92,5 @@ def test_schedules_are_commands():
 def test_add_self_as_action():
     schedule = Schedule()
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError, match='Cannot add self to schedule'):
         schedule.add_action(schedule)

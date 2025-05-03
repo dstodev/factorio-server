@@ -25,10 +25,12 @@ def test_image_build(request, tmp_file, uncap):
         'arg': 'value'
     }
 
-    image_, log = build_image(dockerfile, name, build_args)
+    try:
+        image_, log = build_image(dockerfile, name, build_args)
 
-    uncap(log)
+        uncap(log)
 
-    assert image_ is not None
+        assert image_ is not None
 
-    clean_docker(name)
+    finally:
+        clean_docker(name)

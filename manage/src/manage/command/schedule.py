@@ -19,8 +19,10 @@ class Schedule:
         :type action: Command
         :raises AssertionError: Action does not implement Command interface.
         '''
-        assert action is not self, 'Cannot add self to schedule'
-        assert isinstance(action, Command), 'Action must implement Command interface'
+        if action is self:
+            raise ValueError('Cannot add self to schedule!')
+        if not isinstance(action, Command):
+            raise TypeError('Action must implement Command interface!')
         self._actions.append(action)
 
     def execute(self):

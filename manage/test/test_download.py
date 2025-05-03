@@ -14,38 +14,38 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
 
     name = 'test-game-download'
 
+    dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
+                          'FROM alpine:latest',
+                          'ARG user_id',
+                          'ARG user_name',
+                          'ARG group_id',
+                          'ARG group_name',
+                          'RUN addgroup -g $group_id $group_name \\',
+                          '  && adduser -u $user_id -D -G $group_name $user_name',
+                          'USER $user_name')
+
+    script = tmp_file(f'cfg/{name}/download.sh',
+                      '#!/bin/sh',
+                      'server_dir="$1"',
+                      'touch "$server_dir/some-file"',
+                      mode=0o744)
+
+    expected_uid = 30120
+    expected_gid = 30121
+
+    server_json = tmp_file(f'cfg/{name}/server.json',
+                           json.dumps({
+                               'user': {
+                                   'name': f'server-user:{expected_uid}',
+                                   'group': f'server-group:{expected_gid}'
+                               }
+                           }, indent=2))
+
+    uncap(dockerfile)
+    uncap(script)
+    uncap(server_json)
+
     try:
-        dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
-                              'FROM alpine:latest',
-                              'ARG user_id',
-                              'ARG user_name',
-                              'ARG group_id',
-                              'ARG group_name',
-                              'RUN addgroup -g $group_id $group_name \\',
-                              '  && adduser -u $user_id -D -G $group_name $user_name',
-                              'USER $user_name')
-
-        script = tmp_file(f'cfg/{name}/download.sh',
-                          '#!/bin/sh',
-                          'server_dir="$1"',
-                          'touch "$server_dir/some-file"',
-                          mode=0o744)
-
-        expected_uid = 30120
-        expected_gid = 30121
-
-        server_json = tmp_file(f'cfg/{name}/server.json',
-                               json.dumps({
-                                   'user': {
-                                       'name': f'server-user:{expected_uid}',
-                                       'group': f'server-group:{expected_gid}'
-                                   }
-                               }, indent=2))
-
-        uncap(dockerfile)
-        uncap(script)
-        uncap(server_json)
-
         download = Download(name)
 
         download.execute()

@@ -17,26 +17,26 @@ def test_rcon_command(mocker, tmp_path, tmp_file, uncap):
 
     name = 'test-game-rcon-command'
 
+    dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
+                          'FROM rcon:latest')
+
+    expected_uid = 30120
+    expected_gid = 30121
+
+    server_json = tmp_file(f'cfg/{name}/server.json',
+                           json.dumps({
+                               'user': {
+                                   'name': f'server-user:{expected_uid}',
+                                   'group': f'server-group:{expected_gid}'
+                               }
+                           }, indent=2))
+
+    uncap(dockerfile)
+    uncap(server_json)
+
+    build_image(paths.get('rcon') / 'Dockerfile', 'rcon', game.build_args(name))
+
     try:
-        dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
-                              'FROM rcon:latest')
-
-        expected_uid = 30120
-        expected_gid = 30121
-
-        server_json = tmp_file(f'cfg/{name}/server.json',
-                               json.dumps({
-                                   'user': {
-                                       'name': f'server-user:{expected_uid}',
-                                       'group': f'server-group:{expected_gid}'
-                                   }
-                               }, indent=2))
-
-        uncap(dockerfile)
-        uncap(server_json)
-
-        build_image(paths.get('rcon') / 'Dockerfile', 'rcon', game.build_args(name))
-
         container = ServerContainer(name,
                                     game.dockerfile(name),
                                     game.build_args(name))
