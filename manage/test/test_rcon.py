@@ -6,9 +6,11 @@ import shutil
 from functools import partial
 from test.util_docker import clean_docker
 
+import pytest
+
 from manage import game, paths
 from manage.command import Rcon
-from manage.docker import ServerContainer, build_image
+from manage.docker import GameContainer, build_image
 
 
 def test_rcon_command(mocker, tmp_path, tmp_file, uncap):
@@ -38,9 +40,9 @@ def test_rcon_command(mocker, tmp_path, tmp_file, uncap):
     try:
         build_image(paths.get('rcon') / 'Dockerfile', rcon_image_name, game.build_args(name))
 
-        container = ServerContainer(name,
-                                    game.dockerfile(name),
-                                    game.build_args(name))
+        image, _logs = game.docker_image(name)
+
+        container = GameContainer(name, image)
 
         container.start(command=['tail', '-f', '/dev/null'])
 
@@ -73,3 +75,14 @@ def test_rcon_command(mocker, tmp_path, tmp_file, uncap):
     finally:
         clean_docker(name)
         # clean_docker(rcon_image_name)
+
+
+def test_rcon_command_no_container(mocker, tmp_path):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game'
+
+    rcon = Rcon(name, ['test'])
+
+    with pytest.raises(RuntimeError, match='Container does not exist'):
+        rcon.execute()

@@ -3,7 +3,7 @@
 import stat
 
 from manage import game
-from manage.docker import Bind, ServerContainer
+from manage.docker import Bind, GameContainer
 from manage.shell import Result
 
 
@@ -33,15 +33,14 @@ class Download:
         '''
         self.server_dir = game.server_dir(name)
 
+        image, _logs = game.docker_image(name)
+
         binds = [
             Bind(host=self.server_dir.parent, guest='/game', writeable=True),
             Bind(host=game.download_script(name), guest='/download.sh', writeable=False),
         ]
 
-        self.container = ServerContainer(name=name,
-                                         dockerfile_path=game.dockerfile(name),
-                                         build_args=game.build_args(name),
-                                         binds=binds)
+        self.container = GameContainer(name, image, binds=binds)
 
     def execute(self) -> None:
         '''Run the download script.'''

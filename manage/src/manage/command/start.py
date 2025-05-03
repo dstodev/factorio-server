@@ -1,6 +1,7 @@
 '''Command to start a server.'''
 
 from manage import game, paths
+from manage.docker.container import Bind, GameContainer
 from manage.docker.util import build_image
 
 
@@ -15,6 +16,17 @@ class Start:
         '''
         self.name = name
 
+        # server_dir looks like: <repo>/server-files/<game-name>/hot
+        self.server_dir = game.server_dir(name)
+
+        binds = [
+            Bind(host=self.server_dir.parent, guest='/game', writeable=True),
+            Bind(host=game.download_script(name), guest='/download.sh', writeable=False),
+        ]
+
+        image, _logs = game.docker_image(name)
+
+        self.container = GameContainer(name, image, binds)
+
     def execute(self) -> None:
-        # Build the base image (rcon:latest)
-        build_image(paths.get('rcon') / 'Dockerfile', 'rcon', game.build_args(self.name))
+        pass

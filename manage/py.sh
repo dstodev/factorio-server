@@ -149,6 +149,14 @@ else
 	venv_init # calls venv_activate
 fi
 
+jobs="$(($(nproc) - 1))"
+
+if [ "$VERBOSE" -gt 0 ]; then
+	(cd "$source_dir/rcon" && make --jobs $jobs docker)
+else
+	(cd "$source_dir/rcon" && make --jobs $jobs docker) >/dev/null 2>&1
+fi
+
 if "$shell"; then
 	shell_cmd='/bin/bash'
 	rcfile_ps1="export PS1='($venv_stem) \$(basename \"\$(pwd)\")\$ '"
@@ -157,14 +165,6 @@ if "$shell"; then
 		exec $shell_cmd --rcfile <(echo "$rcfile_ps1") -i
 	fi
 	exec $shell_cmd -c -- "$(printf '%q ' "$@")"
-fi
-
-jobs="$(($(nproc) - 1))"
-
-if [ "$VERBOSE" -gt 0 ]; then
-	(cd "$source_dir/rcon" && make -j $jobs docker)
-else
-	(cd "$source_dir/rcon" && make -j $jobs docker) >/dev/null 2>&1
 fi
 
 exec python "$@"

@@ -53,40 +53,30 @@ class Bind(NamedTuple):
     writeable: bool = False
 
 
-class ServerContainer:
+class GameContainer:
     '''Create and manage a Docker container for a server.'''
 
     def __init__(self,
                  name: str,
-                 dockerfile_path: Path,
-                 build_args: dict[str, str] | None = None,
-                 binds: list[Bind] | None = None,
-                 context_files: list[Path] | None = None):
+                 image: Image | None,
+                 binds: list[Bind] | None = None):
         '''Initialize with persistent settings like name and image.
 
 
         :param name: The name of the container.
         :type name: str
-        :param dockerfile_path: The path to the Dockerfile. Its parent directory
-            is the Docker context.
-        :type dockerfile_path: Path
+
         :param build_args: Build arguments to pass to the Dockerfile. Default is
             None.
         :type build_args: dict[str, str] | None
+
         :param binds: A list of Bind tuples defining files and directories to
             mount into the container.
         :type binds: list[Bind] | None
-        :param context_files: A list of files to copy into the Docker context.
-            Default is None.
-        :type context_files: list[Path] | None
         '''
         self.name = name
-        self.dockerfile = dockerfile_path
-        self.build_args = build_args or {}
+        self.image: Image | None = image
         self.binds = binds or []
-        self.context_files = context_files or []
-
-        self.image: Image | None = None
 
         self.container: Container | None = None
         try:
@@ -117,23 +107,27 @@ class ServerContainer:
 
         :param command: The command to run in the container. Default is None.
         :type command: list[str] | None
+
         :param entrypoint: The entrypoint to run in the container. Default is
             None.
         :type entrypoint: list[str] | None
+
         :param log_file: The file to log the container's output to. Default is
             None.
         :type log_file: Path | None
+
         :param auto_rm: Whether to remove the container after it stops. Default
             is False.
         :type auto_rm: bool
+
         :raises RuntimeError: The container is already running. Use execute() to
             send additional commands.
         '''
         if self.container is not None:
             raise RuntimeError('Container is already running!')
 
-        _output = self.build_source_image()
-        assert self.image is not None
+        if self.image is None:
+            raise RuntimeError('Container was not initialized with an image!')
 
         client = docker.from_env()
 
@@ -154,21 +148,6 @@ class ServerContainer:
                                args=(self.container.id, log_file, auto_rm),
                                daemon=False)
         self.monitor.start()
-
-    def build_source_image(self) -> str:
-        '''Build the image, returning the output of the build process.
-
-        Build errors are raised as exceptions.
-        '''
-        with tempfile.TemporaryDirectory() as tmpdir:
-            dockerfile = game.docker_context(self.dockerfile,
-                                             Path(tmpdir),
-                                             self.context_files)
-
-            self.image, logs = build_image(dockerfile,
-                                           name=self.name,
-                                           build_args=self.build_args)
-        return logs
 
     def build_mounts(self) -> list[Mount]:
         '''Return a list of mounts for the container based on self.binds'''

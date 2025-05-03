@@ -2,6 +2,7 @@
 
 import json
 from functools import partial
+from test.util_docker import clean_docker
 
 import pytest
 
@@ -132,3 +133,23 @@ def test_docker_context_extra_files(tmp_path):
     assert (context_dir / 'server.dockerfile').exists()
     assert (context_dir / 'unrelated/file.txt').exists()  # copy directory
     assert (context_dir / 'file.txt').exists()  # copy file
+
+
+def test_game_docker_image(mocker, tmp_path, tmp_file, uncap):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game-docker-image'
+
+    dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
+                          'FROM alpine:latest')
+
+    tmp_file(f'cfg/{name}/server.json', '{}')
+
+    uncap(dockerfile)
+
+    image, logs = game.docker_image(name)
+    clean_docker(name)
+
+    assert image is not None
+    assert 'Successfully built' in logs
+    assert f'Successfully tagged {name}:latest' in logs

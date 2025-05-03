@@ -51,19 +51,19 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
     finally:
         clean_docker(name)
 
-        server_hot = game.server_dir(name)
+    server_hot = game.server_dir(name)
 
-        uncap(server_hot)
+    uncap(server_hot)
 
-        assert server_hot.is_dir()
-        assert server_hot.stat().st_uid == expected_uid
-        assert server_hot.stat().st_gid == expected_gid
+    assert server_hot.is_dir()
+    assert server_hot.stat().st_uid == expected_uid
+    assert server_hot.stat().st_gid == expected_gid
 
-        assert server_hot.parent.stat().st_uid == os.getuid()
-        assert server_hot.parent.stat().st_gid == os.getgid()
+    assert server_hot.parent.stat().st_uid == os.getuid()
+    assert server_hot.parent.stat().st_gid == os.getgid()
 
-        expected_server_file = server_hot / 'some-file'
+    expected_server_file = server_hot / 'some-file'
 
-        assert expected_server_file.is_file()
-        assert expected_server_file.stat().st_uid == expected_uid
-        assert expected_server_file.stat().st_gid == expected_gid
+    assert expected_server_file.is_file()
+    assert expected_server_file.stat().st_uid == expected_uid
+    assert expected_server_file.stat().st_gid == expected_gid

@@ -23,7 +23,7 @@
 			"type": "shell",
 			"icon": { "id": "beaker", "color": "terminal.ansiGreen" },
 			"command": "./py.sh",
-			"args": [ "--", "-m", "pytest",
+			"args": [ "-v", "--", "-m", "pytest",
 				"--cov=manage",
 				"--cov-report=lcov:.venv/lcov.info",
 				"--cov-report=term",
@@ -68,7 +68,7 @@
 			"icon": { "id": "python" },
 			"type": "shell",
 			"command": "./py.sh",
-			"args": [ "-vrr" ],
+			"args": [ "-vrrs", "--", "exit" ],
 			"problemMatcher": [ "$python" ],
 			"presentation": { "group": "pyshell" }
 		},

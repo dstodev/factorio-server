@@ -1,4 +1,4 @@
 '''Docker tools.'''
 
-from manage.docker.server_container import Bind, ServerContainer
+from manage.docker.container import Bind, GameContainer
 from manage.docker.util import build_image, build_logs_to_str

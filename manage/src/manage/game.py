@@ -2,10 +2,14 @@
 
 import json
 import shutil
+import tempfile
 from pathlib import Path
 from typing import NamedTuple
 
+from docker.models.images import Image
+
 from manage import paths
+from manage.docker.util import build_image
 
 
 def force_dir(path: Path, **kwargs) -> Path:
@@ -89,6 +93,75 @@ def start_script(name: str) -> Path:
     return script
 
 
+class User(NamedTuple):
+    '''User information.'''
+    name: str
+    uid: int
+    group: str
+    gid: int
+
+
+def user(name: str) -> User:
+    '''Get the user and group information for the game server.'''
+    user_ = cfg_data(name)['user']
+    name, uid = user_['name'].split(':')
+    group, gid = user_['group'].split(':')
+    return User(name=name, uid=int(uid), group=group, gid=int(gid))
+
+
+def docker_image(name: str, context_files: list[Path] | None = None) -> tuple[Image, str]:
+    '''Build the game's image.
+
+    Build errors are raised as exceptions.
+
+    :param name: The name of the game.
+    :type name: str
+
+    :param context_files: Additional files to include in the Docker context.
+    :type context_files: list[Path] | None
+
+    :return: The image and logs from the build.
+    :rtype: tuple[Image, str]
+    '''
+    with tempfile.TemporaryDirectory() as tmpdir:
+        dockerfile_ = docker_context(dockerfile(name), Path(tmpdir), context_files)
+        image, logs = build_image(dockerfile_, name, build_args(name))
+
+    return image, logs
+
+
+def docker_context(dockerfile_: Path,
+                   context_dir: Path,
+                   context_files: list[Path] | None = None) -> Path:
+    '''Prepare the Docker context inside of context_dir.
+
+    Creates copies in context_dir of all files around the dockerfile & those
+    listed in context_files. Unfortunately, lightweight symlinks cannot be used
+    instead, because Docker will not use them.
+
+    Returns a Path to the dockerfile in the context_dir.
+    '''
+    assert context_dir.is_dir(), f'Context directory must exist: {context_dir}'
+
+    context_files = context_files or []
+
+    for file in dockerfile_.parent.iterdir():
+        copy_file(file, context_dir / file.name)
+
+    for file in context_files:
+        copy_file(file, context_dir / file.name)
+
+    return context_dir / dockerfile_.name
+
+
+def copy_file(src: Path, dst: Path):
+    '''Copy a file or directory.'''
+    if src.is_dir():
+        shutil.copytree(src, dst)
+    else:
+        shutil.copy(src, dst)
+
+
 def build_args(name: str) -> dict[str, str]:
     '''Return common build arguments for game dockerfiles.
 
@@ -128,51 +201,3 @@ def build_args(name: str) -> dict[str, str]:
         pass
 
     return args
-
-
-class User(NamedTuple):
-    '''User information.'''
-    name: str
-    uid: int
-    group: str
-    gid: int
-
-
-def user(name: str) -> User:
-    '''Get the user and group information for the game server.'''
-    user_ = cfg_data(name)['user']
-    name, uid = user_['name'].split(':')
-    group, gid = user_['group'].split(':')
-    return User(name=name, uid=int(uid), group=group, gid=int(gid))
-
-
-def docker_context(dockerfile_: Path,
-                   context_dir: Path,
-                   context_files: list[Path] | None = None) -> Path:
-    '''Prepare the Docker context inside of context_dir.
-
-    Creates copies in context_dir of all files around the dockerfile & those
-    listed in context_files. Unfortunately, lightweight symlinks cannot be used
-    instead, because Docker will not use them.
-
-    Returns a Path to the dockerfile in the context_dir.
-    '''
-    assert context_dir.is_dir(), f'Context directory must exist: {context_dir}'
-
-    context_files = context_files or []
-
-    for file in dockerfile_.parent.iterdir():
-        copy_file(file, context_dir / file.name)
-
-    for file in context_files:
-        copy_file(file, context_dir / file.name)
-
-    return context_dir / dockerfile_.name
-
-
-def copy_file(src: Path, dst: Path):
-    '''Copy a file or directory.'''
-    if src.is_dir():
-        shutil.copytree(src, dst)
-    else:
-        shutil.copy(src, dst)

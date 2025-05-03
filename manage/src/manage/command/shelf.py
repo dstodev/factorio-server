@@ -32,8 +32,8 @@ class Shelf:
             this_index = last_index + 1
 
             # server dir looks like: <repo>/server-files/<game-name>/hot
-            # server_dir returns the hot path. The hot path is created by the
-            # server user in the Download command, meaning the host user may not
-            # have permission to move it directly. Instead, move the parent
+            # game.server_dir() returns the hot path. The hot path is created by
+            # the server user in the Download command, meaning the host user may
+            # not have permission to move it directly. Instead, move the parent
             # <game-name> directory to the shelf.
             server_dir.parent.rename(shelf_dir / str(this_index))

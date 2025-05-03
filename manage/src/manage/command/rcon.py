@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from manage.docker.server_container import ServerContainer
+from manage.docker.container import GameContainer
 
 
 class Rcon:
@@ -25,6 +25,5 @@ class Rcon:
 
         :raises RuntimeError: The server is not running.
         '''
-        # Not starting the container, do not need a real Dockerfile
-        container = ServerContainer(self.name, Path())
+        container = GameContainer(self.name, None)  # Only reattach
         self.last_result = container.execute(['rcon', *self.command])
