@@ -159,4 +159,12 @@ if "$shell"; then
 	exec $shell_cmd -c -- "$(printf '%q ' "$@")"
 fi
 
+jobs="$(($(nproc) - 1))"
+
+if [ "$VERBOSE" -gt 0 ]; then
+	(cd "$source_dir/rcon" && make -j $jobs docker)
+else
+	(cd "$source_dir/rcon" && make -j $jobs docker) >/dev/null 2>&1
+fi
+
 exec python "$@"

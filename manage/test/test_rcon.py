@@ -15,10 +15,11 @@ def test_rcon_command(mocker, tmp_path, tmp_file, uncap):
     shutil.copytree(paths.get('rcon'), tmp_path / 'rcon')
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    name = 'test-game-rcon-command'
+    name = 'test-rcon-command'
+    rcon_image_name = 'rcon-test-rcon-command'
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
-                          'FROM rcon:latest')
+                          f'FROM {rcon_image_name}:latest')
 
     expected_uid = 30120
     expected_gid = 30121
@@ -34,9 +35,9 @@ def test_rcon_command(mocker, tmp_path, tmp_file, uncap):
     uncap(dockerfile)
     uncap(server_json)
 
-    build_image(paths.get('rcon') / 'Dockerfile', 'rcon', game.build_args(name))
-
     try:
+        build_image(paths.get('rcon') / 'Dockerfile', rcon_image_name, game.build_args(name))
+
         container = ServerContainer(name,
                                     game.dockerfile(name),
                                     game.build_args(name))
@@ -63,10 +64,12 @@ def test_rcon_command(mocker, tmp_path, tmp_file, uncap):
         assert result.exit_code == 0
         assert result.output == f'{expected_uid}:{expected_gid}\n'
 
-        container.execute(['pkill', 'tail'])
+        assert container.container is not None
+        container.container.stop()
         container.wait()
 
         assert container.container is None
 
     finally:
         clean_docker(name)
+        # clean_docker(rcon_image_name)

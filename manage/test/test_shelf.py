@@ -132,3 +132,36 @@ def test_shelf_permissions(mocker, tmp_path, tmp_file, uncap):
     assert (expected_shelf_dir / 'hot/some-file').is_file()
     assert (expected_shelf_dir / 'hot/some-file').stat().st_uid == expected_uid
     assert (expected_shelf_dir / 'hot/some-file').stat().st_gid == expected_gid
+
+
+def test_shelf_server_does_not_exist(mocker, tmp_path, tmp_file):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game'
+
+    # Test precision: the Shelf command should not look in the directory
+    # above the server hot dir
+    tmp_file(f'server-files/{name}/some-file.txt',
+             'Hello!')
+
+    shelf = Shelf(name)
+
+    shelf.execute()
+
+    assert not (tmp_path / 'shelf').exists()
+
+
+def test_shelf_server_is_empty(mocker, tmp_path):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game'
+
+    server_dir = tmp_path / f'server-files/{name}/hot'
+
+    server_dir.mkdir(parents=True, exist_ok=True)
+
+    shelf = Shelf(name)
+
+    shelf.execute()
+
+    assert not (tmp_path / 'shelf').exists()

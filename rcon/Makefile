@@ -7,7 +7,7 @@ CXXFLAGS := -std=c++17 -O3 -Wall -Wextra
 DOCKERFILE := Dockerfile
 DOCKER_IMAGE := rcon:latest
 
-all: image
+all: docker
 
 $(CLIENT): $(SRC)
 	$(CXX) $(CXXFLAGS) -o $@ $^
@@ -15,16 +15,25 @@ $(CLIENT): $(SRC)
 test: $(CLIENT)
 	./$< test
 
-clean:
-	rm -f $(CLIENT)
-
 install: $(CLIENT)
 	install -Dm755 -t /usr/local/bin $<
 
-image:
+clean:
+	rm -f $(CLIENT)
+
+docker: image alpine ubuntu
+
+image: ubuntu
 	docker build -f $(DOCKERFILE) -t $(DOCKER_IMAGE) .
+
+alpine:
+	docker pull alpine:latest
+
+ubuntu:
+	docker pull ubuntu:latest
 
 shell: image
 	docker run -it --rm $(DOCKER_IMAGE)
 
-.PHONY: all test clean image shell
+.PHONY: all test install clean \
+        docker image alpine ubuntu shell

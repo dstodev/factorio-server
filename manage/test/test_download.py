@@ -47,8 +47,9 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
 
     try:
         download = Download(name)
-
         download.execute()
+    finally:
+        clean_docker(name)
 
         server_hot = game.server_dir(name)
 
@@ -66,6 +67,3 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
         assert expected_server_file.is_file()
         assert expected_server_file.stat().st_uid == expected_uid
         assert expected_server_file.stat().st_gid == expected_gid
-
-    finally:
-        clean_docker(name)

@@ -60,15 +60,19 @@ class Download:
                 # /game aligns with guest value for server_dir.parent bind mount in __init__
                 guest_server_dir = '/game/hot'
 
+                # Create the server directory in the container so it is
+                # owned by the server user.
+
+                command = ' && '.join([
+                    f'mkdir {guest_server_dir}',
+                    'cp /download.sh /tmp/download.sh',
+                    f'/tmp/download.sh {guest_server_dir}'
+                ])
+
                 self.container.start(
                     entrypoint=['/bin/sh', '-c'],
-                    command=[' && '.join((
-                        # Create the server directory in the container so it is
-                        # owned by the server user.
-                        f'mkdir {guest_server_dir}',
-                        'cp /download.sh /tmp/download.sh',
-                        f'/tmp/download.sh {guest_server_dir}',
-                    ))])
+                    command=[command])
+
                 result = self.container.wait()
             finally:
                 parent_dir.chmod(backup_mode)

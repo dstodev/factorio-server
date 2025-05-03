@@ -5,6 +5,15 @@ RUN apt-get update \
 	build-essential \
 	&& rm -rf /var/lib/apt/lists/*
 
+WORKDIR /root
+COPY . .
+RUN make test \
+	&& make install \
+	&& make clean
+
+ARG rcon_port=34240
+EXPOSE $rcon_port/tcp
+
 ARG user_id=30120
 ARG user_name=rcon
 ARG group_id=30120
@@ -15,15 +24,6 @@ RUN groupadd --gid $group_id $group_name \
 	--gid $group_id \
 	--create-home \
 	$user_name
-
-ARG rcon_port=34240
-EXPOSE $rcon_port/tcp
-
-WORKDIR /root
-COPY . .
-RUN make test \
-	&& make install \
-	&& make clean
 
 USER $user_name
 WORKDIR /home/$user_name

@@ -4,8 +4,9 @@
 from test.util_docker import clean_docker
 
 import pytest
-from docker.errors import BuildError
+from docker.errors import BuildError, NotFound
 
+import docker
 from manage import PROJECT_NAME, paths
 from manage.docker import build_image
 from manage.docker.server_container import Bind, ServerContainer
@@ -96,8 +97,10 @@ class TestContainer:
         expected_uname = 'test-user'
         expected_gname = 'test-group'
 
+        rcon_image_name = 'test-can-base-on-rcon-image'
+
         dockerfile = tmp_file('test-image.dockerfile',
-                              'FROM rcon:latest',
+                              f'FROM {rcon_image_name}:latest',
                               f'RUN test "$(id -u)" = "{expected_uid}"',
                               f'RUN test "$(id -g)" = "{expected_gid}"',
                               f'RUN test "$(id -un)" = "{expected_uname}"',
@@ -106,28 +109,32 @@ class TestContainer:
         uncap(dockerfile)
 
         build_args = {
-            'user_id': f'{expected_uid}',
-            'group_id': f'{expected_gid}',
-            'user_name': f'{expected_uname}',
-            'group_name': f'{expected_gname}',
+            'user_id': expected_uid,
+            'group_id': expected_gid,
+            'user_name': expected_uname,
+            'group_name': expected_gname,
         }
 
-        build_image(paths.get('rcon') / 'Dockerfile', 'rcon', build_args)
+        try:
+            build_image(paths.get('rcon') / 'Dockerfile', rcon_image_name, build_args)
 
-        container = ServerContainer(self.container_name, dockerfile)
+            container = ServerContainer(self.container_name, dockerfile)
 
-        result = container.build_source_image()
+            result = container.build_source_image()
+        finally:
+            # clean_docker(rcon_image_name)
+            pass
 
         uncap(result)
 
-        assert 'FROM rcon:latest' in result
+        assert f'FROM {rcon_image_name}:latest' in result
         assert 'Successfully built' in result
         assert f'Successfully tagged {self.container_name}:latest' in result
 
         assert f'{expected_uid}' in result
         assert f'{expected_gid}' in result
-        assert f'{expected_uname}' in result
-        assert f'{expected_gname}' in result
+        assert expected_uname in result
+        assert expected_gname in result
 
     def test_container_start(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
@@ -439,3 +446,38 @@ class TestContainer:
 
         with pytest.raises(RuntimeError, match='Container is not running'):
             container.execute(['echo', 'Hello!'])
+
+    def test_wait_container_externally_removed(self, tmp_file, uncap):
+        dockerfile = tmp_file('test-image.dockerfile',
+                              'FROM alpine:latest')
+
+        uncap(dockerfile)
+
+        container = ServerContainer(self.container_name, dockerfile)
+
+        container.start()
+
+        assert container.container is not None
+        container_id = container.container.id
+
+        client = docker.from_env()
+
+        assert container_id is not None
+        assert client.containers.get(container_id) is not None
+
+        container.container.remove(force=True)
+
+        with pytest.raises(NotFound):
+            client.containers.get(container_id)
+
+        assert container.wait() is None
+
+    def test_wait_no_container(self, tmp_file, uncap):
+        dockerfile = tmp_file('test-image.dockerfile',
+                              'FROM alpine:latest')
+
+        uncap(dockerfile)
+
+        container = ServerContainer(self.container_name, dockerfile)
+
+        assert container.wait() is None

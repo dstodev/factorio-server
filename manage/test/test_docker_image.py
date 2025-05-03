@@ -27,10 +27,9 @@ def test_image_build(request, tmp_file, uncap):
 
     try:
         image_, log = build_image(dockerfile, name, build_args)
-
-        uncap(log)
-
-        assert image_ is not None
-
     finally:
         clean_docker(name)
+
+    uncap(log)
+
+    assert image_ is not None

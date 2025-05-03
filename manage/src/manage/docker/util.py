@@ -13,11 +13,13 @@ def build_image(dockerfile: Path,
                 build_args: dict[str, str] | None = None) -> tuple[Image, str]:
     '''Build an image.'''
     client = docker.from_env()
+    build_args = {k: str(v) for k, v in (build_args or {}).items()}
     image, logs = client.images.build(path=str(dockerfile.parent),
                                       dockerfile=dockerfile.name,
                                       tag=name,
                                       buildargs=build_args,
-                                      rm=True)
+                                      rm=True,
+                                      forcerm=True)
 
     return image, build_logs_to_str(logs)
 

@@ -70,8 +70,8 @@ class ServerContainer:
         :param dockerfile_path: The path to the Dockerfile. Its parent directory
             is the Docker context.
         :type dockerfile_path: Path
-        :param build_args: Build arguments to pass to the Dockerfile. Defaults
-            to None.
+        :param build_args: Build arguments to pass to the Dockerfile. Default is
+            None.
         :type build_args: dict[str, str] | None
         :param binds: A list of Bind tuples defining files and directories to
             mount into the container.
@@ -123,8 +123,8 @@ class ServerContainer:
         :param log_file: The file to log the container's output to. Default is
             None.
         :type log_file: Path | None
-        :param auto_rm: Whether to remove the container after it stops. Defaults
-            to False.
+        :param auto_rm: Whether to remove the container after it stops. Default
+            is False.
         :type auto_rm: bool
         :raises RuntimeError: The container is already running. Use execute() to
             send additional commands.
@@ -213,8 +213,12 @@ class ServerContainer:
         container = self.container
         self.container = None
 
-        if container:
+        if container is None:
+            return None
+
+        try:
             wait_result = container.wait(timeout=timeout)
+
             self.stop_monitor()
 
             assert 'StatusCode' in wait_result
@@ -226,6 +230,9 @@ class ServerContainer:
             container.remove(force=True)
 
             return Result(exit_status, stdout, stderr)
+
+        except NotFound:
+            return None
 
     def stop_monitor(self, timeout: int = 10):
         '''Stop the monitor process.'''
