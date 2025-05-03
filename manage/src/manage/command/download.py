@@ -40,7 +40,7 @@ class Download:
             Bind(host=game.download_script(name), guest='/download.sh', writeable=False),
         ]
 
-        self.container = GameContainer(name, image, binds=binds)
+        self.container = GameContainer(f'{name}-download', image, binds=binds)
 
     def execute(self) -> None:
         '''Run the download script.'''
@@ -50,31 +50,29 @@ class Download:
             parent_dir = self.server_dir.parent
             parent_dir.mkdir(parents=True, exist_ok=True)
 
-            backup_mode = parent_dir.stat().st_mode
+            # /game aligns with guest value for server_dir.parent bind mount in __init__
+            guest_server_dir = '/game/hot'
+
+            # Create the server directory in the container so it is
+            # owned by the server user.
+            command = ' && '.join([
+                f'mkdir {guest_server_dir}',
+                'cp /download.sh /tmp/download.sh',
+                f'/tmp/download.sh {guest_server_dir}'
+            ])
+
+            restore_mode = parent_dir.stat().st_mode
 
             try:
                 # Temporarily set full permissions (o+w so server user can write) & set sticky bit
-                parent_dir.chmod(backup_mode | 0o777 | stat.S_ISVTX)
+                parent_dir.chmod(restore_mode | 0o777 | stat.S_ISVTX)
 
-                # /game aligns with guest value for server_dir.parent bind mount in __init__
-                guest_server_dir = '/game/hot'
-
-                # Create the server directory in the container so it is
-                # owned by the server user.
-
-                command = ' && '.join([
-                    f'mkdir {guest_server_dir}',
-                    'cp /download.sh /tmp/download.sh',
-                    f'/tmp/download.sh {guest_server_dir}'
-                ])
-
-                self.container.start(
-                    entrypoint=['/bin/sh', '-c'],
-                    command=[command])
+                self.container.start(entrypoint=['/bin/sh', '-c'],
+                                     command=[command])
 
                 result = self.container.wait()
             finally:
-                parent_dir.chmod(backup_mode)
+                parent_dir.chmod(restore_mode)
 
             assert isinstance(result, Result)
 

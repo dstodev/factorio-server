@@ -1,18 +1,19 @@
 '''Test the Start Command.'''
 
+import datetime
 import json
 import os
 from functools import partial
 from test.util_docker import clean_docker
 
 from manage import game, paths
-from manage.command import Download, Start
+from manage.command import Backup, Download
 
 
-def test_start(mocker, tmp_path, tmp_file, uncap):
+def test_backup(mocker, tmp_path, tmp_file, uncap):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    name = 'test-game-start'
+    name = 'test-game-backup'
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest',
@@ -24,12 +25,12 @@ def test_start(mocker, tmp_path, tmp_file, uncap):
                           '  && adduser -u $user_id -D -G $group_name $user_name',
                           'USER $user_name')
 
-    start = tmp_file(f'cfg/{name}/start.sh',
-                     '#!/bin/sh',
-                     'echo "Server started!"',
-                     'echo "$1"',
-                     'test -f "$1/some-file"',
-                     mode=0o744)
+    backup = tmp_file(f'cfg/{name}/backup.sh',
+                      '#!/bin/sh',
+                      'echo "$1"',
+                      'echo "$2"',
+                      'cp -r "$1" "$2"',
+                      mode=0o744)
 
     download = tmp_file(f'cfg/{name}/download.sh',
                         '#!/bin/sh',
@@ -49,39 +50,46 @@ def test_start(mocker, tmp_path, tmp_file, uncap):
                            }, indent=2))
 
     uncap(dockerfile)
-    uncap(start)
+    uncap(backup)
     uncap(download)
     uncap(server_json)
+
+    timestamp = lambda: datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d_%H-%M-%SZ')
 
     try:
         download = Download(name)
         download.execute()
 
-        start = Start(name)
-        start.execute(auto_rm=False)
+        before_backup = timestamp()
 
-        result = start.container.wait()
+        backup = Backup(name)
+        backup.execute()
 
     finally:
         clean_docker(name)
 
-    assert result is not None
-    assert result.exit_status == 0
+    after_backup = timestamp()
 
-    server_hot = game.server_dir(name)
+    backup_root = game.backup_dir(name)
 
-    uncap(server_hot)
+    backups = list(backup_root.iterdir())
+    assert len(backups) == 1
+    backup = backups[0]
 
-    log = game.logs_dir(name) / 'server.log'
+    uncap(backup)
 
-    uncap(log)
+    assert backup.is_dir()
+    assert backup.stat().st_uid == os.getuid()
+    assert backup.stat().st_gid == os.getgid()
 
-    assert log.is_file()
-    assert log.stat().st_uid == os.getuid()
-    assert log.stat().st_gid == os.getgid()
+    assert (backup / 'hot').is_dir()
+    assert (backup / 'hot').stat().st_uid == expected_uid
+    assert (backup / 'hot').stat().st_gid == expected_gid
 
-    content = log.read_text(encoding='utf-8')
+    assert (backup / 'hot/some-file').is_file()
+    assert (backup / 'hot/some-file').stat().st_uid == expected_uid
+    assert (backup / 'hot/some-file').stat().st_gid == expected_gid
 
-    assert 'Server started!\n' in content
-    assert '/game/hot\n' in content
-    assert 'closing logfile writer\n' in content
+    date = backup.name
+    assert date >= before_backup
+    assert date <= after_backup

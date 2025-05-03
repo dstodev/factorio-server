@@ -86,3 +86,41 @@ def test_rcon_command_no_container(mocker, tmp_path):
 
     with pytest.raises(RuntimeError, match='Container does not exist'):
         rcon.execute()
+
+
+def test_rcon_image_no_client(mocker, tmp_path, tmp_file, uncap):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-rcon-command'
+
+    dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
+                          'FROM alpine:latest')
+
+    server_json = tmp_file(f'cfg/{name}/server.json', '{}')
+
+    uncap(dockerfile)
+    uncap(server_json)
+
+    try:
+        image, _logs = game.docker_image(name)
+
+        container = GameContainer(name, image)
+
+        container.start(command=['tail', '-f', '/dev/null'])
+
+        rcon = Rcon(name, ['test'])
+        rcon.execute()
+        result = rcon.last_result
+
+        assert result is not None
+        assert result.exit_code != 0
+        assert result.output != ''
+
+        assert container.container is not None
+        container.container.stop()
+        container.wait()
+
+        assert container.container is None
+
+    finally:
+        clean_docker(name)

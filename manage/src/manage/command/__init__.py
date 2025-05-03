@@ -1,5 +1,6 @@
 '''Actions the app can perform.'''
 
+from manage.command.backup import Backup
 from manage.command.command import Command
 from manage.command.download import Download
 from manage.command.rcon import Rcon

@@ -25,7 +25,7 @@ class Start:
 
         image, _logs = game.docker_image(name)
 
-        self.container = GameContainer(name, image, binds)
+        self.container = GameContainer(f'{name}-server', image, binds)
 
     def execute(self, auto_rm: bool = True) -> None:
         '''Start the server.
@@ -33,9 +33,12 @@ class Start:
         auto_rm is not normally accessible since function implements the Command
         protocol, which does not take any arguments. The flag exists for tests.
         '''
+        # /game aligns with guest value for server_dir.parent bind mount in __init__
+        guest_server_dir = '/game/hot'
+
         command = ' && '.join([
             'cp /start.sh /tmp/start.sh',
-            '/tmp/start.sh /game/hot'
+            f'/tmp/start.sh {guest_server_dir}'
         ])
 
         self.container.start(entrypoint=['/bin/sh', '-c'],
