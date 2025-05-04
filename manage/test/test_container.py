@@ -220,9 +220,10 @@ class TestContainer:
 
         # Once the Docker container closes, the monitor stops and the log file
         # closes. It does not matter which process or instance of the
-        # ServerContainer class stops the container. Hack: give the monitor to
-        # the new container so calling wait() deterministically stops the
-        # monitor to guarantee logfile closure.
+        # ServerContainer class stops the container.
+        #
+        # Hack: give the monitor to the new container so calling wait()
+        # deterministically stops the monitor to guarantee logfile closure.
         container.monitor = monitor
         result = container.wait()
 
@@ -238,11 +239,28 @@ class TestContainer:
 
     def test_execute(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
-                              'FROM alpine:latest')
+                              'FROM alpine:latest',
+                              'ARG user_id',
+                              'ARG user_name',
+                              'ARG group_id',
+                              'ARG group_name',
+                              'RUN addgroup -g $group_id $group_name \\',
+                              '  && adduser -u $user_id -D -G $group_name $user_name',
+                              'USER $user_name')
 
         uncap(dockerfile)
 
-        image, _logs = build_image(dockerfile, self.container_name)
+        expected_uid = 30120
+        expected_gid = 30121
+
+        build_args = {
+            'user_id': expected_uid,
+            'user_name': 'server-user',
+            'group_id': expected_gid,
+            'group_name': 'server-group'
+        }
+
+        image, _logs = build_image(dockerfile, self.container_name, build_args)
 
         container = GameContainer(self.container_name, image)
 
@@ -250,10 +268,16 @@ class TestContainer:
 
         assert container.container is not None
 
+        result = container.execute(['/bin/sh', '-c', 'echo "$(id -u):$(id -g)"'])
+
+        assert result is not None
+        assert result.exit_status == 0
+        assert result.output == f'{expected_uid}:{expected_gid}\n'
+
         result = container.execute(['pkill', 'tail'])  # SIGTERM the tail process
 
         assert result is not None
-        assert result.exit_code == 0
+        assert result.exit_status == 0
         assert result.output == ''
 
         result = container.wait()

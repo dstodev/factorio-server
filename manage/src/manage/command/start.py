@@ -33,13 +33,23 @@ class Start:
         auto_rm is not normally accessible since function implements the Command
         protocol, which does not take any arguments. The flag exists for tests.
         '''
+        parent_dir = self.server_dir.parent
+        parent_dir.mkdir(parents=True, exist_ok=True)
+
         # /game aligns with guest value for server_dir.parent bind mount in __init__
         guest_server_dir = '/game/hot'
 
+        rcon = game.rcon_password(self.name, new=True)
+
         command = ' && '.join([
+            f'mkdir -p {guest_server_dir}',
             'cp /start.sh /tmp/start.sh',
-            f'/tmp/start.sh {guest_server_dir}'
+            f'while [ ! -f /tmp/stopfile ]; do /tmp/start.sh {guest_server_dir} {rcon}; done',
+            'rm -f /tmp/stopfile',
         ])
+
+        parent_dir = self.server_dir.parent
+        parent_dir.mkdir(parents=True, exist_ok=True)
 
         self.container.start(entrypoint=['/bin/sh', '-c'],
                              command=[command],

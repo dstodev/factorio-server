@@ -6,7 +6,7 @@ from manage.docker.container import GameContainer
 class Rcon:
     '''Send an RCON command to a server.'''
 
-    def __init__(self, name: str, command: list[str]) -> None:
+    def __init__(self, name: str, command: list[str], password: str | None = None) -> None:
         '''Initialize the RCON command.
 
         :param name: The game to use.
@@ -17,6 +17,7 @@ class Rcon:
         self.name = name
         self.command = command
         self.last_result = None
+        self.password = password
 
     def execute(self) -> None:
         '''Run the RCON command.
@@ -24,4 +25,13 @@ class Rcon:
         :raises RuntimeError: The server is not running.
         '''
         container = GameContainer(self.name, None)  # Only reattach
-        self.last_result = container.execute(['rcon', *self.command])
+
+        argstr = ' '.join(self.command)
+        cmdstr = f'rcon {argstr}'
+
+        password = self.password
+
+        if password is not None:
+            cmdstr = f'echo "{password}" | {cmdstr}'
+
+        self.last_result = container.execute(['/bin/sh', '-c', cmdstr])

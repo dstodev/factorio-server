@@ -18,6 +18,7 @@ help() {
 		  -r, --refresh   Reinitialize the virtual environment.
 		                  Repeat to fully rebuild the environment.
 		  -s, --shell     Start a shell in the virtual environment.
+		  -p, --prepare   Prepare additional environment tools e.g. Docker images.
 
 		  -- [COMMAND] [ARG]...   Run a command in the environment.
 
@@ -31,8 +32,8 @@ help() {
 canonical=$(
 	# Requires util-linux getopt(1) to support long options like GNU getopt_long(3)
 	getopt --name "$(basename "$0")" \
-		--options hvrs \
-		--longoptions help,verbose,refresh,shell \
+		--options hvrsp \
+		--longoptions help,verbose,refresh,shell,prepare \
 		-- "$@"
 ) || status=$?
 
@@ -64,6 +65,9 @@ while :; do
 	-s | --shell)
 		shell=true
 		;;
+	-p | --prepare)
+		prepare=true
+		;;
 
 	--)
 		shift # --
@@ -74,6 +78,7 @@ while :; do
 done
 
 shell="${shell-false}"
+prepare="${prepare-false}"
 
 umask 0002
 
@@ -151,10 +156,12 @@ fi
 
 jobs="$(($(nproc) - 1))"
 
-if [ "$VERBOSE" -gt 0 ]; then
-	(cd "$source_dir/rcon" && make --jobs $jobs docker)
-else
-	(cd "$source_dir/rcon" && make --jobs $jobs docker) >/dev/null 2>&1
+if $prepare; then
+	if [ "$VERBOSE" -gt 0 ]; then
+		(cd "$source_dir/rcon" && make --jobs $jobs docker)
+	else
+		(cd "$source_dir/rcon" && make --jobs $jobs docker) >/dev/null 2>&1
+	fi
 fi
 
 if "$shell"; then

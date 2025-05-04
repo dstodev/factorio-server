@@ -51,20 +51,36 @@ def test_rcon_command(mocker, tmp_path, tmp_file, uncap):
         result = rcon.last_result
 
         assert result is not None
-        assert result.exit_code == 0
+        assert result.exit_status == 0
         assert result.output == 'All tests passed!\n'
 
         result = container.execute(['/bin/sh', '-c', 'stat -c "%u:%g" "$(which rcon)"'])
 
         assert result is not None
-        assert result.exit_code == 0
+        assert result.exit_status == 0
         assert result.output == '0:0\n'
 
         result = container.execute(['/bin/sh', '-c', 'echo "$(id -u):$(id -g)"'])
 
         assert result is not None
-        assert result.exit_code == 0
+        assert result.exit_status == 0
         assert result.output == f'{expected_uid}:{expected_gid}\n'
+
+        rcon = Rcon(name, ['localhost'])
+        rcon.execute()
+        result = rcon.last_result
+
+        assert result is not None
+        assert result.exit_status == 255
+        assert result.output == 'Error: Timed out waiting for password\n'
+
+        rcon = Rcon(name, ['localhost'], password='test')
+        rcon.execute()
+
+        result = rcon.last_result
+        assert result is not None
+        assert result.exit_status == 255
+        assert 'Connection refused' in result.output
 
         assert container.container is not None
         container.container.stop()
@@ -96,10 +112,7 @@ def test_rcon_image_no_client(mocker, tmp_path, tmp_file, uncap):
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest')
 
-    server_json = tmp_file(f'cfg/{name}/server.json', '{}')
-
     uncap(dockerfile)
-    uncap(server_json)
 
     try:
         image, _logs = game.docker_image(name)
@@ -113,7 +126,7 @@ def test_rcon_image_no_client(mocker, tmp_path, tmp_file, uncap):
         result = rcon.last_result
 
         assert result is not None
-        assert result.exit_code != 0
+        assert result.exit_status != 0
         assert result.output != ''
 
         assert container.container is not None

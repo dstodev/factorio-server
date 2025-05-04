@@ -80,3 +80,11 @@ def test_build_args_only_user(tmp_path, mocker, uncap):
         'group_name': 'server-group',
         'group_id': '30122'
     }
+
+
+def test_build_args_no_file(tmp_path, mocker):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game'
+
+    assert game.build_args(name) == {}

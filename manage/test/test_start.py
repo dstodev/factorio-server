@@ -5,7 +5,7 @@ import os
 from functools import partial
 from test.util_docker import clean_docker
 
-from manage import game, paths
+from manage import PROJECT_NAME, game, paths
 from manage.command import Download, Start
 
 
@@ -28,7 +28,9 @@ def test_start(mocker, tmp_path, tmp_file, uncap):
                      '#!/bin/sh',
                      'echo "Server started!"',
                      'echo "$1"',
+                     'echo "$2"',
                      'test -f "$1/some-file"',
+                     'touch /tmp/stopfile',
                      mode=0o744)
 
     download = tmp_file(f'cfg/{name}/download.sh',
@@ -84,4 +86,56 @@ def test_start(mocker, tmp_path, tmp_file, uncap):
 
     assert 'Server started!\n' in content
     assert '/game/hot\n' in content
+    assert game.rcon_password(name) in content
     assert 'closing logfile writer\n' in content
+
+
+def test_start_stopfile_loop(mocker, tmp_path, tmp_file, uncap):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game-start-stopfile-loop'
+
+    dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
+                          'FROM alpine:latest')
+
+    start = tmp_file(f'cfg/{name}/start.sh',
+                     '#!/bin/sh',
+                     'if [ -f /tmp/call-count ]; then',
+                     '  count=$(cat /tmp/call-count)',
+                     '  count=$((count + 1))',
+                     'else',
+                     '  count=1',
+                     'fi',
+                     'echo "$count"',
+                     'echo $count > /tmp/call-count',
+                     'if [ $count -eq 10 ]; then',
+                     '  touch /tmp/stopfile',
+                     'fi',
+                     mode=0o744)
+
+    uncap(dockerfile)
+    uncap(start)
+
+    try:
+        start = Start(name)
+        start.execute(auto_rm=False)
+
+        result = start.container.wait()
+
+    finally:
+        clean_docker(f'{name}-server')
+
+    assert result is not None
+    assert result.exit_status == 0
+
+    server_hot = game.server_dir(name)
+
+    uncap(server_hot)
+
+    log = game.logs_dir(name) / 'server.log'
+
+    uncap(log)
+
+    content = log.read_text(encoding='utf-8')
+
+    assert content == f'1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n({PROJECT_NAME}) closing logfile writer\n'

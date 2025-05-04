@@ -94,3 +94,8 @@ def test_add_self_as_action():
 
     with pytest.raises(ValueError, match='Cannot add self to schedule'):
         schedule.add_action(schedule)
+
+
+def test_execute_empty_schedule():
+    schedule = Schedule()
+    schedule.execute()  # Should not raise an error

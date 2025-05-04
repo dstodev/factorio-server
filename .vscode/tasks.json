@@ -23,7 +23,7 @@
 			"type": "shell",
 			"icon": { "id": "beaker", "color": "terminal.ansiGreen" },
 			"command": "./py.sh",
-			"args": [ "-v", "--", "-m", "pytest",
+			"args": [ "-vp", "--", "-m", "pytest",
 				"--cov=manage",
 				"--cov-report=lcov:.venv/lcov.info",
 				"--cov-report=term",

@@ -45,6 +45,7 @@ class Backup:
         guest_server_dir = '/game/hot'
         guest_backup_dir = f'/backup/{timestamp}'
 
+        # TODO: Test timestamp directory already exists
         backup_dir = self.backup_dir / timestamp
         backup_dir.mkdir(parents=True, exist_ok=True)
 

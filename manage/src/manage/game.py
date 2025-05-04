@@ -1,7 +1,9 @@
 '''Game-specific file and directory tools.'''
 
 import json
+import random
 import shutil
+import string
 import tempfile
 from pathlib import Path
 from typing import NamedTuple
@@ -63,8 +65,11 @@ def cfg_data(name: str) -> dict:
     cfg = cfg_file(name)
     data = {}
 
-    with open(cfg, 'r', encoding='utf-8') as file:
-        data = json.load(file)
+    try:
+        with open(cfg, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+    except FileNotFoundError:
+        pass
 
     return data
 
@@ -184,7 +189,10 @@ def build_args(name: str) -> dict[str, str]:
 
     args = {}
 
-    cfg = cfg_data(name)
+    try:
+        cfg = cfg_data(name)
+    except FileNotFoundError:
+        return args
 
     try:
         fields = {}
@@ -207,3 +215,27 @@ def build_args(name: str) -> dict[str, str]:
         pass
 
     return args
+
+
+def rcon_password(name: str, length: int = 128, new: bool = False) -> str:
+    '''Get the RCON password for the game server.'''
+    cfg = cfg_dir(name)
+    secret_file = cfg / 'secret'
+
+    try:
+        if new:
+            raise FileNotFoundError
+
+        with open(secret_file, 'r', encoding='utf-8') as file:
+            password = file.read().strip()
+
+    except FileNotFoundError:
+        char_pool = string.ascii_letters + string.digits
+        password = ''.join(random.choices(char_pool, k=length))
+
+        secret_file.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(secret_file, 'w', encoding='utf-8') as file:
+            file.write(f'{password}\n')
+
+    return password

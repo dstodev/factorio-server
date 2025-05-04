@@ -10,7 +10,7 @@ class Schedule:
 
     def __init__(self):
         '''Initialize a schedule with no actions.'''
-        self._actions: list[Command] = []
+        self.actions: list[Command] = []
 
     def add_action(self, action: Command) -> None:
         '''Add an action to the schedule.
@@ -23,9 +23,9 @@ class Schedule:
             raise ValueError('Cannot add self to schedule!')
         if not isinstance(action, Command):
             raise TypeError('Action must implement Command interface!')
-        self._actions.append(action)
+        self.actions.append(action)
 
     def execute(self):
         '''Perform all scheduled actions.'''
-        for action in self._actions:
+        for action in self.actions:
             action.execute()

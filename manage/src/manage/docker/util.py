@@ -3,9 +3,11 @@
 
 from pathlib import Path
 
+from docker.models.containers import Container
 from docker.models.images import Image
 
 import docker
+from manage.shell import Result
 
 
 def build_image(dockerfile: Path,
@@ -39,3 +41,14 @@ def build_logs_to_str(logs) -> str:
                 output.append(entry['stream'])
 
     return ''.join(output)
+
+
+def wait_for_container(container: Container, timeout: int = 10) -> Result:
+    '''Wait for a container to exit, then return its exit status and logs.'''
+    wait_result = container.wait(timeout=timeout)
+
+    exit_status = wait_result['StatusCode']
+    stdout = container.logs(stdout=True, stderr=False).decode('utf-8')
+    stderr = container.logs(stdout=False, stderr=True).decode('utf-8')
+
+    return Result(exit_status, stdout, stderr)

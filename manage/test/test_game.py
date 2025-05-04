@@ -88,6 +88,16 @@ def test_cfg_data(tmp_path, mocker):
     assert result == expected_data
 
 
+def test_cfg_data_file_not_found(tmp_path, mocker):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game'
+
+    result = game.cfg_data(name)
+
+    assert result == {}
+
+
 def test_docker_context(tmp_path):
     docker_dir = tmp_path / 'docker'
     docker_dir.mkdir()
@@ -144,8 +154,6 @@ def test_game_docker_image(mocker, tmp_path, tmp_file, uncap):
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest')
 
-    tmp_file(f'cfg/{name}/server.json', '{}')
-
     uncap(dockerfile)
 
     image, logs = game.docker_image(name)
@@ -154,3 +162,65 @@ def test_game_docker_image(mocker, tmp_path, tmp_file, uncap):
     assert image is not None
     assert 'Successfully built' in logs
     assert f'Successfully tagged {name}:latest' in logs
+
+
+def test_rcon_password(mocker, tmp_path, uncap):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game'
+
+    password = game.rcon_password(name, 10)
+
+    uncap(game.cfg_dir(name) / 'secret')
+    uncap(password)
+
+    assert len(password) == 10
+    assert all(c.isalnum() for c in password)
+
+
+def test_rcon_password_persists(mocker, tmp_path):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game'
+
+    password = game.rcon_password(name, 10)
+
+    assert password == game.rcon_password(name, 10)
+    assert password == game.rcon_password(name, 10)
+
+
+def test_rcon_password_new(mocker, tmp_path, uncap):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game'
+
+    password = game.rcon_password(name, 10)
+
+    assert password == game.rcon_password(name, 10)
+
+    new_password = game.rcon_password(name, 10, new=True)
+    assert password != new_password
+
+    uncap(game.cfg_dir(name) / 'secret')
+    uncap(password)
+    uncap(new_password)
+
+    assert len(new_password) == 10
+    assert all(c.isalnum() for c in new_password)
+
+    assert new_password == game.rcon_password(name, 10)
+    assert new_password == game.rcon_password(name, 10)
+
+
+def test_rcon_password_length(mocker, tmp_path, uncap):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game'
+
+    password = game.rcon_password(name, 20)
+
+    uncap(game.cfg_dir(name) / 'secret')
+    uncap(password)
+
+    assert len(password) == 20
+    assert all(c.isalnum() for c in password)

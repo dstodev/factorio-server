@@ -9,10 +9,18 @@ from docker.errors import APIError, NotFound
 from docker.models.containers import Container
 from docker.models.images import Image
 from docker.types import Mount
+from requests.exceptions import ReadTimeout
 
 import docker  # https://docker-py.readthedocs.io/en/stable/index.html
 from manage import PROJECT_NAME
+from manage.docker.util import wait_for_container
 from manage.shell import Result
+
+
+class ExecResult(NamedTuple):
+    '''execute() result type.'''
+    exit_status: int
+    output: str
 
 
 def monitor(container_id: str, log_path: Path, auto_rm: bool = False):  # pragma: no cover
@@ -133,6 +141,8 @@ class GameContainer:
                                                image=self.image,
                                                command=command,
                                                entrypoint=entrypoint,
+                                               stdout=True,
+                                               stderr=True,
                                                init=True,
                                                detach=True,
                                                mounts=self.build_mounts())
@@ -161,7 +171,7 @@ class GameContainer:
 
         return mounts
 
-    def execute(self, command: list[str] | None = None):
+    def execute(self, command: list[str] | None = None) -> ExecResult | None:
         '''Execute a command in the container.
 
         :param command: The command to run in the container. Default is None.
@@ -169,19 +179,26 @@ class GameContainer:
         if self.container is None:
             raise RuntimeError('Container does not exist!')
 
+        result = None
+
         if command is not None:
             try:
-                result = self.container.exec_run(command, stdout=True, stderr=True)
-                result = type(result)(result.exit_code, result.output.decode('utf-8'))
-                return result
+                result = self.container.exec_run(command, stdout=True, stderr=True, tty=True)
+                output = result.output.decode('utf-8')
+                output = output.replace('\r\n', '\n')
+                result = ExecResult(result.exit_code, output)
+
             except APIError as e:
                 raise RuntimeError('Container is not running!') from e
+
+        return result
 
     def wait(self, timeout: int = 10) -> Result | None:
         '''Wait for the container to finish.
 
         :param timeout: Time to wait before raising an exception. Default is 10.
         :type timeout: int
+
         :return: The exit status and logs from the container, or None if the
             container is not running.
         :rtype: Result | None
@@ -192,23 +209,20 @@ class GameContainer:
         if container is None:
             return None
 
+        result = None
+
         try:
-            wait_result = container.wait(timeout=timeout)
-
+            result = wait_for_container(container, timeout=timeout)
             self.stop_monitor()
+        except (APIError, ReadTimeout):
+            pass
 
-            assert 'StatusCode' in wait_result
-
-            exit_status = wait_result['StatusCode']
-            stdout = container.logs(stdout=True, stderr=False).decode('utf-8')
-            stderr = container.logs(stdout=False, stderr=True).decode('utf-8')
-
+        try:
             container.remove(force=True)
+        except APIError:
+            pass
 
-            return Result(exit_status, stdout, stderr)
-
-        except NotFound:
-            return None
+        return result
 
     def stop_monitor(self, timeout: int = 10):
         '''Stop the monitor process.'''
