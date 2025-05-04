@@ -3,6 +3,7 @@
 from docker.errors import NotFound
 
 import docker
+from manage.docker import GameContainer
 
 
 def clean_docker(name: str):  # pragma: no cover
@@ -21,3 +22,13 @@ def clean_docker(name: str):  # pragma: no cover
         client.images.remove(name, force=True)
     except NotFound:
         pass
+
+
+class PKillTail:
+    '''Run 'pkill tail' as a Command.'''
+
+    def __init__(self, container: GameContainer):
+        self.container = container
+
+    def execute(self):
+        self.container.execute(['pkill', 'tail'])

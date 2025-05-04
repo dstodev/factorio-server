@@ -2,7 +2,7 @@
 
 import json
 from functools import partial
-from test.util_docker import clean_docker
+from test.util import clean_docker
 
 import pytest
 

@@ -1,4 +1,4 @@
-'''Test miscellaneous utility functions.'''
+'''Test miscellaneous utility functions from: manage.util'''
 
 from manage.util import dir_has_files
 

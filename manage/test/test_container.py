@@ -1,7 +1,7 @@
 '''Test Container actions.'''
 
 
-from test.util_docker import clean_docker
+from test.util import clean_docker
 
 import pytest
 from docker.errors import NotFound

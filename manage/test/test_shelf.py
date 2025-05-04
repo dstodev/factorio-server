@@ -3,7 +3,7 @@
 import json
 import os
 from functools import partial
-from test.util_docker import clean_docker
+from test.util import clean_docker
 
 from manage import paths
 from manage.command import Download, Shelf

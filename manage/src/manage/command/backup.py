@@ -3,6 +3,7 @@
 import stat
 
 from manage import game
+from manage.command.rcon import Rcon
 from manage.docker import Bind, GameContainer
 from manage.shell import Result
 from manage.util import dir_has_files, timestamp
@@ -11,7 +12,8 @@ from manage.util import dir_has_files, timestamp
 class Backup:
     '''Back up a game server.
 
-    Does not issue a save command or require the server to be running.
+    Tries to save with RCON before backing up.
+    Does not require the server to be running.
     '''
 
     def __init__(self, name: str) -> None:
@@ -38,6 +40,9 @@ class Backup:
 
         self.container = GameContainer(f'{name}-backup', image, binds)
 
+        self.last_result = None
+        self.last_save = None
+
     def execute(self) -> None:
         '''Run the backup script.'''
         if dir_has_files(self.server_dir):
@@ -49,6 +54,14 @@ class Backup:
             # TODO: Test timestamp directory already exists (time collision)
             backup_dir = self.backup_dir / time
             backup_dir.mkdir(parents=True, exist_ok=True)
+
+            try:
+                rcon_save = game.cfg_data(self.name)['rcon']['save']
+                try_save = Rcon(f'{self.name}-server', [rcon_save], password=game.rcon_password(self.name))
+                try_save.execute()
+                self.last_save = try_save
+            except (KeyError, RuntimeError):
+                pass
 
             command = ' && '.join([
                 'cp /backup.sh /tmp/backup.sh',
@@ -65,6 +78,7 @@ class Backup:
                                      command=[command])
 
                 result = self.container.wait()
+                self.last_result = result
             finally:
                 backup_dir.chmod(restore_mode)
 

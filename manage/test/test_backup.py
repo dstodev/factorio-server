@@ -3,10 +3,10 @@
 import json
 import os
 from functools import partial
-from test.util_docker import clean_docker
+from test.util import clean_docker
 
-from manage import game, paths
-from manage.command import Backup, Download
+from manage import PROJECT_NAME, game, paths
+from manage.command import Backup, Download, Rcon, Start
 from manage.util import timestamp
 
 
@@ -96,7 +96,7 @@ def test_backup(mocker, tmp_path, tmp_file, uncap):
 def test_backup_no_files(mocker, tmp_path, tmp_file, uncap):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    name = 'test-game-backup-no-files'
+    name = 'test-backup-no-files'
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest')
@@ -129,3 +129,106 @@ def test_backup_no_files(mocker, tmp_path, tmp_file, uncap):
         clean_docker(f'{name}-backup')
 
     assert not backup_dir.exists()
+
+
+def test_backup_tries_rcon_save(mocker, tmp_path, tmp_file, uncap):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-backup-tries-rcon-save'
+
+    rcon = tmp_file(f'cfg/{name}/rcon.sh',
+                    '#!/bin/sh',
+                    'read -r password',
+                    'echo "$password"',
+                    'echo "$@"',
+                    mode=0o755)
+
+    dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
+                          'FROM alpine:latest',
+                          'COPY rcon.sh /usr/bin/rcon')
+
+    start = tmp_file(f'cfg/{name}/start.sh',
+                     '#!/bin/sh',
+                     'tail -f /dev/null',
+                     mode=0o744)
+
+    backup = tmp_file(f'cfg/{name}/backup.sh',
+                      '#!/bin/sh',
+                      'echo "Hello!"',
+                      mode=0o744)
+
+    tmp_file(f'server-files/{name}/hot/some-file')
+
+    save_cmd_str = '/save'
+
+    server_json = tmp_file(f'cfg/{name}/server.json',
+                           json.dumps({
+                               'rcon': {
+                                   'save': save_cmd_str
+                               }
+                           }, indent=2))
+
+    uncap(rcon)
+    uncap(dockerfile)
+    uncap(start)
+    uncap(backup)
+    uncap(server_json)
+
+    try:
+        backup = Backup(name)
+        backup.execute()
+
+    finally:
+        clean_docker(f'{name}-backup')
+
+    result = backup.last_result
+
+    assert result is not None
+    assert result.exit_status == 0
+    assert result.stdout == 'Hello!\n'
+    assert result.stderr == ''
+
+    assert backup.last_save is None  # server was not running
+
+    try:
+        start = Start(name)
+        start.execute(auto_rm=False)
+
+        backup = Backup(name)
+        backup.execute()
+
+        assert start.container.container is not None
+        start.container.container.stop()
+        start.container.wait()
+
+    finally:
+        clean_docker(f'{name}-server')
+        clean_docker(f'{name}-backup')
+
+    result = backup.last_result
+
+    assert result is not None
+    assert result.exit_status == 0
+    assert result.stdout == 'Hello!\n'
+    assert result.stderr == ''
+
+    rcon_password = game.rcon_password(name)
+
+    save_cmd = backup.last_save
+
+    assert isinstance(save_cmd, Rcon)
+    assert save_cmd.last_result is not None
+    assert save_cmd.last_result.exit_status == 0
+    assert save_cmd.last_result.output == f'{rcon_password}\n{save_cmd_str}\n'
+
+    server_hot = game.server_dir(name)
+
+    uncap(server_hot)
+
+    log = game.logs_dir(name) / 'server.log'
+
+    uncap(log)
+
+    content = log.read_text(encoding='utf-8')
+
+    assert content == f'({PROJECT_NAME}) closing logfile writer\n'

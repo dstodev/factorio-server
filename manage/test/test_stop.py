@@ -2,22 +2,10 @@
 
 import json
 from functools import partial
-from test.util_docker import clean_docker
+from test.util import PKillTail, clean_docker
 
 from manage import PROJECT_NAME, game, paths
 from manage.command import Rcon, Start, Stop
-from manage.docker import GameContainer
-
-
-class PkillTail:
-    '''Hack: Add a pkill command as the final command after the save and stop commands
-    to simulate the server stopping.'''
-
-    def __init__(self, container: GameContainer):
-        self.container = container
-
-    def execute(self):
-        self.container.execute(['pkill', 'tail'])
 
 
 def test_stop(mocker, tmp_path, tmp_file, uncap):
@@ -123,7 +111,10 @@ def test_stop_tries_rcon_save_stop(mocker, tmp_path, tmp_file, uncap):
         start.execute(auto_rm=False)
 
         stop = Stop(name)
-        stop.execute(add_cmds=[PkillTail(start.container)])
+
+        # Hack: Add a pkill command as the final command after the save and stop commands
+        #       to simulate the server stopping.
+        stop.execute(add_cmds=[PKillTail(start.container)])
 
     finally:
         clean_docker(f'{name}-server')

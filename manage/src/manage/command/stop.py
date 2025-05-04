@@ -53,6 +53,7 @@ class Stop:
             try_save.add_action(cmd)
 
         try:
+            # Try graceful shutdown first
             container.execute(['touch', '/tmp/stopfile'])
             try_save.execute()
             result = container.wait(timeout=self.timeout)
