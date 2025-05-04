@@ -59,4 +59,5 @@ class Stop:
             self.last_result = result
             self.last_schedule = try_save
         except RuntimeError:
+            # TODO: Force stop? Or continue to pass, letting host user deal with the container?
             pass

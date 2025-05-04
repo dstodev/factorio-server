@@ -83,7 +83,7 @@ def test_stop_no_container(mocker, tmp_path):
 def test_stop_tries_rcon_save_stop(mocker, tmp_path, tmp_file, uncap):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    name = 'test-game-stop-rcon'
+    name = 'test-game-stop-rcon-save-stop'
 
     rcon = tmp_file(f'cfg/{name}/rcon.sh',
                     '#!/bin/sh',

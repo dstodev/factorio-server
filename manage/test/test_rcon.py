@@ -107,7 +107,7 @@ def test_rcon_command_no_container(mocker, tmp_path):
 def test_rcon_image_no_client(mocker, tmp_path, tmp_file, uncap):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    name = 'test-rcon-command'
+    name = 'test-rcon-image-no-client'
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest')

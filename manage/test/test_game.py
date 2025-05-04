@@ -171,11 +171,17 @@ def test_rcon_password(mocker, tmp_path, uncap):
 
     password = game.rcon_password(name, 10)
 
-    uncap(game.cfg_dir(name) / 'secret')
+    password_file = game.cfg_dir(name) / 'secret'
+
+    uncap(password_file)
     uncap(password)
 
     assert len(password) == 10
     assert all(c.isalnum() for c in password)
+
+    assert password_file.is_file()
+    assert password_file.read_text(encoding='utf-8') == f'{password}\n'
+    assert password_file.stat().st_mode & 0o777 == 0o600
 
 
 def test_rcon_password_persists(mocker, tmp_path):

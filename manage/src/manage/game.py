@@ -1,6 +1,7 @@
 '''Game-specific file and directory tools.'''
 
 import json
+import os
 import random
 import shutil
 import string
@@ -235,7 +236,9 @@ def rcon_password(name: str, length: int = 128, new: bool = False) -> str:
 
         secret_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(secret_file, 'w', encoding='utf-8') as file:
+        secret_fd = os.open(secret_file, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, mode=0o600)
+
+        with os.fdopen(secret_fd, 'w', encoding='utf-8') as file:
             file.write(f'{password}\n')
 
     return password

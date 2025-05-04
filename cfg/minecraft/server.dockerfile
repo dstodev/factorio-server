@@ -1,5 +1,4 @@
-FROM ubuntu:latest
-#    ubuntu:latest tracks the latest LTS release
+FROM rcon:latest
 
 RUN apt update \
 	&& DEBIAN_FRONTEND=noninteractive \
@@ -8,19 +7,7 @@ RUN apt update \
 	&& apt clean
 
 ARG game_port
-ARG rcon_port
-ARG user_id
-ARG user_name
-ARG group_id
-ARG group_name
-
-RUN groupadd --gid $group_id $group_name \
-	&& useradd --uid $user_id \
-	--gid $group_id \
-	$user_name
-
 EXPOSE $game_port/udp
-EXPOSE $rcon_port/tcp
 
-WORKDIR /server-files/
-#       /server-files/ is mounted as a volume
+WORKDIR /game/hot/
+#       /game/hot/ is mounted as a bind volume

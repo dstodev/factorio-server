@@ -1,11 +1,11 @@
 '''Command to back up a game server.'''
 
-import datetime
 import stat
 
 from manage import game
 from manage.docker import Bind, GameContainer
 from manage.shell import Result
+from manage.util import dir_has_files, timestamp
 
 
 class Backup:
@@ -40,43 +40,44 @@ class Backup:
 
     def execute(self) -> None:
         '''Run the backup script.'''
-        timestamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d_%H-%M-%SZ')
+        if dir_has_files(self.server_dir):
+            time = timestamp()
 
-        guest_server_dir = '/game/hot'
-        guest_backup_dir = f'/backup/{timestamp}'
+            guest_server_dir = '/game/hot'
+            guest_backup_dir = f'/backup/{time}'
 
-        # TODO: Test timestamp directory already exists
-        backup_dir = self.backup_dir / timestamp
-        backup_dir.mkdir(parents=True, exist_ok=True)
+            # TODO: Test timestamp directory already exists (time collision)
+            backup_dir = self.backup_dir / time
+            backup_dir.mkdir(parents=True, exist_ok=True)
 
-        command = ' && '.join([
-            'cp /backup.sh /tmp/backup.sh',
-            f'/tmp/backup.sh {guest_server_dir} {guest_backup_dir}'
-        ])
+            command = ' && '.join([
+                'cp /backup.sh /tmp/backup.sh',
+                f'/tmp/backup.sh {guest_server_dir} {guest_backup_dir}'
+            ])
 
-        restore_mode = self.backup_dir.stat().st_mode
+            restore_mode = self.backup_dir.stat().st_mode
 
-        try:
-            # Temporarily set full permissions (o+w so server user can write) & set sticky bit
-            backup_dir.chmod(restore_mode | 0o777 | stat.S_ISVTX)
+            try:
+                # Temporarily set full permissions (o+w so server user can write) & set sticky bit
+                backup_dir.chmod(restore_mode | 0o777 | stat.S_ISVTX)
 
-            self.container.start(entrypoint=['/bin/sh', '-c'],
-                                 command=[command])
+                self.container.start(entrypoint=['/bin/sh', '-c'],
+                                     command=[command])
 
-            result = self.container.wait()
-        finally:
-            backup_dir.chmod(restore_mode)
+                result = self.container.wait()
+            finally:
+                backup_dir.chmod(restore_mode)
 
-        assert isinstance(result, Result)
+            assert isinstance(result, Result)
 
-        if result.exit_status != 0:
-            msg = ''.join((
-                '\n== Error! ======================================================================',
-                f'\nBackup script failed with exit code: {result.exit_status}',
-                '\n-- stdout: ---------------------------------------------------------------------',
-                f'\n{result.stdout.strip()}' if result.stdout else '',
-                '\n-- stderr: ---------------------------------------------------------------------',
-                f'\n{result.stderr.strip()}' if result.stderr else '',
-                '\n================================================================================'
-            ))
-            raise RuntimeError(msg)
+            if result.exit_status != 0:
+                msg = ''.join((
+                    '\n== Error! ======================================================================',
+                    f'\nBackup script failed with exit code: {result.exit_status}',
+                    '\n-- stdout: ---------------------------------------------------------------------',
+                    f'\n{result.stdout.strip()}' if result.stdout else '',
+                    '\n-- stderr: ---------------------------------------------------------------------',
+                    f'\n{result.stderr.strip()}' if result.stderr else '',
+                    '\n================================================================================'
+                ))
+                raise RuntimeError(msg)

@@ -1,6 +1,7 @@
 '''Command to put a game server instance on the shelf.'''
 
 from manage import game
+from manage.util import dir_has_files
 
 
 class Shelf:
@@ -18,9 +19,7 @@ class Shelf:
         '''Move the game server instance to the shelf.'''
         server_dir = game.server_dir(self.name)
 
-        empty = lambda: not any(server_dir.iterdir())
-
-        if server_dir.exists() and not empty():
+        if dir_has_files(server_dir):
             shelf_dir = game.shelf_dir(self.name)
 
             shelf_dir.mkdir(parents=True, exist_ok=True)

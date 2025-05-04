@@ -1,6 +1,5 @@
 '''Test the Start Command.'''
 
-import datetime
 import json
 import os
 from functools import partial
@@ -8,6 +7,7 @@ from test.util_docker import clean_docker
 
 from manage import game, paths
 from manage.command import Backup, Download
+from manage.util import timestamp
 
 
 def test_backup(mocker, tmp_path, tmp_file, uncap):
@@ -54,8 +54,6 @@ def test_backup(mocker, tmp_path, tmp_file, uncap):
     uncap(download)
     uncap(server_json)
 
-    timestamp = lambda: datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d_%H-%M-%SZ')
-
     try:
         download = Download(name)
         download.execute()
@@ -70,9 +68,9 @@ def test_backup(mocker, tmp_path, tmp_file, uncap):
 
     after_backup = timestamp()
 
-    backup_root = game.backup_dir(name)
+    backup_dir = game.backup_dir(name)
 
-    backups = list(backup_root.iterdir())
+    backups = list(backup_dir.iterdir())
     assert len(backups) == 1
     backup = backups[0]
 
@@ -93,3 +91,41 @@ def test_backup(mocker, tmp_path, tmp_file, uncap):
     date = backup.name
     assert date >= before_backup
     assert date <= after_backup
+
+
+def test_backup_no_files(mocker, tmp_path, tmp_file, uncap):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game-backup-no-files'
+
+    dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
+                          'FROM alpine:latest')
+
+    backup = tmp_file(f'cfg/{name}/backup.sh',
+                      '#!/bin/sh',
+                      'cp -r "$1" "$2"',
+                      mode=0o744)
+
+    uncap(dockerfile)
+    uncap(backup)
+
+    try:
+        backup = Backup(name)
+        backup.execute()
+
+    finally:
+        clean_docker(f'{name}-backup')
+
+    backup_dir = game.backup_dir(name)
+
+    assert not backup_dir.exists()
+
+    game.server_dir(name).mkdir(parents=True, exist_ok=True)
+
+    try:
+        backup = Backup(name)
+        backup.execute()
+    finally:
+        clean_docker(f'{name}-backup')
+
+    assert not backup_dir.exists()

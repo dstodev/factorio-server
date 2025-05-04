@@ -5,7 +5,6 @@ from test.util_docker import clean_docker
 import pytest
 from docker.errors import BuildError
 
-from manage import game
 from manage.docker import build_image
 
 
