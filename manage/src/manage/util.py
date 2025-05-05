@@ -3,7 +3,9 @@
 import datetime
 from pathlib import Path
 
-from manage.docker.container import GameContainer
+from docker.errors import NotFound
+
+import docker
 
 
 def timestamp() -> str:
@@ -25,3 +27,21 @@ def dir_has_files(path: Path) -> bool:
     :rtype: bool
     '''
     return path.is_dir() and any(path.iterdir())
+
+
+def clean_docker(name: str):  # pragma: no cover
+    '''Remove any containers or images with the given name.
+    This is useful to clean up after commands that create Docker containers or images.
+    '''
+    client = docker.from_env()
+
+    try:
+        container = client.containers.get(name)
+        container.remove(force=True)
+    except NotFound:
+        pass
+
+    try:
+        client.images.remove(name, force=True)
+    except NotFound:
+        pass

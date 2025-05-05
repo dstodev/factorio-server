@@ -1,65 +1,24 @@
 #!/bin/bash
 set -euo pipefail
 
-# script/start-server.sh should run this script. It is not meant to run directly.
-# Requires provided inputs:
-#   $1 - rcon port
-#   $2 - rcon password
-
-rcon_port="$1"
+server_dir="$1"
 rcon_password="$2"
 
-shift
-shift
+touch /tmp/stopfile
 
-this_dir="$(dirname -- "$(readlink -f -- "$0")")"
-server_dir="$(readlink -f -- "$this_dir/..")"
+game_port=34120
+rcon_port=34240
 
-if [ $# -gt 0 ]; then
-	echo '-------------------------'
-	echo '  Extra server options:'
-	echo ' ' "$@"
-	echo '-------------------------'
-fi
+cd "$server_dir" || exit 1
 
-umask 0002
-# For file permissions:
-# file: -rw-rw-r-- (0666 & ~0002 = 0664)
-#  dir: drwxrwxr-x (0777 & ~0002 = 0775)
+mapfile -t properties_files < <(find . -name "server.properties" -type f)
 
-if [ ! -d "$server_dir/factorio/saves" ]; then
-	factorio/bin/x64/factorio \
-		--create "$server_dir/factorio/saves/world.zip" \
-		--map-gen-settings "$this_dir/map-gen-settings.json" \
-		--map-settings "$this_dir/map-settings.json"
-fi
-
-run() {
-	factorio/bin/x64/factorio \
-		--start-server-load-latest \
-		--server-settings "$this_dir/server-settings.json" \
-		--rcon-port "$rcon_port" \
-		--rcon-password "$rcon_password" \
-		"$@" ||
-		status=$?
-
-	if [ "${status-0}" -ne 0 ]; then
-		echo "Server exited with status: $status" >&2
-	fi
-}
-
-pushd "$server_dir"
-
-# Always run at least once
-run "$@"
-
-# Run in a loop until a file named "stop" (a "stop file") is present
-while [ ! -f "$this_dir/stop" ]; do
-	sleep 5
-	echo 'Restarting server...' >&2
-	run "$@"
+for properties_file in "${properties_files[@]}"; do
+	echo "Patching: $properties_file"
+	sed -i "s/^rcon.port=.*/rcon.port=$rcon_port/" "$properties_file"
+	sed -i "s/^rcon.password=.*/rcon.password=$rcon_password/" "$properties_file"
+	sed -i "s/^enable-rcon=false/enable-rcon=true/" "$properties_file"
+	sed -i "s/^server-port=.*/server-port=$game_port/" "$properties_file"
 done
 
-popd
-
-rm --force --verbose "$this_dir/stop"
+"$server_dir/start-server.sh"

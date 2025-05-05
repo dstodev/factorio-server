@@ -4,6 +4,7 @@ import stat
 
 from manage import game
 from manage.command.rcon import Rcon
+from manage.command.schedule import Schedule
 from manage.docker import Bind, GameContainer
 from manage.shell import Result
 from manage.util import dir_has_files, timestamp
@@ -41,7 +42,8 @@ class Backup:
         self.container = GameContainer(f'{name}-backup', image, binds)
 
         self.last_result = None
-        self.last_save = None
+        self.save_post = None
+        self.save_pre = None
 
     def execute(self) -> None:
         '''Run the backup script.'''
@@ -55,12 +57,39 @@ class Backup:
             backup_dir = self.backup_dir / time
             backup_dir.mkdir(parents=True, exist_ok=True)
 
+            cfg = game.cfg_data(self.name)
+
+            try_save = Schedule()
+            password = game.rcon_password(self.name)
+
             try:
-                rcon_save = game.cfg_data(self.name)['rcon']['save']
-                try_save = Rcon(f'{self.name}-server', [rcon_save], password=game.rcon_password(self.name))
+                cfg_rcon = cfg['rcon']
+
+                port = cfg['port']['rcon']
+                hoststr = f'127.0.0.1:{port}'
+
+                try:
+                    try_save.add_action(
+                        Rcon(f'{self.name}-server',
+                             [hoststr, cfg_rcon['save-pre']],
+                             password=password))
+                except KeyError:
+                    pass
+
+                try:
+                    try_save.add_action(Rcon(f'{self.name}-server',
+                                             [hoststr, cfg_rcon['save']],
+                                             password=password))
+                except KeyError:
+                    pass
+
+            except KeyError:
+                pass
+
+            try:
                 try_save.execute()
-                self.last_save = try_save
-            except (KeyError, RuntimeError):
+                self.save_pre = try_save
+            except RuntimeError:
                 pass
 
             command = ' && '.join([
@@ -77,10 +106,33 @@ class Backup:
                 self.container.start(entrypoint=['/bin/sh', '-c'],
                                      command=[command])
 
-                result = self.container.wait()
+                result = self.container.wait(timeout=20)
                 self.last_result = result
+
             finally:
                 backup_dir.chmod(restore_mode)
+
+                try_save = Schedule()
+
+                try:
+                    cfg_rcon = cfg['rcon']
+
+                    port = cfg['port']['rcon']
+                    hoststr = f'127.0.0.1:{port}'
+
+                    try_save.add_action(
+                        Rcon(f'{self.name}-server',
+                             [hoststr, cfg_rcon['save-post']],
+                             password=password))
+
+                except KeyError:
+                    pass
+
+                try:
+                    try_save.execute()
+                    self.save_post = try_save
+                except RuntimeError:
+                    pass
 
             assert isinstance(result, Result)
 

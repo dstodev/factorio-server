@@ -36,11 +36,13 @@ clang-format on */
 
 uint16_t constexpr DEFAULT_RCON_PORT = 25575;
 int constexpr TOTAL_PACKET_SIZE = 4100;
-int constexpr DEFAULT_TIMEOUT_MS = 100;
+
+int constexpr DEFAULT_TIMEOUT_MS = 5000;
+int constexpr STDIN_TIMEOUT_MS = 100;
 
 bool test();
 auto split_hoststr(std::string const& host_str) -> std::tuple<std::string, uint16_t>;
-auto get_password(int timeout_ms = DEFAULT_TIMEOUT_MS) -> std::string;
+auto get_password(int timeout_ms = STDIN_TIMEOUT_MS) -> std::string;
 auto to_little_endian(uint32_t value) -> std::array<uint8_t, sizeof(uint32_t)>;
 auto from_little_endian(std::array<uint8_t, sizeof(uint32_t)> const& bytes) -> uint32_t;
 bool is_big_endian();

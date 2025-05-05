@@ -4,13 +4,13 @@
 import json
 import shutil
 from functools import partial
-from test.util import clean_docker
 
 import pytest
 
 from manage import game, paths
 from manage.command import Rcon
 from manage.docker import GameContainer, build_image
+from manage.util import clean_docker
 
 
 def test_rcon_command(mocker, tmp_path, tmp_file, uncap):

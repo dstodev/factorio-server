@@ -1,11 +1,10 @@
 '''Test game.docker_image() behaviors.'''
 
-from test.util import clean_docker
-
 import pytest
 from docker.errors import BuildError
 
 from manage.docker import build_image
+from manage.util import clean_docker
 
 
 class TestBuildImage:

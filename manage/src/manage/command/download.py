@@ -56,6 +56,7 @@ class Download:
             # Create the server directory in the container so it is
             # owned by the server user.
             command = ' && '.join([
+                'umask 0002',
                 f'mkdir {guest_server_dir}',
                 'cp /download.sh /tmp/download.sh',
                 f'/tmp/download.sh {guest_server_dir}'

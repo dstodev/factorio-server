@@ -2,11 +2,11 @@
 
 import json
 from functools import partial
-from test.util import clean_docker
 
 import pytest
 
 from manage import game, paths
+from manage.util import clean_docker
 
 
 def test_force_dir_creates_dir(tmp_path):

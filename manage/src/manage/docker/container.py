@@ -12,7 +12,7 @@ from docker.types import Mount
 from requests.exceptions import ReadTimeout
 
 import docker  # https://docker-py.readthedocs.io/en/stable/index.html
-from manage import PROJECT_NAME
+from manage import PROJECT_NAME, game
 from manage.docker.util import wait_for_container
 from manage.shell import Result
 
@@ -30,6 +30,9 @@ def monitor(container_id: str, log_path: Path, auto_rm: bool = False):  # pragma
     This intended to run in a separate process to continue running as long as
     the container is running.
     '''
+    if os.fork() != 0:
+        return
+
     client = docker.from_env()
     container = client.containers.get(container_id)
 
@@ -65,7 +68,8 @@ class GameContainer:
     def __init__(self,
                  name: str,
                  image: Image | None,
-                 binds: list[Bind] | None = None):
+                 binds: list[Bind] | None = None,
+                 ports: dict | None = None):
         '''Initialize with persistent settings like name and image.
 
 
@@ -83,6 +87,7 @@ class GameContainer:
         self.name = name
         self.image: Image | None = image
         self.binds = binds or []
+        self.ports = ports or {}
 
         self.container: Container | None = None
         try:
@@ -145,7 +150,9 @@ class GameContainer:
                                                stderr=True,
                                                init=True,
                                                detach=True,
+                                               ports=self.ports,
                                                mounts=self.build_mounts())
+
         self.log_file = log_file
 
         if log_file is None:
@@ -153,8 +160,7 @@ class GameContainer:
             log_file = Path(os.devnull)
 
         self.monitor = Process(target=monitor,
-                               args=(self.container.id, log_file, auto_rm),
-                               daemon=False)
+                               args=(self.container.id, log_file, auto_rm))
         self.monitor.start()
 
     def build_mounts(self) -> list[Mount]:
@@ -214,7 +220,7 @@ class GameContainer:
         try:
             result = wait_for_container(container, timeout=timeout)
             self.stop_monitor()
-        except (APIError, ReadTimeout):
+        except APIError:
             pass
 
         try:

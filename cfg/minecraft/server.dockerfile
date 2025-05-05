@@ -1,13 +1,18 @@
 FROM rcon:latest
 
+USER root
+
 RUN apt update \
 	&& DEBIAN_FRONTEND=noninteractive \
-	# apt install -y \
-	# 	wget \
+	apt install -y \
+	openjdk-17-jre-headless \
+	inotify-tools \
+	wget \
+	unzip \
 	&& apt clean
+
+ARG user_name
+USER $user_name
 
 ARG game_port
 EXPOSE $game_port/udp
-
-WORKDIR /game/hot/
-#       /game/hot/ is mounted as a bind volume

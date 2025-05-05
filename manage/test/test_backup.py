@@ -3,11 +3,10 @@
 import json
 import os
 from functools import partial
-from test.util import clean_docker
 
 from manage import PROJECT_NAME, game, paths
 from manage.command import Backup, Download, Rcon, Start
-from manage.util import timestamp
+from manage.util import clean_docker, timestamp
 
 
 def test_backup(mocker, tmp_path, tmp_file, uncap):
@@ -159,12 +158,18 @@ def test_backup_tries_rcon_save(mocker, tmp_path, tmp_file, uncap):
 
     tmp_file(f'server-files/{name}/hot/some-file')
 
+    rcon_port = 12345
     save_cmd_str = '/save'
 
     server_json = tmp_file(f'cfg/{name}/server.json',
                            json.dumps({
+                               'port': {
+                                   'rcon': rcon_port
+                               },
                                'rcon': {
-                                   'save': save_cmd_str
+                                   'save-pre': f'{save_cmd_str}-pre',
+                                   'save': save_cmd_str,
+                                   'save-post': f'{save_cmd_str}-post',
                                }
                            }, indent=2))
 
@@ -188,7 +193,8 @@ def test_backup_tries_rcon_save(mocker, tmp_path, tmp_file, uncap):
     assert result.stdout == 'Hello!\n'
     assert result.stderr == ''
 
-    assert backup.last_save is None  # server was not running
+    assert backup.save_pre is None  # server was not running
+    assert backup.save_post is None
 
     try:
         start = Start(name)
@@ -214,18 +220,35 @@ def test_backup_tries_rcon_save(mocker, tmp_path, tmp_file, uncap):
 
     rcon_password = game.rcon_password(name)
 
-    save_cmd = backup.last_save
+    assert backup.save_pre is not None
+    assert backup.save_post is not None
+    assert len(backup.save_pre.actions) == 2
+    assert len(backup.save_post.actions) == 1
 
+    rcon_password = game.rcon_password(name)
+
+    save_cmd = backup.save_pre.actions[0]
     assert isinstance(save_cmd, Rcon)
     assert save_cmd.last_result is not None
     assert save_cmd.last_result.exit_status == 0
-    assert save_cmd.last_result.output == f'{rcon_password}\n{save_cmd_str}\n'
+    assert save_cmd.last_result.output == f'{rcon_password}\n127.0.0.1:{rcon_port} {save_cmd_str}-pre\n'
 
-    server_hot = game.server_dir(name)
+    save_cmd = backup.save_pre.actions[1]
+    assert isinstance(save_cmd, Rcon)
+    assert save_cmd.last_result is not None
+    assert save_cmd.last_result.exit_status == 0
+    assert save_cmd.last_result.output == f'{rcon_password}\n127.0.0.1:{rcon_port} {save_cmd_str}\n'
 
-    uncap(server_hot)
+    save_cmd = backup.save_post.actions[0]
+    assert isinstance(save_cmd, Rcon)
+    assert save_cmd.last_result is not None
+    assert save_cmd.last_result.exit_status == 0
+    assert save_cmd.last_result.output == f'{rcon_password}\n127.0.0.1:{rcon_port} {save_cmd_str}-post\n'
 
-    log = game.logs_dir(name) / 'server.log'
+    logs = list(game.logs_dir(name).iterdir())
+    assert len(logs) == 1
+    log = logs[0]
+    assert log.name.endswith('.log')
 
     uncap(log)
 

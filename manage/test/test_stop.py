@@ -2,10 +2,11 @@
 
 import json
 from functools import partial
-from test.util import PKillTail, clean_docker
+from test.util import PKillTail
 
 from manage import PROJECT_NAME, game, paths
 from manage.command import Rcon, Start, Stop
+from manage.util import clean_docker
 
 
 def test_stop(mocker, tmp_path, tmp_file, uncap):
@@ -46,7 +47,10 @@ def test_stop(mocker, tmp_path, tmp_file, uncap):
 
     uncap(server_hot)
 
-    log = game.logs_dir(name) / 'server.log'
+    logs = list(game.logs_dir(name).iterdir())
+    assert len(logs) == 1
+    log = logs[0]
+    assert log.name.endswith('.log')
 
     uncap(log)
 
@@ -90,12 +94,17 @@ def test_stop_tries_rcon_save_stop(mocker, tmp_path, tmp_file, uncap):
                      'tail -f /dev/null',
                      mode=0o744)
 
+    rcon_port = 12345
     save_cmd_str = '/save'
     stop_cmd_str = '/stop'
 
     server_json = tmp_file(f'cfg/{name}/server.json',
                            json.dumps({
+                               'port': {
+                                   'rcon': rcon_port
+                               },
                                'rcon': {
+                                   'save-pre': f'{save_cmd_str}-pre',
                                    'save': save_cmd_str,
                                    'stop': stop_cmd_str
                                }
@@ -127,7 +136,7 @@ def test_stop_tries_rcon_save_stop(mocker, tmp_path, tmp_file, uncap):
     assert result.stderr == 'Terminated\n'
 
     assert stop.last_schedule is not None
-    assert len(stop.last_schedule.actions) == 3
+    assert len(stop.last_schedule.actions) == 4
 
     rcon_password = game.rcon_password(name)
 
@@ -135,19 +144,28 @@ def test_stop_tries_rcon_save_stop(mocker, tmp_path, tmp_file, uncap):
     assert isinstance(save_cmd, Rcon)
     assert save_cmd.last_result is not None
     assert save_cmd.last_result.exit_status == 0
-    assert save_cmd.last_result.output == f'{rcon_password}\n{save_cmd_str}\n'
+    assert save_cmd.last_result.output == f'{rcon_password}\n127.0.0.1:{rcon_port} {save_cmd_str}-pre\n'
 
-    stop_cmd = stop.last_schedule.actions[1]
+    save_cmd = stop.last_schedule.actions[1]
+    assert isinstance(save_cmd, Rcon)
+    assert save_cmd.last_result is not None
+    assert save_cmd.last_result.exit_status == 0
+    assert save_cmd.last_result.output == f'{rcon_password}\n127.0.0.1:{rcon_port} {save_cmd_str}\n'
+
+    stop_cmd = stop.last_schedule.actions[2]
     assert isinstance(stop_cmd, Rcon)
     assert stop_cmd.last_result is not None
     assert stop_cmd.last_result.exit_status == 0
-    assert stop_cmd.last_result.output == f'{rcon_password}\n{stop_cmd_str}\n'
+    assert stop_cmd.last_result.output == f'{rcon_password}\n127.0.0.1:{rcon_port} {stop_cmd_str}\n'
 
     server_hot = game.server_dir(name)
 
     uncap(server_hot)
 
-    log = game.logs_dir(name) / 'server.log'
+    logs = list(game.logs_dir(name).iterdir())
+    assert len(logs) == 1
+    log = logs[0]
+    assert log.name.endswith('.log')
 
     uncap(log)
 

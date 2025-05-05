@@ -3,10 +3,10 @@
 import json
 import os
 from functools import partial
-from test.util import clean_docker
 
 from manage import paths
 from manage.command import Download, Shelf
+from manage.util import clean_docker
 
 
 def test_shelf(mocker, tmp_path, tmp_file, uncap):

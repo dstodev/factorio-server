@@ -2,6 +2,7 @@
 
 from manage import game
 from manage.docker.container import Bind, GameContainer
+from manage.util import timestamp
 
 
 class Start:
@@ -25,7 +26,17 @@ class Start:
 
         image, _logs = game.docker_image(name)
 
-        self.container = GameContainer(f'{name}-server', image, binds)
+        ports = {}
+
+        try:
+            game_port = game.cfg_data(self.name)['port']['game']
+            ports[f'{game_port}/tcp'] = int(game_port)
+            ports[f'{game_port}/udp'] = int(game_port)
+
+        except KeyError:
+            pass
+
+        self.container = GameContainer(f'{name}-server', image, binds, ports)
 
     def execute(self, auto_rm: bool = True) -> None:
         '''Start the server.
@@ -42,6 +53,7 @@ class Start:
         rcon = game.rcon_password(self.name, new=True)
 
         command = ' && '.join([
+            'umask 0002',
             f'mkdir -p {guest_server_dir}',
             'cp /start.sh /tmp/start.sh',
             f'while [ ! -f /tmp/stopfile ]; do /tmp/start.sh {guest_server_dir} {rcon}; done',
@@ -51,7 +63,9 @@ class Start:
         parent_dir = self.server_dir.parent
         parent_dir.mkdir(parents=True, exist_ok=True)
 
+        time = timestamp()
+
         self.container.start(entrypoint=['/bin/sh', '-c'],
                              command=[command],
-                             log_file=game.logs_dir(self.name) / 'server.log',
+                             log_file=game.logs_dir(self.name) / f'{time}.log',
                              auto_rm=auto_rm)

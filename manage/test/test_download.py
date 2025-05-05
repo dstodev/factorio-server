@@ -3,16 +3,16 @@
 import json
 import os
 from functools import partial
-from test.util import clean_docker
 
 from manage import game, paths
 from manage.command import Download
+from manage.util import clean_docker
 
 
 def test_download(mocker, tmp_path, tmp_file, uncap):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    name = 'test-game-download'
+    name = 'test-download'
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest',
@@ -73,7 +73,7 @@ def test_download(mocker, tmp_path, tmp_file, uncap):
 def test_repeated_download_does_nothing(mocker, tmp_path, tmp_file, uncap):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    name = 'test-game-download-repeated'
+    name = 'test-repeated-download-does-nothing'
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest',

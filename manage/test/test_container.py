@@ -1,8 +1,6 @@
 '''Test Container actions.'''
 
 
-from test.util import clean_docker
-
 import pytest
 from docker.errors import NotFound
 
@@ -11,6 +9,7 @@ from manage import PROJECT_NAME
 from manage.docker import build_image
 from manage.docker.container import Bind, GameContainer
 from manage.shell import Result
+from manage.util import clean_docker
 
 
 class TestContainer:

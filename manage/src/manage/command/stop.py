@@ -1,5 +1,7 @@
 '''Command to stop a game server.'''
 
+from requests.exceptions import ConnectionError
+
 from manage import game
 from manage.command.command import Command
 from manage.command.rcon import Rcon
@@ -31,18 +33,27 @@ class Stop:
         cfg = game.cfg_data(self.name)
 
         try_save = Schedule()
-        rcon = game.rcon_password(self.name)
+        password = game.rcon_password(self.name)
 
         try:
-            rcon_commands = cfg['rcon']
+            cfg_rcon = cfg['rcon']
+
+            port = cfg['port']['rcon']
+            hoststr = f'127.0.0.1:{port}'
 
             try:
-                try_save.add_action(Rcon(f'{self.name}-server', [rcon_commands['save']], password=rcon))
+                try_save.add_action(
+                    Rcon(f'{self.name}-server', [hoststr, cfg_rcon['save-pre']], password=password))
             except KeyError:
                 pass
 
             try:
-                try_save.add_action(Rcon(f'{self.name}-server', [rcon_commands['stop']], password=rcon))
+                try_save.add_action(Rcon(f'{self.name}-server', [hoststr, cfg_rcon['save']], password=password))
+            except KeyError:
+                pass
+
+            try:
+                try_save.add_action(Rcon(f'{self.name}-server', [hoststr, cfg_rcon['stop']], password=password))
             except KeyError:
                 pass
 
@@ -59,6 +70,9 @@ class Stop:
             result = container.wait(timeout=self.timeout)
             self.last_result = result
             self.last_schedule = try_save
-        except RuntimeError:
-            # TODO: Force stop? Or continue to pass, letting host user deal with the container?
-            pass
+
+        except (RuntimeError, ConnectionError):
+            container = GameContainer(f'{self.name}-server', None)
+            if container.container is not None:
+                container.container.stop()
+                container.wait()

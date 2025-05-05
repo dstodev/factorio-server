@@ -1,8 +1,10 @@
 {
   "rcon": {
-    "save": "/server-save",
+    "save-pre": "/save-off",
+    "save": "/save-all flush",
+    "save-post": "/save-on",
     "say": "",
-    "stop": "/quit"
+    "stop": "/stop"
   },
   "port": {
     "game": 34120,

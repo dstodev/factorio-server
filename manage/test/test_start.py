@@ -3,10 +3,10 @@
 import json
 import os
 from functools import partial
-from test.util import clean_docker
 
 from manage import PROJECT_NAME, game, paths
 from manage.command import Download, Start
+from manage.util import clean_docker
 
 
 def test_start(mocker, tmp_path, tmp_file, uncap):
@@ -74,7 +74,10 @@ def test_start(mocker, tmp_path, tmp_file, uncap):
 
     uncap(server_hot)
 
-    log = game.logs_dir(name) / 'server.log'
+    logs = list(game.logs_dir(name).iterdir())
+    assert len(logs) == 1
+    log = logs[0]
+    assert log.name.endswith('.log')
 
     uncap(log)
 
@@ -132,7 +135,10 @@ def test_start_stopfile_loop(mocker, tmp_path, tmp_file, uncap):
 
     uncap(server_hot)
 
-    log = game.logs_dir(name) / 'server.log'
+    logs = list(game.logs_dir(name).iterdir())
+    assert len(logs) == 1
+    log = logs[0]
+    assert log.name.endswith('.log')
 
     uncap(log)
 
