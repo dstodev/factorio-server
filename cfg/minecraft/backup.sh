@@ -4,6 +4,7 @@ set -euo pipefail
 server_dir="$1"
 backup_dir="$2"
 
+# Wait for the world directory finish being written to
 inotifywait --recursive --monitor --event modify --quiet --timeout 1 "$server_dir/setup/world" || status=$?
 
 if [ "${status-0}" -ne 0 ]; then

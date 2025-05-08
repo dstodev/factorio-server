@@ -50,6 +50,14 @@ def main():
                 result = rcon.send(args.name, args.send)
                 print(result)
 
+            if args.say:
+                cfg = game.cfg_data(args.name)
+                say = cfg['rcon']['say']
+                say = say.replace('::', ' '.join(args.say))
+                print(f'Sending RCON command: {say}')
+                result = rcon.send(args.name, [say])
+                print(result)
+
         case _:
             print('Unknown command')
 
