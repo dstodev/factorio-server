@@ -2,10 +2,10 @@
 
 
 from manage import game
-from manage.command.command import Command
 from manage.command.rcon import Rcon
 from manage.command.schedule import Schedule
 from manage.docker.container import GameContainer
+from manage.rcon import RconError
 
 
 class Stop:
@@ -23,49 +23,32 @@ class Stop:
         self.name = name
         self.timeout = timeout_s
         self.last_result = None
-        self.last_schedule = None
 
-    def execute(self, add_cmds: list[Command] | None = None) -> None:
-        '''Stop the game server.'''
-        container = GameContainer(f'{self.name}-server', None)  # Only reattach
-
-        cfg = game.cfg_data(self.name)
-
-        try_save = Schedule()
+        self.try_rcon = Schedule()
 
         try:
-            cfg_rcon = cfg['rcon']
+            cfg_rcon = game.cfg_data(name)['rcon']
 
-            try:
-                try_save.add_action(Rcon(self.name, [cfg_rcon['save-pre']]))
-            except KeyError:
-                pass
-
-            try:
-                try_save.add_action(Rcon(self.name, [cfg_rcon['save']]))
-            except KeyError:
-                pass
-
-            try:
-                try_save.add_action(Rcon(self.name, [cfg_rcon['stop']]))
-            except KeyError:
-                pass
-
+            for key in ('save-pre', 'save', 'stop'):
+                try:
+                    self.try_rcon.add_action(Rcon(name, [cfg_rcon[key]]))
+                except KeyError:
+                    pass
         except KeyError:
             pass
 
-        for cmd in add_cmds or []:
-            try_save.add_action(cmd)
+    def execute(self) -> None:
+        '''Stop the game server.'''
+        container = GameContainer(f'{self.name}-server', None)  # Only reattach
 
         try:
             # Try graceful shutdown first
             container.execute(['touch', '/tmp/stopfile'])
-            try_save.execute()
+            self.try_rcon.execute()
             result = container.wait(timeout=self.timeout)
             self.last_result = result
-            self.last_schedule = try_save
 
-        except (RuntimeError, ConnectionError):
+        except (RuntimeError, ConnectionError, RconError):
             container = GameContainer(f'{self.name}-server', None)
             if container.container is not None:
                 container.container.stop()

@@ -12,10 +12,13 @@ from manage.util import clean_docker
 def test_download(mocker, tmp_path, tmp_file, uncap):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    name = 'test-download'
+    name = 'test-game-download'
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest',
+                          # Force unique cache for next layers;
+                          # fixes frequent failures due to shared intermediate containers being deleted
+                          f'RUN echo "{name}"',
                           'ARG user_id',
                           'ARG user_name',
                           'ARG group_id',
@@ -77,6 +80,9 @@ def test_repeated_download_does_nothing(mocker, tmp_path, tmp_file, uncap):
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest',
+                          # Force unique cache for next layers;
+                          # fixes frequent failures due to shared intermediate containers being deleted
+                          f'RUN echo "{name}"',
                           'ARG user_id',
                           'ARG user_name',
                           'ARG group_id',

@@ -101,6 +101,9 @@ class TestBuildImage:
 
         dockerfile = tmp_file('test-image.dockerfile',
                               'FROM alpine:latest',
+                              # Force unique cache for next layers;
+                              # fixes frequent failures due to shared intermediate containers being deleted
+                              f'RUN echo "{self.image_name}"',
                               'ARG user_id',
                               'ARG group_id',
                               'RUN addgroup -g $group_id testuser \\',
@@ -169,6 +172,9 @@ class TestBuildImage:
 
         dockerfile_1 = tmp_file(f'{name_1}.dockerfile',
                                 'FROM alpine:latest',
+                                # Force unique cache for next layers;
+                                # fixes frequent failures due to shared intermediate containers being deleted
+                                f'RUN echo "{self.image_name}"',
                                 'ARG user_id',
                                 'ARG user_name',
                                 'ARG group_id',

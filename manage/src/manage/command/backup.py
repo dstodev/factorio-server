@@ -2,10 +2,11 @@
 
 import stat
 
-from manage import game, rcon
+from manage import game
 from manage.command.rcon import Rcon
 from manage.command.schedule import Schedule
 from manage.docker import Bind, GameContainer
+from manage.rcon import RconError
 from manage.shell import Result
 from manage.util import dir_has_files, timestamp
 
@@ -42,8 +43,26 @@ class Backup:
         self.container = GameContainer(f'{name}-backup', image, binds)
 
         self.last_result = None
-        self.save_post = None
-        self.save_pre = None
+
+        self.try_save_pre = Schedule()
+        self.try_save_post = Schedule()
+
+        try:
+            cfg_rcon = game.cfg_data(name)['rcon']
+
+            for key in ('save-pre', 'save'):
+                try:
+                    self.try_save_pre.add_action(Rcon(name, [cfg_rcon[key]]))
+                except KeyError:
+                    pass
+
+            for key in ('save-post',):
+                try:
+                    self.try_save_post.add_action(Rcon(name, [cfg_rcon[key]]))
+                except KeyError:
+                    pass
+        except KeyError:
+            pass
 
     def execute(self) -> None:
         '''Run the backup script.'''
@@ -57,30 +76,9 @@ class Backup:
             backup_dir = self.backup_dir / time
             backup_dir.mkdir(parents=True, exist_ok=True)
 
-            cfg = game.cfg_data(self.name)
-
-            try_save = Schedule()
-
             try:
-                cfg_rcon = cfg['rcon']
-
-                try:
-                    try_save.add_action(Rcon(self.name, [cfg_rcon['save-pre']]))
-                except KeyError:
-                    pass
-
-                try:
-                    try_save.add_action(Rcon(self.name, [cfg_rcon['save']]))
-                except KeyError:
-                    pass
-
-            except KeyError:
-                pass
-
-            try:
-                try_save.execute()
-                self.save_pre = try_save
-            except RuntimeError:
+                self.try_save_pre.execute()
+            except (RuntimeError, RconError):
                 pass
 
             command = ' && '.join([
@@ -103,19 +101,9 @@ class Backup:
             finally:
                 backup_dir.chmod(restore_mode)
 
-                try_save = Schedule()
-
                 try:
-                    cfg_rcon = cfg['rcon']
-                    try_save.add_action(Rcon(self.name, [cfg_rcon['save-post']]))
-
-                except KeyError:
-                    pass
-
-                try:
-                    try_save.execute()
-                    self.save_post = try_save
-                except RuntimeError:
+                    self.try_save_post.execute()
+                except (RuntimeError, RconError):
                     pass
 
             assert isinstance(result, Result)

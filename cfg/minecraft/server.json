@@ -3,7 +3,7 @@
     "save-pre": "/save-off",
     "save": "/save-all flush",
     "save-post": "/save-on",
-    "say": "/tellraw @a [{\"text\":\"SERVER\", \"color\":\"gold\"},{\"text\": \" | ::\", \"color\": \"white\"}]",
+    "say": "/tellraw @a [{\"text\":\"SERVER\",\"color\":\"gold\"},{\"text\":\" | ::\",\"color\":\"white\"}]",
     "stop": "/stop"
   },
   "port": {

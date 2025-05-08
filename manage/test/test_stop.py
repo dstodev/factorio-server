@@ -123,7 +123,8 @@ def test_stop_tries_rcon_save_stop(mocker, tmp_path, tmp_file, uncap):
 
         # Hack: Add a pkill command as the final command after the save and stop commands
         #       to simulate the server stopping.
-        stop.execute(add_cmds=[PKillTail(start.container)])
+        stop.try_rcon.add_action(PKillTail(start.container))
+        stop.execute()
 
     finally:
         clean_docker(f'{name}-server')
@@ -135,24 +136,24 @@ def test_stop_tries_rcon_save_stop(mocker, tmp_path, tmp_file, uncap):
     assert 'Hello!\n' in result.stdout
     assert result.stderr == 'Terminated\n'
 
-    assert stop.last_schedule is not None
-    assert len(stop.last_schedule.actions) == 4
+    assert stop.try_rcon is not None
+    assert len(stop.try_rcon.actions) == 4
 
     rcon_password = rcon.password(name)
 
-    save_cmd = stop.last_schedule.actions[0]
+    save_cmd = stop.try_rcon.actions[0]
     assert isinstance(save_cmd, Rcon)
     assert save_cmd.last_result is not None
     assert save_cmd.last_result.exit_status == 0
     assert save_cmd.last_result.output == f'{rcon_password}\n127.0.0.1:{rcon_port} {save_cmd_str}-pre\n'
 
-    save_cmd = stop.last_schedule.actions[1]
+    save_cmd = stop.try_rcon.actions[1]
     assert isinstance(save_cmd, Rcon)
     assert save_cmd.last_result is not None
     assert save_cmd.last_result.exit_status == 0
     assert save_cmd.last_result.output == f'{rcon_password}\n127.0.0.1:{rcon_port} {save_cmd_str}\n'
 
-    stop_cmd = stop.last_schedule.actions[2]
+    stop_cmd = stop.try_rcon.actions[2]
     assert isinstance(stop_cmd, Rcon)
     assert stop_cmd.last_result is not None
     assert stop_cmd.last_result.exit_status == 0

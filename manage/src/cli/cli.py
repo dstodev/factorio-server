@@ -50,10 +50,6 @@ def args():
     parser_rcon.add_argument('name', help='name of the game')
     parser_rcon.add_argument('--send', nargs='*',  # 0 args is useful as ping
                              help='send a command to the server')
-    parser_rcon.add_argument('--save', action='store_true',
-                             help='save the server')
-    parser_rcon.add_argument('--stop', action='store_true',
-                             help='stop the server')
     parser_rcon.add_argument('--say', nargs='+',
                              help='say something on the server')
 

@@ -28,8 +28,6 @@ def send(name: str, command: list[str]) -> ExecResult | None:
 
     pw = password(name)
     hoststr = f'127.0.0.1:{port}'
-    # argstr = ' '.join(command)
-    # cmdstr = f'echo "{pw}" | rcon {hoststr} {argstr}'
 
     container = GameContainer(f'{name}-server', None)  # Only reattach
 

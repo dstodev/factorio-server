@@ -16,6 +16,9 @@ def test_backup(mocker, tmp_path, tmp_file, uncap):
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest',
+                          # Force unique cache for next layers;
+                          # fixes frequent failures due to shared intermediate containers being deleted
+                          f'RUN echo "{name}"',
                           'ARG user_id',
                           'ARG user_name',
                           'ARG group_id',
@@ -193,9 +196,6 @@ def test_backup_tries_rcon_save(mocker, tmp_path, tmp_file, uncap):
     assert result.stdout == 'Hello!\n'
     assert result.stderr == ''
 
-    assert backup.save_pre is None  # server was not running
-    assert backup.save_post is None
-
     try:
         start = Start(name)
         start.execute(auto_rm=False)
@@ -218,26 +218,26 @@ def test_backup_tries_rcon_save(mocker, tmp_path, tmp_file, uncap):
     assert result.stdout == 'Hello!\n'
     assert result.stderr == ''
 
-    assert backup.save_pre is not None
-    assert backup.save_post is not None
-    assert len(backup.save_pre.actions) == 2
-    assert len(backup.save_post.actions) == 1
+    assert backup.try_save_pre is not None
+    assert backup.try_save_post is not None
+    assert len(backup.try_save_pre.actions) == 2
+    assert len(backup.try_save_post.actions) == 1
 
     rcon_password = rcon.password(name)
 
-    save_cmd = backup.save_pre.actions[0]
+    save_cmd = backup.try_save_pre.actions[0]
     assert isinstance(save_cmd, Rcon)
     assert save_cmd.last_result is not None
     assert save_cmd.last_result.exit_status == 0
     assert save_cmd.last_result.output == f'{rcon_password}\n127.0.0.1:{rcon_port} {save_cmd_str}-pre\n'
 
-    save_cmd = backup.save_pre.actions[1]
+    save_cmd = backup.try_save_pre.actions[1]
     assert isinstance(save_cmd, Rcon)
     assert save_cmd.last_result is not None
     assert save_cmd.last_result.exit_status == 0
     assert save_cmd.last_result.output == f'{rcon_password}\n127.0.0.1:{rcon_port} {save_cmd_str}\n'
 
-    save_cmd = backup.save_post.actions[0]
+    save_cmd = backup.try_save_post.actions[0]
     assert isinstance(save_cmd, Rcon)
     assert save_cmd.last_result is not None
     assert save_cmd.last_result.exit_status == 0

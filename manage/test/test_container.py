@@ -239,6 +239,9 @@ class TestContainer:
     def test_execute(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
                               'FROM alpine:latest',
+                              # Force unique cache for next layers;
+                              # fixes frequent failures due to shared intermediate containers being deleted
+                              f'RUN echo "{self.container_name}"',
                               'ARG user_id',
                               'ARG user_name',
                               'ARG group_id',

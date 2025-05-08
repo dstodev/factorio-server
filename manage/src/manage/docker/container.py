@@ -1,6 +1,7 @@
 '''Represent a Docker container.'''
 
 import os
+import struct
 import time
 from multiprocessing import Process
 from pathlib import Path
@@ -210,24 +211,32 @@ class GameContainer:
                         inner_sock.shutdown(SHUT_WR)
 
                     # Read from socket until EOF
-                    data = b''
-                    buffer_size = 4096  # 4 KiB
-
-                    _header = inner_sock.recv(STREAM_HEADER_SIZE_BYTES)
+                    # References:
+                    # - https://github.com/docker/docker-py/issues/300#issuecomment-55320544
+                    # - https://chromium.googlesource.com/external/googleappengine/python/+/db37ba68521201bbe642c1058fd696025f394694/lib/docker/docker/client.py#255
+                    response = b''
 
                     while True:
-                        part = inner_sock.recv(buffer_size)
-                        if part:
-                            data += part
-                        else:
+                        header = inner_sock.recv(STREAM_HEADER_SIZE_BYTES)
+                        if not header:
                             break
+                        _stream_fd, length = struct.unpack_from('>BxxxL', header)
+                        if not length:
+                            break
+                        data = b''
+                        while len(data) < length:
+                            chunk = inner_sock.recv(length - len(data))
+                            if not chunk:
+                                break
+                            data += chunk
+                        response += data
 
                 finally:
                     sock.close()
 
                 inspect = client.api.exec_inspect(exec_id)
                 exit_code = inspect['ExitCode']
-                output = data.decode('utf-8')
+                output = response.decode('utf-8')
                 output = output.replace('\r\n', '\n')
                 result = ExecResult(exit_code, output)
 

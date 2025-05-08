@@ -81,6 +81,9 @@ def test_shelf_permissions(mocker, tmp_path, tmp_file, uncap):
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest',
+                          # Force unique cache for next layers;
+                          # fixes frequent failures due to shared intermediate containers being deleted
+                          f'RUN echo "{name}"',
                           'ARG user_id',
                           'ARG user_name',
                           'ARG group_id',
