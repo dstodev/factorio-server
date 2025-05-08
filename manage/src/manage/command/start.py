@@ -1,6 +1,6 @@
 '''Command to start a server.'''
 
-from manage import game
+from manage import game, rcon
 from manage.docker.container import Bind, GameContainer
 from manage.util import timestamp
 
@@ -50,13 +50,13 @@ class Start:
         # /game aligns with guest value for server_dir.parent bind mount in __init__
         guest_server_dir = '/game/hot'
 
-        rcon = game.rcon_password(self.name, new=True)
+        rcon_password = rcon.password(self.name, new=True)
 
         command = ' && '.join([
             'umask 0002',
             f'mkdir -p {guest_server_dir}',
             'cp /start.sh /tmp/start.sh',
-            f'while [ ! -f /tmp/stopfile ]; do /tmp/start.sh {guest_server_dir} {rcon}; done',
+            f'while [ ! -f /tmp/stopfile ]; do /tmp/start.sh {guest_server_dir} {rcon_password}; done',
             'rm -f /tmp/stopfile',
         ])
 

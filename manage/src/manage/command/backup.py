@@ -2,7 +2,7 @@
 
 import stat
 
-from manage import game
+from manage import game, rcon
 from manage.command.rcon import Rcon
 from manage.command.schedule import Schedule
 from manage.docker import Bind, GameContainer
@@ -60,26 +60,17 @@ class Backup:
             cfg = game.cfg_data(self.name)
 
             try_save = Schedule()
-            password = game.rcon_password(self.name)
 
             try:
                 cfg_rcon = cfg['rcon']
 
-                port = cfg['port']['rcon']
-                hoststr = f'127.0.0.1:{port}'
-
                 try:
-                    try_save.add_action(
-                        Rcon(f'{self.name}-server',
-                             [hoststr, cfg_rcon['save-pre']],
-                             password=password))
+                    try_save.add_action(Rcon(self.name, [cfg_rcon['save-pre']]))
                 except KeyError:
                     pass
 
                 try:
-                    try_save.add_action(Rcon(f'{self.name}-server',
-                                             [hoststr, cfg_rcon['save']],
-                                             password=password))
+                    try_save.add_action(Rcon(self.name, [cfg_rcon['save']]))
                 except KeyError:
                     pass
 
@@ -116,14 +107,7 @@ class Backup:
 
                 try:
                     cfg_rcon = cfg['rcon']
-
-                    port = cfg['port']['rcon']
-                    hoststr = f'127.0.0.1:{port}'
-
-                    try_save.add_action(
-                        Rcon(f'{self.name}-server',
-                             [hoststr, cfg_rcon['save-post']],
-                             password=password))
+                    try_save.add_action(Rcon(self.name, [cfg_rcon['save-post']]))
 
                 except KeyError:
                     pass

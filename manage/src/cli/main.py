@@ -2,7 +2,7 @@
 
 from cli import cli
 
-from manage import game, paths
+from manage import game, paths, rcon
 from manage.command import Backup, Download, Start, Stop
 from manage.docker import build_image
 from manage.util import clean_docker
@@ -43,6 +43,12 @@ def main():
         case 'backup':
             backup = Backup(args.name)
             backup.execute()
+
+        case 'rcon':
+            if args.send:
+                print(f'Sending RCON command: {args.send}')
+                result = rcon.send(args.name, args.send)
+                print(result)
 
         case _:
             print('Unknown command')

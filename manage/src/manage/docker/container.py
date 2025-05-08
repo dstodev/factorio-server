@@ -1,10 +1,13 @@
 '''Represent a Docker container.'''
 
 import os
+import time
 from multiprocessing import Process
 from pathlib import Path
+from socket import SHUT_WR, SocketIO, socket
 from typing import NamedTuple
 
+from docker.constants import STREAM_HEADER_SIZE_BYTES
 from docker.errors import APIError, NotFound
 from docker.models.containers import Container
 from docker.models.images import Image
@@ -177,7 +180,7 @@ class GameContainer:
 
         return mounts
 
-    def execute(self, command: list[str] | None = None) -> ExecResult | None:
+    def execute(self, command: list[str], send_stdin: str | None = None) -> ExecResult | None:
         '''Execute a command in the container.
 
         :param command: The command to run in the container. Default is None.
@@ -189,10 +192,44 @@ class GameContainer:
 
         if command is not None:
             try:
-                result = self.container.exec_run(command, stdout=True, stderr=True, tty=True)
-                output = result.output.decode('utf-8')
+                client = docker.from_env()
+                exec_id = client.api.exec_create(self.container.id,
+                                                 cmd=command,
+                                                 stdin=True)['Id']
+
+                sock = client.api.exec_start(exec_id, socket=True)
+
+                assert isinstance(sock, SocketIO), 'exec_start() did not return a socket!'
+
+                try:
+                    inner_sock: socket = sock._sock  # type: ignore
+
+                    if send_stdin is not None:
+                        inner_sock.sendall(send_stdin.encode('utf-8'))
+                        inner_sock.sendall(b'\n')
+                        inner_sock.shutdown(SHUT_WR)
+
+                    # Read from socket until EOF
+                    data = b''
+                    buffer_size = 4096  # 4 KiB
+
+                    _header = inner_sock.recv(STREAM_HEADER_SIZE_BYTES)
+
+                    while True:
+                        part = inner_sock.recv(buffer_size)
+                        if part:
+                            data += part
+                        else:
+                            break
+
+                finally:
+                    sock.close()
+
+                inspect = client.api.exec_inspect(exec_id)
+                exit_code = inspect['ExitCode']
+                output = data.decode('utf-8')
                 output = output.replace('\r\n', '\n')
-                result = ExecResult(result.exit_code, output)
+                result = ExecResult(exit_code, output)
 
             except APIError as e:
                 raise RuntimeError('Container is not running!') from e

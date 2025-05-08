@@ -1,6 +1,5 @@
 '''Command to stop a game server.'''
 
-from requests.exceptions import ConnectionError
 
 from manage import game
 from manage.command.command import Command
@@ -33,27 +32,22 @@ class Stop:
         cfg = game.cfg_data(self.name)
 
         try_save = Schedule()
-        password = game.rcon_password(self.name)
 
         try:
             cfg_rcon = cfg['rcon']
 
-            port = cfg['port']['rcon']
-            hoststr = f'127.0.0.1:{port}'
-
             try:
-                try_save.add_action(
-                    Rcon(f'{self.name}-server', [hoststr, cfg_rcon['save-pre']], password=password))
+                try_save.add_action(Rcon(self.name, [cfg_rcon['save-pre']]))
             except KeyError:
                 pass
 
             try:
-                try_save.add_action(Rcon(f'{self.name}-server', [hoststr, cfg_rcon['save']], password=password))
+                try_save.add_action(Rcon(self.name, [cfg_rcon['save']]))
             except KeyError:
                 pass
 
             try:
-                try_save.add_action(Rcon(f'{self.name}-server', [hoststr, cfg_rcon['stop']], password=password))
+                try_save.add_action(Rcon(self.name, [cfg_rcon['stop']]))
             except KeyError:
                 pass
 

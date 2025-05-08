@@ -216,29 +216,3 @@ def build_args(name: str) -> dict[str, str]:
         pass
 
     return args
-
-
-def rcon_password(name: str, length: int = 128, new: bool = False) -> str:
-    '''Get the RCON password for the game server.'''
-    cfg = cfg_dir(name)
-    secret_file = cfg / 'secret'
-
-    try:
-        if new:
-            raise FileNotFoundError
-
-        with open(secret_file, 'r', encoding='utf-8') as file:
-            password = file.read().strip()
-
-    except FileNotFoundError:
-        char_pool = string.ascii_letters + string.digits
-        password = ''.join(random.choices(char_pool, k=length))
-
-        secret_file.parent.mkdir(parents=True, exist_ok=True)
-
-        secret_fd = os.open(secret_file, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, mode=0o600)
-
-        with os.fdopen(secret_fd, 'w', encoding='utf-8') as file:
-            file.write(f'{password}\n')
-
-    return password

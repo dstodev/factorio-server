@@ -4,7 +4,7 @@ import json
 from functools import partial
 from test.util import PKillTail
 
-from manage import PROJECT_NAME, game, paths
+from manage import PROJECT_NAME, game, paths, rcon
 from manage.command import Rcon, Start, Stop
 from manage.util import clean_docker
 
@@ -77,12 +77,12 @@ def test_stop_tries_rcon_save_stop(mocker, tmp_path, tmp_file, uncap):
 
     name = 'test-game-stop-rcon-save-stop'
 
-    rcon = tmp_file(f'cfg/{name}/rcon.sh',
-                    '#!/bin/sh',
-                    'read -r password',
-                    'echo "$password"',
-                    'echo "$@"',
-                    mode=0o755)
+    rcon_shim = tmp_file(f'cfg/{name}/rcon.sh',
+                         '#!/bin/sh',
+                         'read -r password',
+                         'echo "$password"',
+                         'echo "$@"',
+                         mode=0o755)
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest',
@@ -110,7 +110,7 @@ def test_stop_tries_rcon_save_stop(mocker, tmp_path, tmp_file, uncap):
                                }
                            }, indent=2))
 
-    uncap(rcon)
+    uncap(rcon_shim)
     uncap(dockerfile)
     uncap(start)
     uncap(server_json)
@@ -138,7 +138,7 @@ def test_stop_tries_rcon_save_stop(mocker, tmp_path, tmp_file, uncap):
     assert stop.last_schedule is not None
     assert len(stop.last_schedule.actions) == 4
 
-    rcon_password = game.rcon_password(name)
+    rcon_password = rcon.password(name)
 
     save_cmd = stop.last_schedule.actions[0]
     assert isinstance(save_cmd, Rcon)

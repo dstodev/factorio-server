@@ -4,7 +4,7 @@ import json
 import os
 from functools import partial
 
-from manage import PROJECT_NAME, game, paths
+from manage import PROJECT_NAME, game, paths, rcon
 from manage.command import Download, Start
 from manage.util import clean_docker
 
@@ -89,7 +89,7 @@ def test_start(mocker, tmp_path, tmp_file, uncap):
 
     assert 'Server started!\n' in content
     assert '/game/hot\n' in content
-    assert game.rcon_password(name) in content
+    assert rcon.password(name) in content
     assert 'closing logfile writer\n' in content
 
 

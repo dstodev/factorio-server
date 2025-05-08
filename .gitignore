@@ -6,8 +6,9 @@
 /server-files*/
 /shelf*/
 
+tmp*
+temp*
 secret
-/tmp*
 
 .screenrc
 
@@ -18,5 +19,6 @@ __pycache__/
 *.egg-info
 *.pyc
 
-*.out
 *.jar
+*.log
+*.out

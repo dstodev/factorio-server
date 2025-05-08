@@ -4,7 +4,7 @@ import json
 import os
 from functools import partial
 
-from manage import PROJECT_NAME, game, paths
+from manage import PROJECT_NAME, game, paths, rcon
 from manage.command import Backup, Download, Rcon, Start
 from manage.util import clean_docker, timestamp
 
@@ -135,12 +135,12 @@ def test_backup_tries_rcon_save(mocker, tmp_path, tmp_file, uncap):
 
     name = 'test-backup-tries-rcon-save'
 
-    rcon = tmp_file(f'cfg/{name}/rcon.sh',
-                    '#!/bin/sh',
-                    'read -r password',
-                    'echo "$password"',
-                    'echo "$@"',
-                    mode=0o755)
+    rcon_shim = tmp_file(f'cfg/{name}/rcon.sh',
+                         '#!/bin/sh',
+                         'read -r password',
+                         'echo "$password"',
+                         'echo "$@"',
+                         mode=0o755)
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest',
@@ -173,7 +173,7 @@ def test_backup_tries_rcon_save(mocker, tmp_path, tmp_file, uncap):
                                }
                            }, indent=2))
 
-    uncap(rcon)
+    uncap(rcon_shim)
     uncap(dockerfile)
     uncap(start)
     uncap(backup)
@@ -218,14 +218,12 @@ def test_backup_tries_rcon_save(mocker, tmp_path, tmp_file, uncap):
     assert result.stdout == 'Hello!\n'
     assert result.stderr == ''
 
-    rcon_password = game.rcon_password(name)
-
     assert backup.save_pre is not None
     assert backup.save_post is not None
     assert len(backup.save_pre.actions) == 2
     assert len(backup.save_post.actions) == 1
 
-    rcon_password = game.rcon_password(name)
+    rcon_password = rcon.password(name)
 
     save_cmd = backup.save_pre.actions[0]
     assert isinstance(save_cmd, Rcon)

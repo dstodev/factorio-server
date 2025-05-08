@@ -1,139 +1,125 @@
-'''Test the RCON Command.'''
-
-
 import json
-import shutil
 from functools import partial
 
-import pytest
-
-from manage import game, paths
-from manage.command import Rcon
-from manage.docker import GameContainer, build_image
+from manage import game, paths, rcon
+from manage.docker.container import GameContainer
+from manage.docker.util import build_image
 from manage.util import clean_docker
 
 
-def test_rcon_command(mocker, tmp_path, tmp_file, uncap):
-    shutil.copytree(paths.get('rcon'), tmp_path / 'rcon')
-    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
-
-    name = 'test-rcon-command'
-    rcon_image_name = 'rcon-test-rcon-command'
-
-    dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
-                          f'FROM {rcon_image_name}:latest')
-
-    expected_uid = 30120
-    expected_gid = 30121
-
-    server_json = tmp_file(f'cfg/{name}/server.json',
-                           json.dumps({
-                               'user': {
-                                   'name': f'server-user:{expected_uid}',
-                                   'group': f'server-group:{expected_gid}'
-                               }
-                           }, indent=2))
-
-    uncap(dockerfile)
-    uncap(server_json)
-
-    try:
-        build_image(paths.get('rcon') / 'Dockerfile', rcon_image_name, game.build_args(name))
-
-        image, _logs = game.docker_image(name)
-
-        container = GameContainer(name, image)
-
-        container.start(command=['tail', '-f', '/dev/null'])
-
-        rcon = Rcon(name, ['test'])
-        rcon.execute()
-        result = rcon.last_result
-
-        assert result is not None
-        assert result.exit_status == 0
-        assert result.output == 'All tests passed!\n'
-
-        result = container.execute(['/bin/sh', '-c', 'stat -c "%u:%g" "$(which rcon)"'])
-
-        assert result is not None
-        assert result.exit_status == 0
-        assert result.output == '0:0\n'
-
-        result = container.execute(['/bin/sh', '-c', 'echo "$(id -u):$(id -g)"'])
-
-        assert result is not None
-        assert result.exit_status == 0
-        assert result.output == f'{expected_uid}:{expected_gid}\n'
-
-        rcon = Rcon(name, ['localhost'])
-        rcon.execute()
-        result = rcon.last_result
-
-        assert result is not None
-        assert result.exit_status == 255
-        assert result.output == 'Error: Timed out waiting for password\n'
-
-        rcon = Rcon(name, ['localhost'], password='test')
-        rcon.execute()
-
-        result = rcon.last_result
-        assert result is not None
-        assert result.exit_status == 255
-        assert 'Connection refused' in result.output
-
-        assert container.container is not None
-        container.container.stop()
-        container.wait()
-
-        assert container.container is None
-
-    finally:
-        clean_docker(name)
-        # clean_docker(rcon_image_name)
-
-
-def test_rcon_command_no_container(mocker, tmp_path):
+def test_rcon_password(mocker, tmp_path, uncap):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
     name = 'test-game'
 
-    rcon = Rcon(name, ['test'])
+    password = rcon.password(name, 10)
 
-    with pytest.raises(RuntimeError, match='Container does not exist'):
-        rcon.execute()
+    password_file = game.cfg_dir(name) / 'secret'
+
+    uncap(password_file)
+    uncap(password)
+
+    assert len(password) == 10
+    assert all(c.isalnum() for c in password)
+
+    assert password_file.is_file()
+    assert password_file.read_text(encoding='utf-8') == f'{password}\n'
+    assert password_file.stat().st_mode & 0o777 == 0o600
 
 
-def test_rcon_image_no_client(mocker, tmp_path, tmp_file, uncap):
+def test_rcon_password_persists(mocker, tmp_path):
     mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
 
-    name = 'test-rcon-image-no-client'
+    name = 'test-game'
+
+    password = rcon.password(name, 10)
+
+    assert password == rcon.password(name, 10)
+    assert password == rcon.password(name, 10)
+
+
+def test_rcon_password_new(mocker, tmp_path, uncap):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game'
+
+    password = rcon.password(name, 10)
+
+    assert password == rcon.password(name, 10)
+
+    new_password = rcon.password(name, 10, new=True)
+    assert password != new_password
+
+    uncap(game.cfg_dir(name) / 'secret')
+    uncap(password)
+    uncap(new_password)
+
+    assert len(new_password) == 10
+    assert all(c.isalnum() for c in new_password)
+
+    assert new_password == rcon.password(name, 10)
+    assert new_password == rcon.password(name, 10)
+
+
+def test_rcon_password_length(mocker, tmp_path, uncap):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-game'
+
+    password = rcon.password(name, 20)
+
+    uncap(game.cfg_dir(name) / 'secret')
+    uncap(password)
+
+    assert len(password) == 20
+    assert all(c.isalnum() for c in password)
+
+
+def test_rcon_stdin(mocker, tmp_path, tmp_file, uncap):
+    mocker.patch('manage.paths.get', side_effect=partial(paths.get, root=tmp_path))
+
+    name = 'test-rcon-stdin'
+
+    rcon_shim = tmp_file(f'cfg/{name}/rcon.sh',
+                         '#!/bin/sh',
+                         'read -r password',
+                         'echo "$password"',
+                         'echo "$@"',
+                         mode=0o755)
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
-                          'FROM alpine:latest')
+                          'FROM alpine:latest',
+                          'COPY rcon.sh /usr/bin/rcon')
 
+    server_json = tmp_file(f'cfg/{name}/server.json',
+                           json.dumps({
+                               'port': {
+                                   'rcon': 12345
+                               },
+                           }, indent=2))
+
+    uncap(rcon_shim)
     uncap(dockerfile)
+    uncap(server_json)
+
+    command = ['echo', 'Hello!']
+
+    image, _logs = build_image(dockerfile, name)
+
+    container = GameContainer(f'{name}-server', image)
 
     try:
-        image, _logs = game.docker_image(name)
+        container.start(command=['tail', '-f', '/dev/null'])  # Run until manually stopped
 
-        container = GameContainer(name, image)
-
-        container.start(command=['tail', '-f', '/dev/null'])
-
-        rcon = Rcon(name, ['test'])
-        rcon.execute()
-        result = rcon.last_result
-
-        assert result is not None
-        assert result.exit_status != 0
-        assert result.output != ''
+        result = rcon.send(name, command)
+        password = rcon.password(name)
 
         assert container.container is not None
         container.container.stop()
-        container.wait()
-
-        assert container.container is None
 
     finally:
-        clean_docker(name)
+        clean_docker(f'{name}-server')
+
+    assert result is not None
+    assert result.exit_status == 0
+    assert result.output == f'{password}\n127.0.0.1:12345 echo Hello!\n'
