@@ -78,7 +78,7 @@ class Backup:
 
             try:
                 self.try_save_pre.execute()
-            except (RuntimeError, RconError):
+            except RconError:
                 pass
 
             command = ' && '.join([
@@ -95,7 +95,7 @@ class Backup:
                 self.container.start(entrypoint=['/bin/sh', '-c'],
                                      command=[command])
 
-                result = self.container.wait(timeout=20)
+                result = self.container.wait(timeout=120)
                 self.last_result = result
 
             finally:
@@ -103,7 +103,7 @@ class Backup:
 
                 try:
                     self.try_save_post.execute()
-                except (RuntimeError, RconError):
+                except RconError:
                     pass
 
             assert isinstance(result, Result)

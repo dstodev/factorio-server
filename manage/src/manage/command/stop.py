@@ -1,6 +1,8 @@
 '''Command to stop a game server.'''
 
 
+from requests.exceptions import ConnectionError as RequestsConnectionError
+
 from manage import game
 from manage.command.rcon import Rcon
 from manage.command.schedule import Schedule
@@ -48,7 +50,7 @@ class Stop:
             result = container.wait(timeout=self.timeout)
             self.last_result = result
 
-        except (RuntimeError, ConnectionError, RconError):
+        except (RconError, RequestsConnectionError):
             container = GameContainer(f'{self.name}-server', None)
             if container.container is not None:
                 container.container.stop()

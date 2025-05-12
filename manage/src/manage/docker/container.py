@@ -2,7 +2,6 @@
 
 import os
 import struct
-import time
 from multiprocessing import Process
 from pathlib import Path
 from socket import SHUT_WR, SocketIO, socket
@@ -13,10 +12,9 @@ from docker.errors import APIError, NotFound
 from docker.models.containers import Container
 from docker.models.images import Image
 from docker.types import Mount
-from requests.exceptions import ReadTimeout
 
 import docker  # https://docker-py.readthedocs.io/en/stable/index.html
-from manage import PROJECT_NAME, game
+from manage import PROJECT_NAME
 from manage.docker.util import wait_for_container
 from manage.shell import Result
 

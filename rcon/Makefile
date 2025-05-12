@@ -1,6 +1,9 @@
 CLIENT := rcon
 SRC := main.cxx
 
+PREFIX ?= /usr/local
+BINDIR ?= $(PREFIX)/bin
+
 CXX := g++
 CXXFLAGS := -std=c++17 -O3 -Wall -Wextra
 
@@ -16,7 +19,7 @@ test: $(CLIENT)
 	./$< test
 
 install: $(CLIENT)
-	install -Dm755 -t /usr/local/bin $<
+	install -Dm755 -t $(BINDIR) $<
 
 clean:
 	rm -f $(CLIENT)

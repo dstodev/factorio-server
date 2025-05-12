@@ -21,6 +21,6 @@ class Rcon:
     def execute(self) -> None:
         '''Run the RCON command.
 
-        :raises RuntimeError: The server is not running.
+        :raises RconError: The RCON command did not send successfully.
         '''
         self.last_result = rcon.send(self.name, self.command)

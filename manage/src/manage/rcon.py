@@ -14,9 +14,20 @@ class RconError(Exception):
 
 
 def send(name: str, command: list[str]) -> ExecResult | None:
+    '''Send an RCON command to a game server.
+
+    :param name: The game to send to.
+    :type name: str
+
+    :param command: The command to send.
+    :type command: str
+
+    :return: The result of the command.
+
+    :rtype: ExecResult
+    :raises RconError: The RCON command did not send successfully.
+    '''
     # TODO: How to better reconcile the container name being different from the game name?
-    # TODO: Use elsewhere instead of manual RCON command
-    # TODO: Replace exceptions with RconError
 
     cfg = cfg_data(name)
 
@@ -26,12 +37,20 @@ def send(name: str, command: list[str]) -> ExecResult | None:
     except KeyError as e:
         raise RconError(f'No RCON port found in configuration for game: {name}') from e
 
-    pw = password(name)
-    hoststr = f'127.0.0.1:{port}'
-
     container = GameContainer(f'{name}-server', None)  # Only reattach
+    hoststr = f'127.0.0.1:{port}'
+    pw = password(name)
 
-    result = container.execute(['rcon', hoststr, *command], send_stdin=pw)
+    try:
+        result = container.execute(['rcon', hoststr, *command], send_stdin=pw)
+    except RuntimeError as e:
+        raise RconError('No target container!') from e
+
+    if result is not None:
+        code = result.exit_status
+
+        if code != 0:
+            raise RconError(f'RCON client failure ({code}): {result.output}')
 
     return result
 
