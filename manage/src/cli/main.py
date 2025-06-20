@@ -3,13 +3,12 @@
 from cli import cli
 
 from manage import game, paths, rcon
-from manage.command import Backup, Download, Start, Stop
+from manage.command import Backup, Download, Shelf, Start, Stop
 from manage.docker import build_image
 from manage.util import clean_docker
 
 
 def main():
-    print('Hello, world!')
     args = cli.args()
 
     print(args)
@@ -57,6 +56,10 @@ def main():
                 print(f'Sending RCON command: {say}')
                 result = rcon.send(args.name, [say])
                 print(result)
+
+        case 'shelf':
+            shelf = Shelf(args.name)
+            shelf.execute()
 
         case _:
             print('Unknown command')

@@ -27,7 +27,7 @@ class ExecResult(NamedTuple):
 
 def monitor(container_id: str, log_path: Path, auto_rm: bool = False):  # pragma: no cover
     '''Monitor a container, writing stdout & stderr to a file, and optionally
-    clean up the container when done.
+    remove the container when it stops.
 
     This intended to run in a separate process to continue running as long as
     the container is running.
@@ -218,7 +218,7 @@ class GameContainer:
                         header = inner_sock.recv(STREAM_HEADER_SIZE_BYTES)
                         if not header:
                             break
-                        _stream_fd, length = struct.unpack_from('>BxxxL', header)
+                        _, length = struct.unpack_from('>BxxxL', header)
                         if not length:
                             break
                         data = b''
