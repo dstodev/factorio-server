@@ -1,15 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-server_dir="$1"
+hot_dir="$1"
 rcon_password="$2"
 
-touch /tmp/stopfile
+#touch /tmp/stopfile
 
 game_port=34120
 rcon_port=34240
 
-cd "$server_dir" || exit 1
+cd "$hot_dir" || exit 1
 
 mapfile -t properties_files < <(find . -name "server.properties" -type f)
 
@@ -27,4 +27,6 @@ for properties_file in "${properties_files[@]}"; do
 	sed -i "s/^spawn-protection=.*/spawn-protection=0/" "$properties_file"
 done
 
-"$server_dir/start-server.sh"
+cd "$hot_dir/MCE2-Server-Files-1.0"
+
+./run.sh

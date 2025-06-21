@@ -212,6 +212,7 @@ class GameContainer:
                     # References:
                     # - https://github.com/docker/docker-py/issues/300#issuecomment-55320544
                     # - https://chromium.googlesource.com/external/googleappengine/python/+/db37ba68521201bbe642c1058fd696025f394694/lib/docker/docker/client.py#255
+                    # - https://github.com/docker/docker-py/blob/main/docker/api/client.py
                     response = b''
 
                     while True:

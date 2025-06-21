@@ -95,7 +95,7 @@ class Backup:
                 self.container.start(entrypoint=['/bin/sh', '-c'],
                                      command=[command])
 
-                result = self.container.wait(timeout=120)
+                result = self.container.wait(timeout=600)
                 self.last_result = result
 
             finally:

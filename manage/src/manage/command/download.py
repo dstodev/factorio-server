@@ -71,7 +71,7 @@ class Download:
                 self.container.start(entrypoint=['/bin/sh', '-c'],
                                      command=[command])
 
-                result = self.container.wait()
+                result = self.container.wait(timeout=300)
             finally:
                 parent_dir.chmod(restore_mode)
 

@@ -50,7 +50,7 @@ class Stop:
             result = container.wait(timeout=self.timeout)
             self.last_result = result
 
-        except (RconError, RequestsConnectionError):
+        except (RuntimeError, RconError, RequestsConnectionError):
             container = GameContainer(f'{self.name}-server', None)
             if container.container is not None:
                 container.container.stop()
