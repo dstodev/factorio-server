@@ -164,6 +164,10 @@ if $prepare; then
 	fi
 fi
 
+# docker-py and urllib emit a lot of warnings :(
+PYTHONWARNINGS="${PYTHONWARNINGS:-ignore}"
+export PYTHONWARNINGS
+
 if "$shell"; then
 	shell_cmd='/bin/bash'
 	rcfile_ps1="export PS1='($venv_stem) \$(basename \"\$(pwd)\")\$ '"
