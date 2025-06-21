@@ -5,7 +5,7 @@ import struct
 from multiprocessing import Process
 from pathlib import Path
 from socket import SHUT_WR, SocketIO, socket
-from typing import NamedTuple
+from typing import Generator, NamedTuple
 
 from docker.constants import STREAM_HEADER_SIZE_BYTES
 from docker.errors import APIError, NotFound
@@ -201,37 +201,27 @@ class GameContainer:
                 assert isinstance(sock, SocketIO), 'exec_start() did not return a socket!'
 
                 try:
-                    inner_sock: socket = sock._sock  # type: ignore
+                    inner_sock: socket = sock._sock  # pylint: disable=protected-access # type: ignore
 
                     if send_stdin is not None:
                         inner_sock.sendall(send_stdin.encode('utf-8'))
                         inner_sock.sendall(b'\n')
                         inner_sock.shutdown(SHUT_WR)
 
-                    # Read from socket until EOF
-                    # References:
-                    # - https://github.com/docker/docker-py/issues/300#issuecomment-55320544
-                    # - https://chromium.googlesource.com/external/googleappengine/python/+/db37ba68521201bbe642c1058fd696025f394694/lib/docker/docker/client.py#255
-                    # - https://github.com/docker/docker-py/blob/main/docker/api/client.py
                     response = b''
 
-                    while True:
-                        header = inner_sock.recv(STREAM_HEADER_SIZE_BYTES)
-                        if not header:
-                            break
-                        _, length = struct.unpack_from('>BxxxL', header)
-                        if not length:
-                            break
-                        data = b''
-                        while len(data) < length:
-                            chunk = inner_sock.recv(length - len(data))
-                            if not chunk:
-                                break
-                            data += chunk
-                        response += data
+                    for chunk in self._stream_helper(sock):
+                        response += chunk
 
                 finally:
                     sock.close()
+                    # Suppress http.client.HTTPResponse ValueError during finalization
+                    # by closing the response here after we are done with it.
+                    try:
+                        if hasattr(sock, '_response') and hasattr(sock._response, 'close'):  # pylint: disable=protected-access # type: ignore
+                            sock._response.close()  # pylint: disable=protected-access # type: ignore
+                    except ValueError:
+                        pass
 
                 inspect = client.api.exec_inspect(exec_id)
                 exit_code = inspect['ExitCode']
@@ -243,6 +233,34 @@ class GameContainer:
                 raise RuntimeError('Container is not running!') from e
 
         return result
+
+    def _stream_helper(self, sock: SocketIO) -> Generator[bytes]:
+        '''Read from a socket until EOF, yielding chunks of data.'''
+
+        # References:
+        # - https://github.com/docker/docker-py/issues/300#issuecomment-55320544
+        # - https://chromium.googlesource.com/external/googleappengine/python/+/db37ba68521201bbe642c1058fd696025f394694/lib/docker/docker/client.py#255
+        # - https://github.com/docker/docker-py/blob/6e6a273573fe77f00776b30de0685162a102e43f/docker/api/client.py#L392
+
+        client = docker.from_env()
+        client.api._disable_socket_timeout(sock)  # pylint: disable=protected-access # type: ignore
+
+        inner_sock: socket = sock._sock  # pylint: disable=protected-access # type: ignore
+
+        while True:
+            header = inner_sock.recv(STREAM_HEADER_SIZE_BYTES)
+            if not header:
+                break
+            _, length = struct.unpack_from('>BxxxL', header)
+            if not length:
+                break
+            data = b''
+            while len(data) < length:
+                chunk = inner_sock.recv(length - len(data))
+                if not chunk:
+                    break
+                data += chunk
+            yield data
 
     def wait(self, timeout: int = 10) -> Result | None:
         '''Wait for the container to finish.

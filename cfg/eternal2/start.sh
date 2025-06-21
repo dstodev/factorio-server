@@ -30,3 +30,10 @@ done
 cd "$hot_dir/MCE2-Server-Files-1.0"
 
 ./run.sh
+
+if [ ! -f /tmp/stopfile ]; then
+	# If there is no stopfile, wait to prevent rapid restart loop if the server
+	# is failing to start.
+	# TODO: Move this to manage?
+	sleep 10
+fi

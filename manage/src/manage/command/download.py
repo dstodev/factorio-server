@@ -5,6 +5,7 @@ import stat
 from manage import game
 from manage.docker import Bind, GameContainer
 from manage.shell import Result
+from manage.util import clean_docker
 
 
 class Download:
@@ -74,6 +75,7 @@ class Download:
                 result = self.container.wait(timeout=300)
             finally:
                 parent_dir.chmod(restore_mode)
+                clean_docker(self.container.name)
 
             assert isinstance(result, Result)
 

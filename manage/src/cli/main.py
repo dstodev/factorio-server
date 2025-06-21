@@ -1,47 +1,54 @@
 '''CLI entrypoint to the manage module.'''
 
+from argparse import Namespace
+
 from cli import cli
 
 from manage import game, paths, rcon
 from manage.command import Backup, Download, Shelf, Start, Stop
 from manage.docker import build_image
-from manage.util import clean_docker
 
 
 def main():
-    args = cli.args()
+    args: Namespace = cli.args()
 
-    print(args)
+    if args.verbose and len(args.__dict__) > 0:
+        print('Options:')
+        for key, value in args.__dict__.items():
+            if value:
+                print(f'  {key}: {value}')
 
-    # client = docker.from_env()
+    if args.list:
+        for path in paths.get('cfg').iterdir():
+            if path.is_dir():
+                name = path.name
+                print(f'{name}')
+        return
 
-    for path in paths.get('cfg').iterdir():
-        if path.is_dir():
-            name = path.name
-            print(f'Found game: {name}')
+    if args.name is None:
+        print('No game name specified. Use cli -l to list available games.')
+        return
 
     # Update rcon image with game's build args
     build_image(paths.get('rcon') / 'Dockerfile', 'rcon', game.build_args(args.name))
 
+    action = None
+
     match args.command:
         case 'download':
-            try:
-                download = Download(args.name)
-                download.execute()
-            finally:
-                clean_docker(f'{args.name}-download')
+            action = Download(args.name)
 
         case 'start':
-            start = Start(args.name)
-            start.execute()
+            action = Start(args.name)
 
         case 'stop':
-            stop = Stop(args.name)
-            stop.execute()
+            action = Stop(args.name)
 
         case 'backup':
-            backup = Backup(args.name)
-            backup.execute()
+            action = Backup(args.name)
+
+        case 'shelf':
+            action = Shelf(args.name)
 
         case 'rcon':
             if args.send is not None:
@@ -57,12 +64,13 @@ def main():
                 result = rcon.send(args.name, [say])
                 print(result)
 
-        case 'shelf':
-            shelf = Shelf(args.name)
-            shelf.execute()
-
         case _:
             print('Unknown command')
+
+    if action is not None:
+        if args.verbose:
+            print(f'Executing {action.__class__.__name__} for game: {args.name}')
+        action.execute()
 
 
 if __name__ == '__main__':
