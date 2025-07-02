@@ -52,17 +52,17 @@ def main():
 
         case 'rcon':
             if args.send is not None:
-                print(f'Sending RCON command: {args.send}')
                 result = rcon.send(args.name, args.send)
-                print(result)
+                if result is not None:
+                    print(result.output)
 
             if args.say is not None:
                 cfg = game.cfg_data(args.name)
                 say = cfg['rcon']['say']
                 say = say.replace('::', ' '.join(args.say))
-                print(f'Sending RCON command: {say}')
                 result = rcon.send(args.name, [say])
-                print(result)
+                if result is not None:
+                    print(result.output)
 
         case _:
             print('Unknown command')

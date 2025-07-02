@@ -3,15 +3,11 @@ set -euo pipefail
 
 hot_dir="$1"
 
-echo "$hot_dir"
-pwd
-
-url='https://github.com/adam9899/MC-Eternal-2/releases/download/v1.0/MCE2-Server-Files-1.0.zip'
-
-wget -O "$hot_dir/eternal2.zip" "$url"
+# https://www.curseforge.com/minecraft/modpacks/mc-eternal-2/files/all
+wget -O "$hot_dir/eternal2.zip" "https://www.curseforge.com/api/v1/mods/1243287/files/6700261/download"
 
 unzip -o "$hot_dir/eternal2.zip" -d "$hot_dir"
 
-cd "$hot_dir/MCE2-Server-Files-1.0" || exit 1
+cd "$hot_dir/MCE2-Server-Files-"* || exit 1
 
-java -Xmx4G -jar './forge-1.20.1-47.4.2-installer.jar' --installServer .
+java -Xmx4G -jar './forge-'*'-installer.jar' --installServer .

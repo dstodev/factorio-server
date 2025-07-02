@@ -25,9 +25,12 @@ for properties_file in "${properties_files[@]}"; do
 	# Optional settings
 	sed -i "s/^allow-flight=false/allow-flight=true/" "$properties_file"
 	sed -i "s/^spawn-protection=.*/spawn-protection=0/" "$properties_file"
+	sed -i "s/^view-distance=.*/view-distance=20/" "$properties_file"
+	sed -i "s/^enable-query=false/enable-query=true/" "$properties_file"
+	sed -i "s/^query.port=.*/query.port=$game_port/" "$properties_file"
 done
 
-cd "$hot_dir/MCE2-Server-Files-1.0"
+cd "$hot_dir/MCE2-Server-Files-"* || exit 1
 
 ./run.sh
 

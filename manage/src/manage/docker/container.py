@@ -196,11 +196,14 @@ class GameContainer:
                                                  cmd=command,
                                                  stdin=True)['Id']
 
-                sock = client.api.exec_start(exec_id, socket=True)
+                sock: SocketIO = client.api.exec_start(exec_id, socket=True)
 
                 assert isinstance(sock, SocketIO), 'exec_start() did not return a socket!'
 
                 try:
+                    # The Docker Py API only returns an unwritable SocketIO so
+                    # we have to hack around it by using the underlying socket
+                    # directly.
                     inner_sock: socket = sock._sock  # pylint: disable=protected-access # type: ignore
 
                     if send_stdin is not None:
