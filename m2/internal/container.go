@@ -11,12 +11,14 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/uuid"
+
+	"manage2/internal/program"
 )
 
 type Container struct {
 	Image string
 
-	programs []*Program
+	programs []*program.Program
 
 	stdin  <-chan string
 	stdout chan<- string
@@ -58,7 +60,7 @@ func NewContainer(image string, args ...ContainerArgument) *Container {
 //
 // and it is assumed my/script.sh will parse its arguments, run, and then start
 // sub/script.sh with its arguments.
-func WithProgram(program *Program) ContainerArgument {
+func WithProgram(program *program.Program) ContainerArgument {
 	return func(p *Container) {
 		p.programs = append(p.programs, program)
 	}
@@ -106,7 +108,7 @@ func (p *Container) Run() error {
 
 	var mountPaths []mountPath
 
-	toGuestMutator := func(p *Program, index int, arg string) string {
+	toGuestMutator := func(p *program.Program, index int, arg string) string {
 		if p.ArgIsFile(index) {
 			hostPath := arg
 			guestId := uuid.New().String()

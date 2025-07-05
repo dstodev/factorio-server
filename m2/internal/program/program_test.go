@@ -1,4 +1,4 @@
-package internal_test
+package program_test
 
 import (
 	"errors"
@@ -6,13 +6,14 @@ import (
 	"testing"
 
 	"manage2/internal"
+	"manage2/internal/program"
 )
 
 func TestNewProgram(t *testing.T) {
 	path := t.TempDir() + "/" + "test.sh"
-	TouchFile(t, path)
+	internal.TouchFile(t, path)
 
-	p, err := internal.NewProgram(path)
+	p, err := program.New(path)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -26,7 +27,7 @@ func TestNewProgram(t *testing.T) {
 
 func TestNewProgramBadPath(t *testing.T) {
 	path := t.TempDir() + "/" + "test.sh"
-	p, err := internal.NewProgram(path)
+	p, err := program.New(path)
 	if !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("expected error to be 'fs.ErrNotExist', got: %v", err)
 	}
@@ -37,10 +38,10 @@ func TestNewProgramBadPath(t *testing.T) {
 
 func TestNewProgramWithArgs(t *testing.T) {
 	path := t.TempDir() + "/" + "test.sh"
-	TouchFile(t, path)
+	internal.TouchFile(t, path)
 
-	p, err := internal.NewProgram(path,
-		internal.WithStringArgs("arg1", "arg2"),
+	p, err := program.New(path,
+		program.WithStringArgs("arg1", "arg2"),
 	)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -63,12 +64,12 @@ func TestNewProgramWithFileArgs(t *testing.T) {
 	file1 := dir + "/file1.txt"
 	file2 := dir + "/file2.txt"
 
-	TouchFile(t, path)
-	TouchFile(t, file1)
-	TouchFile(t, file2)
+	internal.TouchFile(t, path)
+	internal.TouchFile(t, file1)
+	internal.TouchFile(t, file2)
 
-	p, err := internal.NewProgram(path,
-		internal.WithFileArgs(file1, file2),
+	p, err := program.New(path,
+		program.WithFileArgs(file1, file2),
 	)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -87,10 +88,10 @@ func TestNewProgramWithFileArgs(t *testing.T) {
 
 func TestNewProgramWithBadFileArgs(t *testing.T) {
 	path := t.TempDir() + "/" + "test.sh"
-	TouchFile(t, path)
+	internal.TouchFile(t, path)
 
-	_, err := internal.NewProgram(path,
-		internal.WithFileArgs("file.txt"),
+	_, err := program.New(path,
+		program.WithFileArgs("file.txt"),
 	)
 	if !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("expected error to be 'fs.ErrNotExist', got: %v", err)
@@ -103,13 +104,13 @@ func TestArgIsFile(t *testing.T) {
 	file1 := dir + "/file1.txt"
 	file2 := dir + "/file2.txt"
 
-	TouchFile(t, path)
-	TouchFile(t, file1)
-	TouchFile(t, file2)
+	internal.TouchFile(t, path)
+	internal.TouchFile(t, file1)
+	internal.TouchFile(t, file2)
 
-	p, err := internal.NewProgram(path,
-		internal.WithStringArgs("arg1", "arg2"),
-		internal.WithFileArgs(file1, file2),
+	p, err := program.New(path,
+		program.WithStringArgs("arg1", "arg2"),
+		program.WithFileArgs(file1, file2),
 	)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -128,13 +129,13 @@ func TestAsTokens(t *testing.T) {
 	file1 := dir + "/file1.txt"
 	file2 := dir + "/file2.txt"
 
-	TouchFile(t, path)
-	TouchFile(t, file1)
-	TouchFile(t, file2)
+	internal.TouchFile(t, path)
+	internal.TouchFile(t, file1)
+	internal.TouchFile(t, file2)
 
-	p, err := internal.NewProgram(path,
-		internal.WithStringArgs("arg1", "arg2"),
-		internal.WithFileArgs(file1, file2),
+	p, err := program.New(path,
+		program.WithStringArgs("arg1", "arg2"),
+		program.WithFileArgs(file1, file2),
 	)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -158,13 +159,13 @@ func TestAsTokenMutators(t *testing.T) {
 	file1 := dir + "/file1.txt"
 	file2 := dir + "/file2.txt"
 
-	TouchFile(t, path)
-	TouchFile(t, file1)
-	TouchFile(t, file2)
+	internal.TouchFile(t, path)
+	internal.TouchFile(t, file1)
+	internal.TouchFile(t, file2)
 
-	p, err := internal.NewProgram(path,
-		internal.WithStringArgs("arg1", "arg2"),
-		internal.WithFileArgs(file1, file2),
+	p, err := program.New(path,
+		program.WithStringArgs("arg1", "arg2"),
+		program.WithFileArgs(file1, file2),
 	)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -172,14 +173,14 @@ func TestAsTokenMutators(t *testing.T) {
 
 	count := 0
 
-	mutator1 := func(p *internal.Program, index int, arg string) string {
+	mutator1 := func(p *program.Program, index int, arg string) string {
 		count += 1
 		if p.ArgIsFile(index) {
 			return "file:" + arg
 		}
 		return "string:" + arg
 	}
-	mutator2 := func(p *internal.Program, index int, arg string) string {
+	mutator2 := func(p *program.Program, index int, arg string) string {
 		if index == 0 {
 			return "base:" + arg
 		}
