@@ -1,185 +1,86 @@
 package internal
 
 import (
-	"context"
-	"fmt"
-	"path/filepath"
-
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/google/uuid"
+	"errors"
+	"io/fs"
+	"os"
 )
 
-type ProgramArgument func(*Program)
-
-type Mount struct {
-	Host  string
-	Guest string
-}
-
 type Program struct {
-	Path  string
-	Image string
+	Path string
+	Args []string
 
-	args   []string
-	mounts []Mount
-
-	stdin  <-chan string
-	stdout chan<- string
-	stderr chan<- string
-
-	user string
+	fileArgIndices indexSet
 }
 
-func NewProgram(path string, image string, args ...ProgramArgument) *Program {
+type ProgramArgument func(*Program) error
+
+func NewProgram(path string, args ...ProgramArgument) (*Program, error) {
+	if err := checkFileExists(path); err != nil {
+		return nil, err
+	}
 	p := &Program{
-		Path:  path,
-		Image: image,
-		args:  []string{path},
+		Path:           path,
+		Args:           nil,
+		fileArgIndices: newIndexSet(),
 	}
-	WithMounts(path)(p)
 	for _, arg := range args {
-		arg(p)
-	}
-	return p
-}
-
-func WithArgs(args ...string) ProgramArgument {
-	return func(p *Program) {
-		p.args = append(p.args, args...)
-	}
-}
-
-// WithMounts adds file mounts for use when running the program in its container.
-//
-// Additionally adds the mounts to the program's arguments by mounted filepath.
-func WithMounts(mounts ...string) ProgramArgument {
-	m := toMounts(mounts)
-
-	return func(p *Program) {
-		p.mounts = append(p.mounts, m...)
-		p.args = append(p.args, toGuestPaths(m)...)
-	}
-}
-
-func toMounts(mounts []string) []Mount {
-	result := make([]Mount, len(mounts))
-	for i, hostPath := range mounts {
-		id := uuid.New().String()
-		basename := filepath.Base(hostPath)
-		guestPath := fmt.Sprintf("/tmp/m2/%s/%s", id, basename)
-
-		result[i] = Mount{
-			Host:  hostPath,
-			Guest: guestPath,
+		if err := arg(p); err != nil {
+			return nil, err
 		}
 	}
-	return result
+	return p, nil
 }
 
-func toGuestPaths(mounts []Mount) []string {
-	result := make([]string, len(mounts))
-	for i, mount := range mounts {
-		result[i] = mount.Guest
-	}
-	return result
-}
-
-// WithProgram adds a sub-program's path as an argument, and mounts its mounts.
-func WithProgram(subProgram *Program) ProgramArgument {
-	return func(p *Program) {
-		p.args = append(p.args, subProgram.Path)
-		p.mounts = append(p.mounts, subProgram.mounts...)
-	}
-}
-
-func WithStdinChannel(stdin <-chan string) ProgramArgument {
-	return func(p *Program) {
-		p.stdin = stdin
-	}
-}
-
-func WithStdoutChannel(stdout chan<- string) ProgramArgument {
-	return func(p *Program) {
-		p.stdout = stdout
-	}
-}
-
-func WithStderrChannel(stderr chan<- string) ProgramArgument {
-	return func(p *Program) {
-		p.stderr = stderr
-	}
-}
-
-func WithUser(user string) ProgramArgument {
-	return func(p *Program) {
-		p.user = user
-	}
-}
-
-func (p *Program) Run() error {
-	apiClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
+func checkFileExists(file string) error {
+	if _, err := os.Stat(file); errors.Is(err, fs.ErrNotExist) {
 		return err
-	}
-	defer apiClient.Close()
-
-	attachStdin := p.stdin != nil
-	attachStdout := p.stdout != nil
-	attachStderr := p.stderr != nil
-
-	config := &container.Config{
-		Image:        p.Image,
-		Cmd:          p.args,
-		Tty:          false,
-		AttachStdin:  attachStdin,
-		OpenStdin:    attachStdin,
-		StdinOnce:    attachStdin,
-		AttachStdout: attachStdout,
-		AttachStderr: attachStderr,
-	}
-
-	mounts := make([]mount.Mount, len(p.mounts))
-	for i, m := range p.mounts {
-		mounts[i] = mount.Mount{
-			Type:   mount.TypeBind,
-			Source: m.Host,
-			Target: m.Guest,
-		}
-	}
-
-	hostConfig := &container.HostConfig{
-		Mounts: mounts,
-	}
-
-	ctx := context.Background()
-	resp, err := apiClient.ContainerCreate(ctx, config, hostConfig, nil, nil, "")
-	if err != nil {
-		return err
-	}
-	conn, err := apiClient.ContainerAttach(ctx, resp.ID, container.AttachOptions{
-		Stream: attachStdout || attachStderr,
-		Stdin:  attachStdin,
-		Stdout: attachStdout,
-		Stderr: attachStderr,
-	})
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	if attachStdin {
-		go func() {
-			for input := range p.stdin {
-				if _, err := conn.Conn.Write([]byte(input)); err != nil {
-					return
-				}
-			}
-		}()
-	}
-	if attachStdout || attachStderr {
-		go stdcopy.StdCopy(p.stdout, p.stderr, conn.Reader)
 	}
 	return nil
+}
+
+// WithProgramArgs adds string arguments to pass to the program.
+func WithStringArgs(args ...string) ProgramArgument {
+	return func(p *Program) error {
+		p.Args = append(p.Args, args...)
+		return nil
+	}
+}
+
+// WithFileArgs adds file paths as arguments to the program.
+func WithFileArgs(files ...string) ProgramArgument {
+	return func(p *Program) error {
+		for _, file := range files {
+			if err := checkFileExists(file); err != nil {
+				return err
+			}
+		}
+		for _, file := range files {
+			argIndex := len(p.Args)
+			p.Args = append(p.Args, file)
+			p.fileArgIndices.Add(argIndex)
+		}
+		return nil
+	}
+}
+
+func (p *Program) ArgIsFile(index int) bool {
+	return p.fileArgIndices.Contains(index)
+}
+
+type ArgMutator func(p *Program, index int, arg string) string
+
+func (p *Program) AsTokens(mutators ...ArgMutator) []string {
+	numTokens := len(p.Args) + 2 // +1 for the program path, +1 for the "--" terminator
+	tokens := make([]string, numTokens)
+	tokens[0] = p.Path
+	tokens[numTokens-1] = "--"
+	for i, arg := range p.Args {
+		postProcessed := arg
+		for _, mutate := range mutators {
+			postProcessed = mutate(p, i, postProcessed)
+		}
+		tokens[i+1] = postProcessed // +1 to offset for the program path
+	}
+	return tokens
 }

@@ -1,15 +1,214 @@
 package internal_test
 
 import (
+	"errors"
+	"io/fs"
 	"testing"
 
 	"manage2/internal"
 )
 
-func TestProgram(t *testing.T) {
-	prog := internal.NewProgram("/usr/bin/someprogram", "alpine:latest")
-	err := prog.Run()
+func TestNewProgram(t *testing.T) {
+	path := t.TempDir() + "/" + "test.sh"
+	TouchFile(t, path)
+
+	p, err := internal.NewProgram(path)
 	if err != nil {
-		t.Fatalf("Failed to run program: %v", err)
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if p.Path != path {
+		t.Errorf("expected path '%s', got: %s", path, p.Path)
+	}
+	if len(p.Args) != 0 {
+		t.Errorf("expected no args, got: %d", len(p.Args))
+	}
+}
+
+func TestNewProgramBadPath(t *testing.T) {
+	path := t.TempDir() + "/" + "test.sh"
+	p, err := internal.NewProgram(path)
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("expected error to be 'fs.ErrNotExist', got: %v", err)
+	}
+	if p != nil {
+		t.Errorf("expected nil program, got: %v", p)
+	}
+}
+
+func TestNewProgramWithArgs(t *testing.T) {
+	path := t.TempDir() + "/" + "test.sh"
+	TouchFile(t, path)
+
+	p, err := internal.NewProgram(path,
+		internal.WithStringArgs("arg1", "arg2"),
+	)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	expectedArgs := []string{"arg1", "arg2"}
+	if len(p.Args) != len(expectedArgs) {
+		t.Errorf("expected %d args, got: %d", len(expectedArgs), len(p.Args))
+	}
+	for i, arg := range expectedArgs {
+		if p.Args[i] != arg {
+			t.Errorf("expected arg %d to be '%s', got: %s", i, arg, p.Args[i])
+		}
+	}
+}
+
+func TestNewProgramWithFileArgs(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/test.sh"
+	file1 := dir + "/file1.txt"
+	file2 := dir + "/file2.txt"
+
+	TouchFile(t, path)
+	TouchFile(t, file1)
+	TouchFile(t, file2)
+
+	p, err := internal.NewProgram(path,
+		internal.WithFileArgs(file1, file2),
+	)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	expectedArgs := []string{file1, file2}
+	if len(p.Args) != len(expectedArgs) {
+		t.Errorf("expected %d args, got: %d", len(expectedArgs), len(p.Args))
+	}
+	for i, arg := range expectedArgs {
+		if p.Args[i] != arg {
+			t.Errorf("expected arg %d to be '%s', got: %s", i, arg, p.Args[i])
+		}
+	}
+}
+
+func TestNewProgramWithBadFileArgs(t *testing.T) {
+	path := t.TempDir() + "/" + "test.sh"
+	TouchFile(t, path)
+
+	_, err := internal.NewProgram(path,
+		internal.WithFileArgs("file.txt"),
+	)
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("expected error to be 'fs.ErrNotExist', got: %v", err)
+	}
+}
+
+func TestArgIsFile(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/test.sh"
+	file1 := dir + "/file1.txt"
+	file2 := dir + "/file2.txt"
+
+	TouchFile(t, path)
+	TouchFile(t, file1)
+	TouchFile(t, file2)
+
+	p, err := internal.NewProgram(path,
+		internal.WithStringArgs("arg1", "arg2"),
+		internal.WithFileArgs(file1, file2),
+	)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if p.ArgIsFile(0) || p.ArgIsFile(1) {
+		t.Errorf("expected args 0 and 1 to not be files")
+	}
+	if !p.ArgIsFile(2) || !p.ArgIsFile(3) {
+		t.Errorf("expected args 2 and 3 to be files")
+	}
+}
+
+func TestAsTokens(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/test.sh"
+	file1 := dir + "/file1.txt"
+	file2 := dir + "/file2.txt"
+
+	TouchFile(t, path)
+	TouchFile(t, file1)
+	TouchFile(t, file2)
+
+	p, err := internal.NewProgram(path,
+		internal.WithStringArgs("arg1", "arg2"),
+		internal.WithFileArgs(file1, file2),
+	)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	tokens := p.AsTokens()
+	expectedTokens := []string{path, "arg1", "arg2", file1, file2, "--"}
+	if len(tokens) != len(expectedTokens) {
+		t.Errorf("expected %d tokens, got: %d", len(expectedTokens), len(tokens))
+	}
+	for i, expectedToken := range expectedTokens {
+		if tokens[i] != expectedToken {
+			t.Errorf("expected token %d to be '%s', got: %s", i, expectedToken, tokens[i])
+		}
+	}
+}
+
+func TestAsTokenMutators(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/test.sh"
+	file1 := dir + "/file1.txt"
+	file2 := dir + "/file2.txt"
+
+	TouchFile(t, path)
+	TouchFile(t, file1)
+	TouchFile(t, file2)
+
+	p, err := internal.NewProgram(path,
+		internal.WithStringArgs("arg1", "arg2"),
+		internal.WithFileArgs(file1, file2),
+	)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	count := 0
+
+	mutator1 := func(p *internal.Program, index int, arg string) string {
+		count += 1
+		if p.ArgIsFile(index) {
+			return "file:" + arg
+		}
+		return "string:" + arg
+	}
+	mutator2 := func(p *internal.Program, index int, arg string) string {
+		if index == 0 {
+			return "base:" + arg
+		}
+		return arg
+	}
+
+	tokens := p.AsTokens(mutator1, mutator2)
+
+	expectedCount := len(p.Args) // mutators not called for program path or "--"
+
+	if count != expectedCount {
+		t.Errorf("expected %d calls to mutators, got: %d", expectedCount, count)
+	}
+
+	expectedTokens := []string{
+		path,
+		"base:string:arg1",
+		"string:arg2",
+		"file:" + file1,
+		"file:" + file2,
+		"--",
+	}
+
+	if len(tokens) != len(expectedTokens) {
+		t.Errorf("expected %d tokens, got: %d", len(expectedTokens), len(tokens))
+	}
+	for i, expectedToken := range expectedTokens {
+		if tokens[i] != expectedToken {
+			t.Errorf("expected token %d to be '%s', got: %s", i, expectedToken, tokens[i])
+		}
 	}
 }
