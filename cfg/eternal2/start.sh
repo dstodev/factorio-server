@@ -30,7 +30,7 @@ for properties_file in "${properties_files[@]}"; do
 	sed -i "s/^query.port=.*/query.port=$game_port/" "$properties_file"
 done
 
-cd "$hot_dir/MCE2-Server-Files-"* || exit 1
+cd "$hot_dir" || exit 1
 
 ./run.sh
 

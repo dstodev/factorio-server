@@ -1,18 +1,18 @@
 package program
 
 type Program struct {
-	Path string
 	Args []string
 
 	fileArgIndices IndexSet
 }
 
-func New(path string, args ...Argument) (*Program, error) {
-	if err := checkFileExists(path); err != nil {
-		return nil, err
-	}
+func FromSystem(path string, args ...Argument) (*Program, error) {
+	args = append([]Argument{WithStringArgs(path)}, args...) // Prepend the program path
+	return fromArgs(args)
+}
+
+func fromArgs(args []Argument) (*Program, error) {
 	p := &Program{
-		Path:           path,
 		Args:           nil,
 		fileArgIndices: NewIndexSet(),
 	}
@@ -24,6 +24,11 @@ func New(path string, args ...Argument) (*Program, error) {
 	return p, nil
 }
 
+func FromFile(path string, args ...Argument) (*Program, error) {
+	args = append([]Argument{WithFileArgs(path)}, args...) // Prepend the program path
+	return fromArgs(args)
+}
+
 func (p *Program) ArgIsFile(index int) bool {
 	return p.fileArgIndices.Contains(index)
 }
@@ -31,16 +36,15 @@ func (p *Program) ArgIsFile(index int) bool {
 type ArgMutator func(p *Program, index int, arg string) string
 
 func (p *Program) AsTokens(mutators ...ArgMutator) []string {
-	numTokens := len(p.Args) + 2 // +1 for the program path, +1 for the "--" terminator
+	numTokens := len(p.Args) + 1 // +1 for the "--" terminator
 	tokens := make([]string, numTokens)
-	tokens[0] = p.Path
 	tokens[numTokens-1] = "--"
 	for i, arg := range p.Args {
 		postProcessed := arg
 		for _, mutate := range mutators {
 			postProcessed = mutate(p, i, postProcessed)
 		}
-		tokens[i+1] = postProcessed // +1 to offset for the program path
+		tokens[i] = postProcessed
 	}
 	return tokens
 }

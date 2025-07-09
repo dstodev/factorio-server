@@ -33,6 +33,9 @@ func NewContainer(image string, args ...ContainerArgument) *Container {
 	p := &Container{
 		Image: image,
 	}
+	for _, arg := range args {
+		arg(p)
+	}
 	return p
 }
 
@@ -95,10 +98,16 @@ type mountPath struct {
 	Guest string
 }
 
-func (p *Container) Run() error {
+var ErrNoProgram = fmt.Errorf("no programs registered")
+
+func (p *Container) Run() (id string, err error) {
+	if len(p.programs) == 0 {
+		return "", ErrNoProgram
+	}
+
 	apiClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer apiClient.Close()
 
@@ -158,18 +167,19 @@ func (p *Container) Run() error {
 	ctx := context.Background()
 	resp, err := apiClient.ContainerCreate(ctx, config, hostConfig, nil, nil, "")
 	if err != nil {
-		return err
+		return "", err
 	}
+	id = resp.ID
 	// Attach then start:
 	// https://stackoverflow.com/questions/65283411/docker-attach-vs-docker-start-ai-for-a-running-container
-	conn, err := apiClient.ContainerAttach(ctx, resp.ID, container.AttachOptions{
+	conn, err := apiClient.ContainerAttach(ctx, id, container.AttachOptions{
 		Stream: attachStdout || attachStderr,
 		Stdin:  attachStdin,
 		Stdout: attachStdout,
 		Stderr: attachStderr,
 	})
 	if err != nil {
-		return err
+		return id, err
 	}
 
 	var wg sync.WaitGroup
@@ -201,9 +211,9 @@ func (p *Container) Run() error {
 		wg.Wait()
 	}()
 
-	if err := apiClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		return err
+	if err := apiClient.ContainerStart(ctx, id, container.StartOptions{}); err != nil {
+		return id, err
 	}
 
-	return nil
+	return id, nil
 }
