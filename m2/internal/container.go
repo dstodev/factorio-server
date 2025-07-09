@@ -18,6 +18,8 @@ import (
 type Container struct {
 	Image string
 
+	Done chan ContainerResult
+
 	programs []*program.Program
 
 	stdin  <-chan string
@@ -27,11 +29,18 @@ type Container struct {
 	user string
 }
 
+type ContainerResult struct {
+	ID     string
+	Status int
+	Err    error
+}
+
 type ContainerArgument func(*Container)
 
 func NewContainer(image string, args ...ContainerArgument) *Container {
 	p := &Container{
 		Image: image,
+		Done:  make(chan ContainerResult, 1),
 	}
 	for _, arg := range args {
 		arg(p)
@@ -206,9 +215,26 @@ func (p *Container) Run() (id string, err error) {
 		}()
 	}
 
+	statusChan, errChan := apiClient.ContainerWait(ctx, id, container.WaitConditionNextExit)
+
 	go func() {
 		defer conn.Close()
 		wg.Wait()
+
+		select {
+		case status := <-statusChan:
+			p.Done <- ContainerResult{
+				ID:     id,
+				Status: int(status.StatusCode),
+				Err:    nil,
+			}
+		case err := <-errChan:
+			p.Done <- ContainerResult{
+				ID:     id,
+				Status: -1,
+				Err:    err,
+			}
+		}
 	}()
 
 	if err := apiClient.ContainerStart(ctx, id, container.StartOptions{}); err != nil {

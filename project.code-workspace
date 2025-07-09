@@ -17,6 +17,8 @@
 		"python.testing.pytestArgs": [ ],
 		"python.testing.pytestEnabled": true,
 
+		"go.testTimeout": "5s",
+
 		"python.analysis.typeCheckingMode": "standard",
 
 		"files.exclude": {

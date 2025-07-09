@@ -6,15 +6,15 @@ import (
 	"manage2/internal/program"
 )
 
-func TestNewIndexSet(t *testing.T) {
-	s := program.NewIndexSet()
+func TestNewSet(t *testing.T) {
+	s := program.NewSet[int]()
 	if len(s) != 0 {
 		t.Errorf("expected empty set, got: %d", len(s))
 	}
 }
 
-func TestIndexSetAdd(t *testing.T) {
-	s := program.NewIndexSet()
+func TestSetAdd(t *testing.T) {
+	s := program.NewSet[int]()
 	if s.Contains(1) {
 		t.Error("expected set to not contain index 1")
 	}

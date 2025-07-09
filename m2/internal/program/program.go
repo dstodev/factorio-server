@@ -3,7 +3,7 @@ package program
 type Program struct {
 	Args []string
 
-	fileArgIndices IndexSet
+	fileArgIndices Set[int]
 }
 
 func FromSystem(path string, args ...Argument) (*Program, error) {
@@ -14,7 +14,7 @@ func FromSystem(path string, args ...Argument) (*Program, error) {
 func fromArgs(args []Argument) (*Program, error) {
 	p := &Program{
 		Args:           nil,
-		fileArgIndices: NewIndexSet(),
+		fileArgIndices: NewSet[int](),
 	}
 	for _, arg := range args {
 		if err := arg(p); err != nil {
