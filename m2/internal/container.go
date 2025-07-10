@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
@@ -35,122 +36,35 @@ type ContainerResult struct {
 	Err    error
 }
 
-type ContainerArgument func(*Container)
-
-func NewContainer(image string, args ...ContainerArgument) *Container {
+func NewContainer(image string, opts ...ContainerOption) *Container {
 	p := &Container{
 		Image: image,
 		Done:  make(chan ContainerResult, 1),
 	}
-	for _, arg := range args {
+	for _, arg := range opts {
 		arg(p)
 	}
 	return p
 }
 
-// WithProgram adds a program to run, mounting file arguments. The first
-// program is expected to parse all arguments up to the "--" separator argument.
-// The first following string is the next program's path, and the rest are its
-// arguments. e.g.:
-//
-//	NewContainer(
-//	  "some-image:latest",
-//	  WithProgram(NewProgram(
-//	    "my/script.sh",
-//	    WithStringArgs("hello,")
-//	  )),
-//	  WithProgram(NewProgram(
-//	    "sub/script.sh",
-//	    WithStringArgs("world!"),
-//	    WithFileArgs("/host-path/file.txt")
-//	  )),
-//	)
-//
-// Here, my/script.sh is called inside the container like:
-//
-//	my/script.sh "hello," "--" "sub/script.sh" "world!" "/mount-path/file.txt" "--"
-//
-// and it is assumed my/script.sh will parse its arguments, run, and then start
-// sub/script.sh with its arguments.
-func WithProgram(program *program.Program) ContainerArgument {
-	return func(p *Container) {
-		p.programs = append(p.programs, program)
-	}
-}
-
-func WithStdinChannel(stdin <-chan string) ContainerArgument {
-	return func(p *Container) {
-		p.stdin = stdin
-	}
-}
-
-func WithStdoutChannel(stdout chan<- string) ContainerArgument {
-	return func(p *Container) {
-		p.stdout = stdout
-	}
-}
-
-func WithStderrChannel(stderr chan<- string) ContainerArgument {
-	return func(p *Container) {
-		p.stderr = stderr
-	}
-}
-
-func WithUser(user string) ContainerArgument {
-	return func(p *Container) {
-		p.user = user
-	}
-}
-
-type mountPath struct {
-	Host  string
-	Guest string
-}
-
 var ErrNoProgram = fmt.Errorf("no programs registered")
 
-func (p *Container) Run() (id string, err error) {
-	if len(p.programs) == 0 {
+func (c *Container) Run() (id string, err error) {
+	if len(c.programs) == 0 {
 		return "", ErrNoProgram
 	}
 
-	apiClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return "", err
-	}
-	defer apiClient.Close()
+	cmdTokens, mounts := c.BuildProgramCmd()
 
-	attachStdin := p.stdin != nil
-	attachStdout := p.stdout != nil
-	attachStderr := p.stderr != nil
-
-	var mountPaths []mountPath
-
-	toGuestMutator := func(p *program.Program, index int, arg string) string {
-		if p.ArgIsFile(index) {
-			hostPath := arg
-			guestId := uuid.New().String()
-			guestBasename := filepath.Base(hostPath)
-			guestPath := fmt.Sprintf("/tmp/m2/%s/%s", guestId, guestBasename)
-			mountPaths = append(mountPaths, mountPath{
-				Host:  hostPath,
-				Guest: guestPath,
-			})
-			return guestPath
-		}
-		return arg
-	}
-
-	var cmdTokens []string
-
-	for _, program := range p.programs {
-		cmdTokens = append(cmdTokens, program.AsTokens(toGuestMutator)...)
-	}
+	attachStdin := c.stdin != nil
+	attachStdout := c.stdout != nil
+	attachStderr := c.stderr != nil
 
 	config := &container.Config{
-		Image:        p.Image,
+		Image:        c.Image,
 		Cmd:          cmdTokens,
 		Tty:          false,
+		User:         c.user,
 		AttachStdin:  attachStdin,
 		OpenStdin:    attachStdin,
 		StdinOnce:    attachStdin,
@@ -158,22 +72,17 @@ func (p *Container) Run() (id string, err error) {
 		AttachStderr: attachStderr,
 	}
 
-	var mounts []mount.Mount
-
-	for _, mountPath := range mountPaths {
-		mount := mount.Mount{
-			Type:   mount.TypeBind,
-			Source: mountPath.Host,
-			Target: mountPath.Guest,
-		}
-		mounts = append(mounts, mount)
-	}
-
 	hostConfig := &container.HostConfig{
 		Mounts: mounts,
 	}
 
+	var apiClient *client.Client
+	apiClient, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return "", err
+	}
 	ctx := context.Background()
+
 	resp, err := apiClient.ContainerCreate(ctx, config, hostConfig, nil, nil, "")
 	if err != nil {
 		return "", err
@@ -181,8 +90,9 @@ func (p *Container) Run() (id string, err error) {
 	id = resp.ID
 	// Attach then start:
 	// https://stackoverflow.com/questions/65283411/docker-attach-vs-docker-start-ai-for-a-running-container
-	conn, err := apiClient.ContainerAttach(ctx, id, container.AttachOptions{
-		Stream: attachStdout || attachStderr,
+	var conn types.HijackedResponse
+	conn, err = apiClient.ContainerAttach(ctx, id, container.AttachOptions{
+		Stream: true,
 		Stdin:  attachStdin,
 		Stdout: attachStdout,
 		Stderr: attachStderr,
@@ -197,9 +107,18 @@ func (p *Container) Run() (id string, err error) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+
+			// Close output channels when container outputs close
+			if attachStdout {
+				defer close(c.stdout)
+			}
+			if attachStderr {
+				defer close(c.stderr)
+			}
+
 			stdcopy.StdCopy(
-				NewChannelWriter(p.stdout),
-				NewChannelWriter(p.stderr),
+				NewChannelWriter(c.stdout),
+				NewChannelWriter(c.stderr),
 				conn.Reader)
 		}()
 	}
@@ -207,34 +126,43 @@ func (p *Container) Run() (id string, err error) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for input := range p.stdin {
+			defer conn.CloseWrite() // Close when the stdin channel closes
+
+			for input := range c.stdin {
 				if _, err := conn.Conn.Write([]byte(input)); err != nil {
 					return
 				}
 			}
 		}()
+	} else {
+		conn.CloseWrite()
 	}
 
 	statusChan, errChan := apiClient.ContainerWait(ctx, id, container.WaitConditionNextExit)
 
 	go func() {
-		defer conn.Close()
-		wg.Wait()
+		wg.Wait() // Wait for stdin, stdout, and stderr to close
+		conn.Close()
 
 		select {
 		case status := <-statusChan:
-			p.Done <- ContainerResult{
+			c.Done <- ContainerResult{
 				ID:     id,
 				Status: int(status.StatusCode),
 				Err:    nil,
 			}
 		case err := <-errChan:
-			p.Done <- ContainerResult{
+			c.Done <- ContainerResult{
 				ID:     id,
 				Status: -1,
 				Err:    err,
 			}
 		}
+
+		close(c.Done)
+
+		apiClient.ContainerRemove(ctx, id, container.RemoveOptions{})
+		apiClient.Close()
 	}()
 
 	if err := apiClient.ContainerStart(ctx, id, container.StartOptions{}); err != nil {
@@ -242,4 +170,26 @@ func (p *Container) Run() (id string, err error) {
 	}
 
 	return id, nil
+}
+
+func (c *Container) BuildProgramCmd() (cmdTokens []string, mounts []mount.Mount) {
+	toGuestMutator := func(p *program.Program, index int, arg string) string {
+		if p.ArgIsFile(index) {
+			hostPath := arg
+			guestId := uuid.New().String()
+			guestBasename := filepath.Base(hostPath)
+			guestPath := fmt.Sprintf("/tmp/m2/%s/%s", guestId, guestBasename)
+			mounts = append(mounts, mount.Mount{
+				Type:   mount.TypeBind,
+				Source: hostPath,
+				Target: guestPath,
+			})
+			return guestPath
+		}
+		return arg
+	}
+	for _, p := range c.programs {
+		cmdTokens = append(cmdTokens, p.AsTokens(toGuestMutator)...)
+	}
+	return cmdTokens, mounts
 }

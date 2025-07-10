@@ -215,3 +215,145 @@ func TestContainerWithStdin(t *testing.T) {
 		t.Error("expected a message on stdout")
 	}
 }
+
+func TestContainerStdinOnly(t *testing.T) {
+	image := "alpine:latest"
+	program, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "read input && exit $input"))
+
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	stdinChan := make(chan string, 1)
+
+	c := internal.NewContainer(image,
+		internal.WithProgram(program),
+		internal.WithStdinChannel(stdinChan),
+	)
+
+	msg := "5\n"
+	stdinChan <- msg
+	close(stdinChan)
+
+	id, err := c.Run()
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if id == "" {
+		t.Error("expected non-empty ID, got empty string")
+	}
+
+	result := <-c.Done
+	if result.Err != nil {
+		t.Fatalf("expected no error, got: %v", result.Err)
+	}
+	if result.Status != 5 {
+		t.Errorf("expected exit code 5, got: %d", result.Status)
+	}
+	if result.ID != id {
+		t.Errorf("expected ID '%s', got: %s", id, result.ID)
+	}
+}
+
+func TestBuildProgramCommandStrings(t *testing.T) {
+	image := "alpine:latest"
+	program, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "echo Hello"))
+
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	c := internal.NewContainer(image, internal.WithProgram(program))
+
+	cmdTokens, mounts := c.BuildProgramCmd()
+
+	expectedCmd := []string{"/bin/sh", "-c", "echo Hello", "--"}
+	if len(cmdTokens) != len(expectedCmd) {
+		t.Errorf("expected command tokens %v, got: %v", expectedCmd, cmdTokens)
+	}
+
+	for i, token := range cmdTokens {
+		if token != expectedCmd[i] {
+			t.Errorf("expected command token '%s', got: '%s'", expectedCmd[i],
+				token)
+		}
+	}
+
+	if len(mounts) != 0 {
+		t.Errorf("expected no mounts, got: %v", mounts)
+	}
+}
+
+func TestBuildProgramCommandWithFileArgs(t *testing.T) {
+	image := "alpine:latest"
+	dir := internal.NewTestDir(t)
+	script := dir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"\n", 0755)
+	expectedMsg := "Hello, world!\n"
+	file := dir.WriteFile("file.txt", expectedMsg, 0644)
+
+	program, err := program.FromFile(script,
+		program.WithFileArgs(file),
+	)
+
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	stdoutChan := make(chan string, 1)
+
+	c := internal.NewContainer(image,
+		internal.WithProgram(program),
+		internal.WithStdoutChannel(stdoutChan))
+
+	cmdTokens, mounts := c.BuildProgramCmd()
+
+	if len(mounts) != 2 { // script & file
+		t.Errorf("expected 2 mounts, got: %d", len(mounts))
+	}
+
+	expectedCmd := []string{mounts[0].Target, mounts[1].Target, "--"}
+	if len(cmdTokens) != len(expectedCmd) {
+		t.Errorf("expected command tokens %v, got: %v", expectedCmd, cmdTokens)
+	}
+
+	for i, token := range cmdTokens {
+		if token != expectedCmd[i] {
+			t.Errorf("expected command token '%s', got: '%s'", expectedCmd[i], token)
+		}
+	}
+
+	if mounts[0].Source != script {
+		t.Errorf("expected script mount source '%s', got: %s", script, mounts[0].Source)
+	}
+	if mounts[1].Source != file {
+		t.Errorf("expected file mount source '%s', got: %s", file, mounts[1].Source)
+	}
+
+	id, err := c.Run()
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if id == "" {
+		t.Error("expected non-empty ID, got empty string")
+	}
+	result := <-c.Done
+	if result.Err != nil {
+		t.Fatalf("expected no error, got: %v", result.Err)
+	}
+	if result.Status != 0 {
+		t.Errorf("expected exit code 0, got: %d", result.Status)
+	}
+	if result.ID != id {
+		t.Errorf("expected ID '%s', got: %s", id, result.ID)
+	}
+
+	select {
+	case msg := <-stdoutChan:
+		if msg != expectedMsg {
+			t.Errorf("expected stdout message '%s', got: %s", expectedMsg, msg)
+		}
+	default:
+		t.Error("expected a message on stdout")
+	}
+}

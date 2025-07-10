@@ -1,3 +1,6 @@
+TIME := /usr/bin/time -f ":: Time elapsed: %es"
+
 test:
-	go test -v ./...
+	@go clean -testcache
+	@${TIME} go test -v ./...
 .PHONY: test
