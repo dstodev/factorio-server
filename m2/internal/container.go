@@ -23,12 +23,11 @@ type Container struct {
 	Done chan ContainerResult
 
 	programs []*program.Program
+	user     string
 
 	stdin  <-chan string
 	stdout chan<- string
 	stderr chan<- string
-
-	user string
 
 	wg *sync.WaitGroup
 
@@ -130,6 +129,10 @@ func (c *Container) Run() error {
 	return nil
 }
 
+// BuildProgramCmd takes registered programs and constructs a command line to
+// run in the container. Guest paths are generated for file arguments referenced
+// by the programs, and mounts are created to bind the host paths to the guest
+// paths. Returns the command and mounts to use when starting the container.
 func (c *Container) BuildProgramCmd() (
 	cmdTokens []string,
 	mounts []mount.Mount,
@@ -155,6 +158,10 @@ func (c *Container) BuildProgramCmd() (
 	return cmdTokens, mounts
 }
 
+// startWritingOutputToChannels reads from the container's stdout and stderr,
+// writing them to the respective channels. Channels are closed when the
+// container's respective output streams close, if requested. If a channel is
+// nil, output is still accepted from the container, then discarded.
 func (c *Container) startWritingOutputToChannels(
 	conn *types.HijackedResponse,
 	closeStdout bool,
@@ -180,6 +187,8 @@ func (c *Container) startWritingOutputToChannels(
 	}()
 }
 
+// startReadingInputFromChannel reads from the stdin channel, writing strings
+// to the container's stdin.
 func (c *Container) startReadingInputFromChannel(conn *types.HijackedResponse) {
 	c.wg.Add(1)
 	go func() {
@@ -194,6 +203,8 @@ func (c *Container) startReadingInputFromChannel(conn *types.HijackedResponse) {
 	}()
 }
 
+// startExitHandler waits for the container to exit, then sends the result to
+// the Done channel. It then removes the container.
 func (c *Container) startExitHandler(conn *types.HijackedResponse) {
 	statusChan, errChan := c.client.ContainerWait(c.ctx, c.Id, container.WaitConditionNextExit)
 
