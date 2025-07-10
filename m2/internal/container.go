@@ -19,6 +19,7 @@ import (
 type Container struct {
 	Image string
 
+	Id   string
 	Done chan ContainerResult
 
 	programs []*program.Program
@@ -28,6 +29,11 @@ type Container struct {
 	stderr chan<- string
 
 	user string
+
+	wg *sync.WaitGroup
+
+	ctx    context.Context
+	client *client.Client
 }
 
 type ContainerResult struct {
@@ -40,18 +46,19 @@ func NewContainer(image string, opts ...ContainerOption) *Container {
 	p := &Container{
 		Image: image,
 		Done:  make(chan ContainerResult, 1),
+		wg:    &sync.WaitGroup{},
 	}
-	for _, arg := range opts {
-		arg(p)
+	for _, opt := range opts {
+		opt(p)
 	}
 	return p
 }
 
 var ErrNoProgram = fmt.Errorf("no programs registered")
 
-func (c *Container) Run() (id string, err error) {
+func (c *Container) Run() error {
 	if len(c.programs) == 0 {
-		return "", ErrNoProgram
+		return ErrNoProgram
 	}
 
 	cmdTokens, mounts := c.BuildProgramCmd()
@@ -76,103 +83,57 @@ func (c *Container) Run() (id string, err error) {
 		Mounts: mounts,
 	}
 
-	var apiClient *client.Client
-	apiClient, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return "", err
-	}
-	ctx := context.Background()
+	var err error
 
-	resp, err := apiClient.ContainerCreate(ctx, config, hostConfig, nil, nil, "")
+	c.client, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return "", err
+		return err
 	}
-	id = resp.ID
+	c.ctx = context.Background()
+
+	resp, err := c.client.ContainerCreate(c.ctx, config, hostConfig, nil, nil, "")
+	if err != nil {
+		return err
+	}
+	c.Id = resp.ID
+
 	// Attach then start:
-	// https://stackoverflow.com/questions/65283411/docker-attach-vs-docker-start-ai-for-a-running-container
-	var conn types.HijackedResponse
-	conn, err = apiClient.ContainerAttach(ctx, id, container.AttachOptions{
+	// https://github.com/docker/cli/blob/master/cli/command/container/start.go#L113
+	// https://github.com/docker/cli/blob/master/cli/command/container/start.go#L146
+
+	conn, err := c.client.ContainerAttach(c.ctx, c.Id, container.AttachOptions{
 		Stream: true,
 		Stdin:  attachStdin,
 		Stdout: attachStdout,
 		Stderr: attachStderr,
 	})
 	if err != nil {
-		return id, err
+		return err
 	}
-
-	var wg sync.WaitGroup
 
 	if attachStdout || attachStderr {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			// Close output channels when container outputs close
-			if attachStdout {
-				defer close(c.stdout)
-			}
-			if attachStderr {
-				defer close(c.stderr)
-			}
-
-			stdcopy.StdCopy(
-				NewChannelWriter(c.stdout),
-				NewChannelWriter(c.stderr),
-				conn.Reader)
-		}()
+		c.startWritingOutputToChannels(&conn, attachStdout, attachStderr)
 	}
-	if attachStdin {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			defer conn.CloseWrite() // Close when the stdin channel closes
 
-			for input := range c.stdin {
-				if _, err := conn.Conn.Write([]byte(input)); err != nil {
-					return
-				}
-			}
-		}()
+	if attachStdin {
+		c.startReadingInputFromChannel(&conn)
 	} else {
 		conn.CloseWrite()
 	}
 
-	statusChan, errChan := apiClient.ContainerWait(ctx, id, container.WaitConditionNextExit)
+	c.startExitHandler(&conn)
 
-	go func() {
-		wg.Wait() // Wait for stdin, stdout, and stderr to close
-		conn.Close()
-
-		select {
-		case status := <-statusChan:
-			c.Done <- ContainerResult{
-				ID:     id,
-				Status: int(status.StatusCode),
-				Err:    nil,
-			}
-		case err := <-errChan:
-			c.Done <- ContainerResult{
-				ID:     id,
-				Status: -1,
-				Err:    err,
-			}
-		}
-
-		close(c.Done)
-
-		apiClient.ContainerRemove(ctx, id, container.RemoveOptions{})
-		apiClient.Close()
-	}()
-
-	if err := apiClient.ContainerStart(ctx, id, container.StartOptions{}); err != nil {
-		return id, err
+	if err := c.client.ContainerStart(c.ctx, c.Id, container.StartOptions{}); err != nil {
+		return err
 	}
 
-	return id, nil
+	return nil
 }
 
-func (c *Container) BuildProgramCmd() (cmdTokens []string, mounts []mount.Mount) {
+func (c *Container) BuildProgramCmd() (
+	cmdTokens []string,
+	mounts []mount.Mount,
+) {
 	toGuestMutator := func(p *program.Program, index int, arg string) string {
 		if p.ArgIsFile(index) {
 			hostPath := arg
@@ -192,4 +153,72 @@ func (c *Container) BuildProgramCmd() (cmdTokens []string, mounts []mount.Mount)
 		cmdTokens = append(cmdTokens, p.AsTokens(toGuestMutator)...)
 	}
 	return cmdTokens, mounts
+}
+
+func (c *Container) startWritingOutputToChannels(
+	conn *types.HijackedResponse,
+	closeStdout bool,
+	closeStderr bool,
+) {
+	c.wg.Add(1)
+
+	go func() {
+		defer c.wg.Done()
+
+		// Close output channels when container outputs close
+		if closeStdout {
+			defer close(c.stdout)
+		}
+		if closeStderr {
+			defer close(c.stderr)
+		}
+
+		stdcopy.StdCopy(
+			NewChannelWriter(c.stdout),
+			NewChannelWriter(c.stderr),
+			conn.Reader)
+	}()
+}
+
+func (c *Container) startReadingInputFromChannel(conn *types.HijackedResponse) {
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		defer conn.CloseWrite() // Close when the stdin channel closes
+
+		for input := range c.stdin {
+			if _, err := conn.Conn.Write([]byte(input)); err != nil {
+				return
+			}
+		}
+	}()
+}
+
+func (c *Container) startExitHandler(conn *types.HijackedResponse) {
+	statusChan, errChan := c.client.ContainerWait(c.ctx, c.Id, container.WaitConditionNextExit)
+
+	go func() {
+		c.wg.Wait() // Wait for stdin, stdout, and stderr to close
+		conn.Close()
+
+		select {
+		case status := <-statusChan:
+			c.Done <- ContainerResult{
+				ID:     c.Id,
+				Status: int(status.StatusCode),
+				Err:    nil,
+			}
+		case err := <-errChan:
+			c.Done <- ContainerResult{
+				ID:     c.Id,
+				Status: -1,
+				Err:    err,
+			}
+		}
+
+		close(c.Done)
+
+		c.client.ContainerRemove(c.ctx, c.Id, container.RemoveOptions{})
+		c.client.Close()
+	}()
 }

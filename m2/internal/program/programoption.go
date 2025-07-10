@@ -1,11 +1,15 @@
 package program
 
+import (
+	"os"
+)
+
 // A ProgramOption is a function which adds an argument to the program.
 // This enables complex argument types, like file paths, to record
 // extra data to the program for later use.
 type ProgramOption func(p *Program) error
 
-// WithProgramArgs adds string arguments to the program.
+// WithStringArgs adds string arguments to the program.
 func WithStringArgs(args ...string) ProgramOption {
 	return func(p *Program) error {
 		p.Args = append(p.Args, args...)
@@ -28,4 +32,9 @@ func WithFileArgs(files ...string) ProgramOption {
 		}
 		return nil
 	}
+}
+
+func checkFileExists(file string) error {
+	_, err := os.Stat(file)
+	return err
 }
