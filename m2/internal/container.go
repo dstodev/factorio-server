@@ -4,32 +4,27 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"sync"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/uuid"
 
 	"manage2/internal/program"
+	"manage2/internal/stream"
 )
 
 type Container struct {
 	Image string
+	ID    string
 
-	Id   string
 	Done chan ContainerResult
 
-	programs []*program.Program
-	user     string
+	streams *stream.ContainerStream
 
-	stdin  <-chan string
-	stdout chan<- string
-	stderr chan<- string
+	user string
 
-	wg *sync.WaitGroup
+	hostToGuestMap map[string]string // Maps host paths to guest paths
 
 	ctx    context.Context
 	client *client.Client
@@ -43,9 +38,10 @@ type ContainerResult struct {
 
 func NewContainer(image string, opts ...ContainerOption) *Container {
 	p := &Container{
-		Image: image,
-		Done:  make(chan ContainerResult, 1),
-		wg:    &sync.WaitGroup{},
+		Image:          image,
+		Done:           make(chan ContainerResult, 1),
+		streams:        stream.NewContainerStream(),
+		hostToGuestMap: make(map[string]string),
 	}
 	for _, opt := range opts {
 		opt(p)
@@ -55,16 +51,53 @@ func NewContainer(image string, opts ...ContainerOption) *Container {
 
 var ErrNoProgram = fmt.Errorf("no programs registered")
 
-func (c *Container) Run() error {
-	if len(c.programs) == 0 {
+// Run invokes a command in the container, mounting file arguments. The first
+// program is expected to parse all arguments up to the "--" separator argument.
+// The first following string is the next program's path, and the rest are its
+// arguments. e.g.:
+//
+//	first, err := program.FromFile(
+//	    "/my/script1.sh",
+//	    WithStringArgs("hello,"))
+//	second, err := program.FromFile(
+//	    "/sub/script2.sh",
+//	    WithStringArgs("world!"),
+//	    WithFileArgs("/host-path/file.txt"))
+//
+//	c := NewContainer("my-image:latest")
+//	err = c.Run(first, second)
+//
+// Here, /my/script1.sh is called inside the container like:
+//
+//	/mp/script1.sh "hello," "--" "/mp/script2.sh" "world!" "/mp/file.txt" "--"
+//
+// (/mp/ refers to a unique mount path for each file)
+//
+// It is assumed script1.sh will parse its own arguments, run, then start
+// script2.sh with remaining arguments.
+func (c *Container) Run(programs ...*program.Program) error {
+	if len(programs) == 0 {
 		return ErrNoProgram
 	}
 
-	cmdTokens, mounts := c.BuildProgramCmd()
+	attachStdin := c.streams.Stdin != nil
+	attachStdout := c.streams.Stdout != nil
+	attachStderr := c.streams.Stderr != nil
 
-	attachStdin := c.stdin != nil
-	attachStdout := c.stdout != nil
-	attachStderr := c.stderr != nil
+	var err error
+
+	c.client, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return err
+	}
+	c.ctx = context.Background()
+
+	cmdTokens, mounts := c.BuildProgramCmd(programs...)
+
+	// Mounts are also recorded by WithMounts() so Exec() can use them
+	for _, mount := range mounts {
+		c.hostToGuestMap[mount.Source] = mount.Target
+	}
 
 	config := &container.Config{
 		Image:        c.Image,
@@ -82,25 +115,17 @@ func (c *Container) Run() error {
 		Mounts: mounts,
 	}
 
-	var err error
-
-	c.client, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
-	}
-	c.ctx = context.Background()
-
 	resp, err := c.client.ContainerCreate(c.ctx, config, hostConfig, nil, nil, "")
 	if err != nil {
 		return err
 	}
-	c.Id = resp.ID
+	c.ID = resp.ID
 
 	// Attach then start:
-	// https://github.com/docker/cli/blob/master/cli/command/container/start.go#L113
-	// https://github.com/docker/cli/blob/master/cli/command/container/start.go#L146
+	// https://github.com/docker/cli/blob/578ccf607d24abc5270e9a4cbd5ba9b5355b042f/cli/command/container/start.go#L113
+	// https://github.com/docker/cli/blob/578ccf607d24abc5270e9a4cbd5ba9b5355b042f/cli/command/container/start.go#L146
 
-	conn, err := c.client.ContainerAttach(c.ctx, c.Id, container.AttachOptions{
+	ctrSock, err := c.client.ContainerAttach(c.ctx, c.ID, container.AttachOptions{
 		Stream: true,
 		Stdin:  attachStdin,
 		Stdout: attachStdout,
@@ -110,19 +135,11 @@ func (c *Container) Run() error {
 		return err
 	}
 
-	if attachStdout || attachStderr {
-		c.startWritingOutputToChannels(&conn, attachStdout, attachStderr)
-	}
+	c.streams.StartStreaming(&ctrSock)
 
-	if attachStdin {
-		c.startReadingInputFromChannel(&conn)
-	} else {
-		conn.CloseWrite()
-	}
+	c.startExitHandler()
 
-	c.startExitHandler(&conn)
-
-	if err := c.client.ContainerStart(c.ctx, c.Id, container.StartOptions{}); err != nil {
+	if err := c.client.ContainerStart(c.ctx, c.ID, container.StartOptions{}); err != nil {
 		return err
 	}
 
@@ -133,16 +150,21 @@ func (c *Container) Run() error {
 // run in the container. Guest paths are generated for file arguments referenced
 // by the programs, and mounts are created to bind the host paths to the guest
 // paths. Returns the command and mounts to use when starting the container.
-func (c *Container) BuildProgramCmd() (
+func (c *Container) BuildProgramCmd(programs ...*program.Program) (
 	cmdTokens []string,
 	mounts []mount.Mount,
 ) {
 	toGuestMutator := func(p *program.Program, index int, arg string) string {
 		if p.ArgIsFile(index) {
 			hostPath := arg
-			guestId := uuid.New().String()
-			guestBasename := filepath.Base(hostPath)
-			guestPath := fmt.Sprintf("/tmp/m2/%s/%s", guestId, guestBasename)
+			var guestPath string
+			if cachedPath, ok := c.hostToGuestMap[hostPath]; ok {
+				// If the program already has a mapping for this path, use it
+				guestPath = cachedPath
+			} else {
+				guestPath = toGuestPath(hostPath)
+				c.hostToGuestMap[hostPath] = guestPath
+			}
 			mounts = append(mounts, mount.Mount{
 				Type:   mount.TypeBind,
 				Source: hostPath,
@@ -152,76 +174,37 @@ func (c *Container) BuildProgramCmd() (
 		}
 		return arg
 	}
-	for _, p := range c.programs {
+	for _, p := range programs {
 		cmdTokens = append(cmdTokens, p.AsTokens(toGuestMutator)...)
 	}
 	return cmdTokens, mounts
 }
 
-// startWritingOutputToChannels reads from the container's stdout and stderr,
-// writing them to the respective channels. Channels are closed when the
-// container's respective output streams close, if requested. If a channel is
-// nil, output is still accepted from the container, then discarded.
-func (c *Container) startWritingOutputToChannels(
-	conn *types.HijackedResponse,
-	closeStdout bool,
-	closeStderr bool,
-) {
-	c.wg.Add(1)
-
-	go func() {
-		defer c.wg.Done()
-
-		// Close output channels when container outputs close
-		if closeStdout {
-			defer close(c.stdout)
-		}
-		if closeStderr {
-			defer close(c.stderr)
-		}
-
-		stdcopy.StdCopy(
-			NewChannelWriter(c.stdout),
-			NewChannelWriter(c.stderr),
-			conn.Reader)
-	}()
-}
-
-// startReadingInputFromChannel reads from the stdin channel, writing strings
-// to the container's stdin.
-func (c *Container) startReadingInputFromChannel(conn *types.HijackedResponse) {
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
-		defer conn.CloseWrite() // Close when the stdin channel closes
-
-		for input := range c.stdin {
-			if _, err := conn.Conn.Write([]byte(input)); err != nil {
-				return
-			}
-		}
-	}()
+func toGuestPath(hostPath string) string {
+	guestID := uuid.New().String()
+	guestBasename := filepath.Base(hostPath)
+	guestPath := fmt.Sprintf("/tmp/m2/%s/%s", guestID, guestBasename)
+	return guestPath
 }
 
 // startExitHandler waits for the container to exit, then sends the result to
 // the Done channel. It then removes the container.
-func (c *Container) startExitHandler(conn *types.HijackedResponse) {
-	statusChan, errChan := c.client.ContainerWait(c.ctx, c.Id, container.WaitConditionNextExit)
+func (c *Container) startExitHandler() {
+	statusChan, errChan := c.client.ContainerWait(c.ctx, c.ID, container.WaitConditionNextExit)
 
 	go func() {
-		c.wg.Wait() // Wait for stdin, stdout, and stderr to close
-		conn.Close()
+		c.streams.WaitUntilClosed()
 
 		select {
 		case status := <-statusChan:
 			c.Done <- ContainerResult{
-				ID:     c.Id,
+				ID:     c.ID,
 				Status: int(status.StatusCode),
 				Err:    nil,
 			}
 		case err := <-errChan:
 			c.Done <- ContainerResult{
-				ID:     c.Id,
+				ID:     c.ID,
 				Status: -1,
 				Err:    err,
 			}
@@ -229,7 +212,93 @@ func (c *Container) startExitHandler(conn *types.HijackedResponse) {
 
 		close(c.Done)
 
-		c.client.ContainerRemove(c.ctx, c.Id, container.RemoveOptions{})
+		c.client.ContainerRemove(c.ctx, c.ID, container.RemoveOptions{})
 		c.client.Close()
 	}()
+}
+
+var ErrNotRunning = fmt.Errorf("container is not running")
+var ErrNotMounted = fmt.Errorf("container has not mounted all file arguments")
+
+// Exec runs a program in a running container.
+//
+// File arguments added to a program using WithFileArgs() require special
+// handling: Exec() will return an error if the program has any file arguments
+// that were not mounted when the container was create. Use ContainerOption
+// WithMounts() to do so. Docker does not support mounting additional files
+// after the container has started.
+func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan ContainerResult {
+	resultChan := make(chan ContainerResult, 1)
+	result := ContainerResult{
+		ID:     "",
+		Status: -1,
+		Err:    nil,
+	}
+	sendErr := func(err error) <-chan ContainerResult {
+		result.Err = err
+		resultChan <- result
+		return resultChan
+	}
+
+	if c.ID == "" {
+		return sendErr(ErrNotRunning)
+	}
+
+	cmdTokens, mounts := c.BuildProgramCmd(p)
+
+	for _, mount := range mounts {
+		if _, ok := c.hostToGuestMap[mount.Source]; !ok {
+			return sendErr(ErrNotMounted)
+		}
+	}
+
+	cs := stream.NewContainerStream(opts...)
+	attachStdin := cs.Stdin != nil
+	attachStdout := cs.Stdout != nil
+	attachStderr := cs.Stderr != nil
+
+	resp, err := c.client.ContainerExecCreate(c.ctx, c.ID, container.ExecOptions{
+		Cmd:          cmdTokens,
+		Tty:          false,
+		User:         c.user,
+		AttachStdin:  attachStdin,
+		AttachStdout: attachStdout,
+		AttachStderr: attachStderr,
+	})
+	if err != nil {
+		return sendErr(err)
+	}
+	result.ID = resp.ID
+
+	ctrSock, err := c.client.ContainerExecAttach(c.ctx, resp.ID, container.ExecAttachOptions{
+		Tty: false,
+	})
+	if err != nil {
+		return sendErr(err)
+	}
+
+	cs.StartStreaming(&ctrSock)
+
+	go func() {
+		cs.WaitUntilClosed()
+
+		status, err := c.client.ContainerExecInspect(c.ctx, resp.ID)
+		if err != nil {
+			sendErr(err)
+			return
+		}
+		result.Status = status.ExitCode
+		resultChan <- result
+		close(resultChan)
+	}()
+
+	err = c.client.ContainerExecStart(c.ctx, resp.ID, container.ExecStartOptions{
+		Detach: false,
+		Tty:    false,
+	})
+	if err != nil {
+		return sendErr(err)
+	}
+
+	return resultChan
 }

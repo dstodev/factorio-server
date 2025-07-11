@@ -6,6 +6,7 @@ import (
 
 	"manage2/internal"
 	"manage2/internal/program"
+	"manage2/internal/stream"
 )
 
 const commonImage = "alpine:latest"
@@ -22,25 +23,25 @@ func TestNewContainer(t *testing.T) {
 		t.Errorf("expected error '%v', got: %v", internal.ErrNoProgram, err)
 	}
 
-	if c.Id != "" {
-		t.Errorf("expected empty ID, got: %s", c.Id)
+	if c.ID != "" {
+		t.Errorf("expected empty ID, got: %s", c.ID)
 	}
 }
 
 func TestContainerWithProgram(t *testing.T) {
-	program, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "exit 5"))
+	p, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "exit 5"))
 
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	c := internal.NewContainer(commonImage, internal.WithProgram(program))
+	c := internal.NewContainer(commonImage)
 
-	if err := c.Run(); err != nil {
+	if err := c.Run(p); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if c.Id == "" {
+	if c.ID == "" {
 		t.Error("expected non-empty ID, got empty string")
 	}
 
@@ -51,13 +52,13 @@ func TestContainerWithProgram(t *testing.T) {
 	if result.Status != 5 {
 		t.Errorf("expected exit code 5, got: %d", result.Status)
 	}
-	if result.ID != c.Id {
-		t.Errorf("expected ID '%s', got: %s", c.Id, result.ID)
+	if result.ID != c.ID {
+		t.Errorf("expected ID '%s', got: %s", c.ID, result.ID)
 	}
 }
 
 func TestContainerWithStdout(t *testing.T) {
-	program, err := program.FromSystem("printf", program.WithStringArgs("|%s|\n", "Hello,", "world!"))
+	p, err := program.FromSystem("printf", program.WithStringArgs("|%s|\n", "Hello,", "world!"))
 
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -66,15 +67,14 @@ func TestContainerWithStdout(t *testing.T) {
 	stdoutChan := make(chan string, 1)
 
 	c := internal.NewContainer(commonImage,
-		internal.WithProgram(program),
 		internal.WithStdoutChannel(stdoutChan),
 	)
 
-	if err := c.Run(); err != nil {
+	if err := c.Run(p); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if c.Id == "" {
+	if c.ID == "" {
 		t.Error("expected non-empty ID, got empty string")
 	}
 
@@ -87,8 +87,8 @@ func TestContainerWithStdout(t *testing.T) {
 	if result.Status != 0 {
 		t.Errorf("expected exit code 0, got: %d", result.Status)
 	}
-	if result.ID != c.Id {
-		t.Errorf("expected ID '%s', got: %s", c.Id, result.ID)
+	if result.ID != c.ID {
+		t.Errorf("expected ID '%s', got: %s", c.ID, result.ID)
 	}
 
 	select {
@@ -102,7 +102,7 @@ func TestContainerWithStdout(t *testing.T) {
 }
 
 func TestContainerWithStdoutAndStderr(t *testing.T) {
-	program, err := program.FromSystem("/bin/sh",
+	p, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "printf '|%s|\n' Hello, world! | tee /dev/stderr"))
 
 	if err != nil {
@@ -113,16 +113,15 @@ func TestContainerWithStdoutAndStderr(t *testing.T) {
 	stderrChan := make(chan string, 1)
 
 	c := internal.NewContainer(commonImage,
-		internal.WithProgram(program),
 		internal.WithStdoutChannel(stdoutChan),
 		internal.WithStderrChannel(stderrChan),
 	)
 
-	if err := c.Run(); err != nil {
+	if err := c.Run(p); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if c.Id == "" {
+	if c.ID == "" {
 		t.Error("expected non-empty ID, got empty string")
 	}
 
@@ -135,8 +134,8 @@ func TestContainerWithStdoutAndStderr(t *testing.T) {
 	if result.Status != 0 {
 		t.Errorf("expected exit code 0, got: %d", result.Status)
 	}
-	if result.ID != c.Id {
-		t.Errorf("expected ID '%s', got: %s", c.Id, result.ID)
+	if result.ID != c.ID {
+		t.Errorf("expected ID '%s', got: %s", c.ID, result.ID)
 	}
 
 	select {
@@ -159,7 +158,7 @@ func TestContainerWithStdoutAndStderr(t *testing.T) {
 }
 
 func TestContainerWithStdin(t *testing.T) {
-	program, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "read input && echo \"|$input|\""))
+	p, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "read input && echo \"|$input|\""))
 
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -169,7 +168,6 @@ func TestContainerWithStdin(t *testing.T) {
 	stdoutChan := make(chan string, 1)
 
 	c := internal.NewContainer(commonImage,
-		internal.WithProgram(program),
 		internal.WithStdinChannel(stdinChan),
 		internal.WithStdoutChannel(stdoutChan),
 	)
@@ -180,11 +178,11 @@ func TestContainerWithStdin(t *testing.T) {
 	stdinChan <- msg
 	close(stdinChan)
 
-	if err := c.Run(); err != nil {
+	if err := c.Run(p); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if c.Id == "" {
+	if c.ID == "" {
 		t.Error("expected non-empty ID, got empty string")
 	}
 
@@ -195,8 +193,8 @@ func TestContainerWithStdin(t *testing.T) {
 	if result.Status != 0 {
 		t.Errorf("expected exit code 0, got: %d", result.Status)
 	}
-	if result.ID != c.Id {
-		t.Errorf("expected ID '%s', got: %s", c.Id, result.ID)
+	if result.ID != c.ID {
+		t.Errorf("expected ID '%s', got: %s", c.ID, result.ID)
 	}
 
 	select {
@@ -210,7 +208,7 @@ func TestContainerWithStdin(t *testing.T) {
 }
 
 func TestContainerStdinOnly(t *testing.T) {
-	program, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "read input && exit $input"))
+	p, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "read input && exit $input"))
 
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -219,7 +217,6 @@ func TestContainerStdinOnly(t *testing.T) {
 	stdinChan := make(chan string, 1)
 
 	c := internal.NewContainer(commonImage,
-		internal.WithProgram(program),
 		internal.WithStdinChannel(stdinChan),
 	)
 
@@ -227,11 +224,11 @@ func TestContainerStdinOnly(t *testing.T) {
 	stdinChan <- msg
 	close(stdinChan)
 
-	if err := c.Run(); err != nil {
+	if err := c.Run(p); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if c.Id == "" {
+	if c.ID == "" {
 		t.Error("expected non-empty ID, got empty string")
 	}
 
@@ -242,21 +239,20 @@ func TestContainerStdinOnly(t *testing.T) {
 	if result.Status != 5 {
 		t.Errorf("expected exit code 5, got: %d", result.Status)
 	}
-	if result.ID != c.Id {
-		t.Errorf("expected ID '%s', got: %s", c.Id, result.ID)
+	if result.ID != c.ID {
+		t.Errorf("expected ID '%s', got: %s", c.ID, result.ID)
 	}
 }
 
 func TestBuildProgramCommandStrings(t *testing.T) {
-	program, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "echo Hello"))
+	p, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "echo Hello"))
 
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	c := internal.NewContainer(commonImage, internal.WithProgram(program))
-
-	cmdTokens, mounts := c.BuildProgramCmd()
+	c := internal.NewContainer(commonImage)
+	cmdTokens, mounts := c.BuildProgramCmd(p)
 
 	expectedCmd := []string{"/bin/sh", "-c", "echo Hello", "--"}
 	if len(cmdTokens) != len(expectedCmd) {
@@ -281,7 +277,7 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 	expectedMsg := "Hello, world!\n"
 	file := dir.WriteFile("file.txt", expectedMsg, 0644)
 
-	program, err := program.FromFile(script,
+	p, err := program.FromFile(script,
 		program.WithFileArgs(file),
 	)
 
@@ -292,10 +288,9 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 	stdoutChan := make(chan string, 1)
 
 	c := internal.NewContainer(commonImage,
-		internal.WithProgram(program),
 		internal.WithStdoutChannel(stdoutChan))
 
-	cmdTokens, mounts := c.BuildProgramCmd()
+	cmdTokens, mounts := c.BuildProgramCmd(p)
 
 	if len(mounts) != 2 { // script & file
 		t.Errorf("expected 2 mounts, got: %d", len(mounts))
@@ -319,10 +314,10 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 		t.Errorf("expected file mount source '%s', got: %s", file, mounts[1].Source)
 	}
 
-	if err := c.Run(); err != nil {
+	if err := c.Run(p); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	if c.Id == "" {
+	if c.ID == "" {
 		t.Error("expected non-empty ID, got empty string")
 	}
 	result := <-c.Done
@@ -332,8 +327,8 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 	if result.Status != 0 {
 		t.Errorf("expected exit code 0, got: %d", result.Status)
 	}
-	if result.ID != c.Id {
-		t.Errorf("expected ID '%s', got: %s", c.Id, result.ID)
+	if result.ID != c.ID {
+		t.Errorf("expected ID '%s', got: %s", c.ID, result.ID)
 	}
 
 	select {
@@ -345,3 +340,53 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 		t.Error("expected a message on stdout")
 	}
 }
+
+func TestContainerExec(t *testing.T) {
+	p, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "read input && exit $input"))
+
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	ctrChan := make(chan string, 1)
+	c := internal.NewContainer(commonImage, internal.WithStdinChannel(ctrChan))
+
+	if err := c.Run(p); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if c.ID == "" {
+		t.Error("expected non-empty ID, got empty string")
+	}
+
+	execChan := make(chan string, 1)
+	stdoutChan := make(chan string, 1)
+
+	// TODO: Stdout channel is required for the status code to return,
+	// because it needs to wait for the stdout channel to close before inspecting the exit code.
+	resultChan := c.Exec(p, stream.WithStdinChannel(execChan), stream.WithStdoutChannel(stdoutChan))
+
+	execChan <- "4\n"
+	close(execChan)
+
+	result := <-resultChan
+	if result.Err != nil {
+		t.Fatalf("expected no error, got: %v", result.Err)
+	}
+	if result.Status != 4 {
+		t.Errorf("expected exit code 4, got: %d", result.Status)
+	}
+
+	ctrChan <- "5\n"
+	close(ctrChan)
+
+	result = <-c.Done
+	if result.Err != nil {
+		t.Fatalf("expected no error, got: %v", result.Err)
+	}
+	if result.Status != 5 {
+		t.Errorf("expected exit code 5, got: %d", result.Status)
+	}
+}
+
+// TODO: Test WithMounts() and Exec() with file arguments
