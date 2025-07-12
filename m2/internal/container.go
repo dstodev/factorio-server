@@ -27,7 +27,7 @@ type Container struct {
 
 	user string
 
-	hostToGuestMap map[string]string // Maps host paths to guest paths
+	hostToGuestMap map[string]string
 
 	ctx    context.Context
 	client *client.Client
@@ -175,15 +175,8 @@ func (c *Container) BuildProgramCmd(programs ...*program.Program) (
 	toGuestMutator := func(p *program.Program, index int, arg string) string {
 		if p.ArgIsFile(index) {
 			hostPath := arg
-
-			var guestPath string
-			if path, ok := c.hostToGuestMap[hostPath]; ok {
-				guestPath = path
-			} else {
-				guestPath = toGuestPath(hostPath)
-			}
+			guestPath := c.resolveGuestPath(hostPath)
 			fileMap[hostPath] = guestPath
-
 			return guestPath
 		}
 		return arg
@@ -192,6 +185,21 @@ func (c *Container) BuildProgramCmd(programs ...*program.Program) (
 		cmdTokens = append(cmdTokens, p.AsTokens(toGuestMutator)...)
 	}
 	return cmdTokens, fileMap
+}
+
+// resolveGuestPath returns the guest path for a given host path, creating a new
+// guest path if it does not already exist. New paths are not added to the
+// hostToGuestMap automatically. Instead, Run() records new paths before
+// starting the container. This enables Exec() to accurately verify all required
+// files were mounted by ensuring all files referenced by a program are mapped
+// to a guest in hostToGuestMap.
+func (c *Container) resolveGuestPath(hostPath string) (guestPath string) {
+	if path, ok := c.hostToGuestMap[hostPath]; ok {
+		guestPath = path
+	} else {
+		guestPath = toGuestPath(hostPath)
+	}
+	return guestPath
 }
 
 func toGuestPath(hostPath string) string {
@@ -267,6 +275,7 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Conta
 	for hostPath := range fileMap {
 		// c.hostToGuestMap is only written by WithMounts() and by Run() for
 		// initial mounts, so verify all referenced files are mounted.
+		// (Docker does not support new mounts after a container has started.)
 		if _, ok := c.hostToGuestMap[hostPath]; !ok {
 			return sendErr(ErrNotMounted)
 		}
@@ -343,10 +352,12 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Conta
 		close(resultChan)
 	}()
 
-	err = c.client.ContainerExecStart(c.ctx, resp.ID, container.ExecStartOptions{
-		Detach: false,
-		Tty:    false,
-	})
+	err = c.client.ContainerExecStart(c.ctx,
+		resp.ID,
+		container.ExecStartOptions{
+			Detach: false,
+			Tty:    false,
+		})
 	if err != nil {
 		return sendErr(err)
 	}
