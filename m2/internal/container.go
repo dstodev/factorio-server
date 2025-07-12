@@ -78,8 +78,6 @@ var ErrNoProgram = fmt.Errorf("no programs registered")
 //
 // It is assumed script1.sh will parse its own arguments, run, then start
 // script2.sh with remaining arguments.
-//
-// TODO: Make more like Exec() in terms of returning a channel
 func (c *Container) Run(programs ...*program.Program) error {
 	if len(programs) == 0 {
 		return ErrNoProgram
@@ -299,12 +297,14 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Conta
 	}
 	execResult.ID = resp.ID
 
-	ctrSock, err := c.client.ContainerExecAttach(c.ctx, resp.ID, container.ExecAttachOptions{
-		Tty: false,
+	ctrSock, err := c.client.ContainerExecAttach(c.ctx, execResult.ID, container.ExecAttachOptions{
+		Detach: false,
+		Tty:    false,
 	})
 	if err != nil {
 		return sendErr(err)
 	}
+	cs.StartStreaming(&ctrSock)
 
 	// Start listening for "exec_die" events from this container
 	since := time.Now().Format(time.RFC3339)
@@ -318,8 +318,6 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Conta
 			filters.Arg("container", c.ID),
 		),
 	})
-
-	cs.StartStreaming(&ctrSock)
 
 	go func() {
 		cs.WaitUntilClosed()
@@ -351,16 +349,6 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Conta
 		resultChan <- execResult
 		close(resultChan)
 	}()
-
-	err = c.client.ContainerExecStart(c.ctx,
-		resp.ID,
-		container.ExecStartOptions{
-			Detach: false,
-			Tty:    false,
-		})
-	if err != nil {
-		return sendErr(err)
-	}
 
 	return resultChan
 }
