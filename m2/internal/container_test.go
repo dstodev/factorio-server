@@ -22,25 +22,22 @@ func TestContainer(t *testing.T) {
 	if err := c.Run(); !errors.Is(err, internal.ErrNoProgram) {
 		t.Fatalf("expected error '%v', got: %v", internal.ErrNoProgram, err)
 	}
-
 	if c.ID != "" {
 		t.Fatalf("expected empty ID, got: %s", c.ID)
 	}
 }
 
 func TestContainerWithProgram(t *testing.T) {
-	p, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "exit 5"))
-
+	c := internal.NewContainer(commonImage)
+	p, err := program.FromSystem("/bin/sh",
+		program.WithStringArgs("-c", "exit 5"))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	c := internal.NewContainer(commonImage)
-
 	if err := c.Run(p); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-
 	if c.ID == "" {
 		t.Fatal("expected non-empty ID, got empty string")
 	}
@@ -58,27 +55,20 @@ func TestContainerWithProgram(t *testing.T) {
 }
 
 func TestContainerWithStdout(t *testing.T) {
+	stdoutChan := make(chan string, 1)
+	c := internal.NewContainer(commonImage,
+		internal.WithStdoutChannel(stdoutChan))
 	p, err := program.FromSystem("printf", program.WithStringArgs("|%s|\n", "Hello,", "world!"))
-
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	stdoutChan := make(chan string, 1)
-
-	c := internal.NewContainer(commonImage,
-		internal.WithStdoutChannel(stdoutChan),
-	)
-
 	if err := c.Run(p); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-
 	if c.ID == "" {
 		t.Fatal("expected non-empty ID, got empty string")
 	}
-
-	expectedOutput := "|Hello,|\n|world!|\n|--|\n"
 
 	result := <-c.Done
 	if result.Err != nil {
@@ -91,6 +81,7 @@ func TestContainerWithStdout(t *testing.T) {
 		t.Fatalf("expected ID '%s', got: %s", c.ID, result.ID)
 	}
 
+	expectedOutput := "|Hello,|\n|world!|\n|--|\n"
 	select {
 	case msg := <-stdoutChan:
 		if msg != expectedOutput {
@@ -102,25 +93,20 @@ func TestContainerWithStdout(t *testing.T) {
 }
 
 func TestContainerWithStdoutAndStderr(t *testing.T) {
+	stdoutChan := make(chan string, 1)
+	stderrChan := make(chan string, 1)
+	c := internal.NewContainer(commonImage,
+		internal.WithStdoutChannel(stdoutChan),
+		internal.WithStderrChannel(stderrChan))
 	p, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "printf '|%s|\n' Hello, world! | tee /dev/stderr"))
-
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	stdoutChan := make(chan string, 1)
-	stderrChan := make(chan string, 1)
-
-	c := internal.NewContainer(commonImage,
-		internal.WithStdoutChannel(stdoutChan),
-		internal.WithStderrChannel(stderrChan),
-	)
-
 	if err := c.Run(p); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-
 	if c.ID == "" {
 		t.Fatal("expected non-empty ID, got empty string")
 	}
@@ -158,30 +144,23 @@ func TestContainerWithStdoutAndStderr(t *testing.T) {
 }
 
 func TestContainerWithStdin(t *testing.T) {
+	stdinChan := make(chan string, 1)
+	stdoutChan := make(chan string, 1)
+	c := internal.NewContainer(commonImage,
+		internal.WithStdinChannel(stdinChan),
+		internal.WithStdoutChannel(stdoutChan))
 	p, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "read input && echo \"|$input|\""))
-
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	stdinChan := make(chan string, 1)
-	stdoutChan := make(chan string, 1)
-
-	c := internal.NewContainer(commonImage,
-		internal.WithStdinChannel(stdinChan),
-		internal.WithStdoutChannel(stdoutChan),
-	)
-
 	msg := "Hello, world!\n"
-	expectedMsg := "|Hello, world!|\n"
-
 	stdinChan <- msg
 	close(stdinChan)
 
 	if err := c.Run(p); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-
 	if c.ID == "" {
 		t.Fatal("expected non-empty ID, got empty string")
 	}
@@ -197,6 +176,7 @@ func TestContainerWithStdin(t *testing.T) {
 		t.Fatalf("expected ID '%s', got: %s", c.ID, result.ID)
 	}
 
+	expectedMsg := "|Hello, world!|\n"
 	select {
 	case msg := <-stdoutChan:
 		if msg != expectedMsg {
@@ -208,17 +188,13 @@ func TestContainerWithStdin(t *testing.T) {
 }
 
 func TestContainerStdinOnly(t *testing.T) {
+	stdinChan := make(chan string, 1)
+	c := internal.NewContainer(commonImage,
+		internal.WithStdinChannel(stdinChan))
 	p, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "read input && exit $input"))
-
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-
-	stdinChan := make(chan string, 1)
-
-	c := internal.NewContainer(commonImage,
-		internal.WithStdinChannel(stdinChan),
-	)
 
 	msg := "5\n"
 	stdinChan <- msg
@@ -227,7 +203,6 @@ func TestContainerStdinOnly(t *testing.T) {
 	if err := c.Run(p); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-
 	if c.ID == "" {
 		t.Fatal("expected non-empty ID, got empty string")
 	}
@@ -251,13 +226,16 @@ func TestIdleContainer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
+
 	if err := c.Run(p); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	if c.ID == "" {
 		t.Fatal("expected non-empty ID, got empty string")
 	}
+
 	close(stdinChan) // Test times out without closing stdin; container is idle
+
 	result := <-c.Done
 	if result.Err != nil {
 		t.Fatalf("expected no error, got: %v", result.Err)
@@ -271,27 +249,24 @@ func TestIdleContainer(t *testing.T) {
 }
 
 func TestBuildProgramCommandStrings(t *testing.T) {
+	c := internal.NewContainer(commonImage)
 	p, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "echo Hello"))
-
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	c := internal.NewContainer(commonImage)
 	cmdTokens, mounts := c.BuildProgramCmd(p)
 
 	expectedCmd := []string{"/bin/sh", "-c", "echo Hello", "--"}
 	if len(cmdTokens) != len(expectedCmd) {
 		t.Fatalf("expected command tokens %v, got: %v", expectedCmd, cmdTokens)
 	}
-
 	for i, token := range cmdTokens {
 		if token != expectedCmd[i] {
 			t.Fatalf("expected command token '%s', got: '%s'", expectedCmd[i],
 				token)
 		}
 	}
-
 	if len(mounts) != 0 {
 		t.Fatalf("expected no mounts, got: %v", mounts)
 	}
@@ -303,18 +278,14 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 	expectedMsg := "Hello, world!\n"
 	file := dir.WriteFile("file.txt", expectedMsg, 0644)
 
+	stdoutChan := make(chan string, 1)
+	c := internal.NewContainer(commonImage,
+		internal.WithStdoutChannel(stdoutChan))
 	p, err := program.FromFile(script,
-		program.WithFileArgs(file),
-	)
-
+		program.WithFileArgs(file))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-
-	stdoutChan := make(chan string, 1)
-
-	c := internal.NewContainer(commonImage,
-		internal.WithStdoutChannel(stdoutChan))
 
 	cmdTokens, fileMap := c.BuildProgramCmd(p)
 
@@ -339,6 +310,7 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 	if c.ID == "" {
 		t.Fatal("expected non-empty ID, got empty string")
 	}
+
 	result := <-c.Done
 	if result.Err != nil {
 		t.Fatalf("expected no error, got: %v", result.Err)
@@ -362,15 +334,17 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 
 func TestExec(t *testing.T) {
 	ctrChan := make(chan string, 1)
-	c := internal.NewContainer(commonImage, internal.WithStdinChannel(ctrChan))
-	p, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "read input && exit $input"))
+	c := internal.NewContainer(commonImage,
+		internal.WithStdinChannel(ctrChan))
+	p, err := program.FromSystem("/bin/sh",
+		program.WithStringArgs("-c", "read input && exit $input"))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
+
 	if err := c.Run(p); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-
 	if c.ID == "" {
 		t.Fatal("expected non-empty ID, got empty string")
 	}
@@ -446,8 +420,12 @@ func TestExecMissingMounts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
+
 	if err := c.Run(wait); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
+	}
+	if c.ID == "" {
+		t.Fatal("expected non-empty ID, got empty string")
 	}
 
 	path := internal.NewTestDir(t).TouchFile("file.txt")
@@ -470,6 +448,7 @@ func TestExecMissingMounts(t *testing.T) {
 	}
 
 	close(stdinChan) // Allow container to close
+
 	result = <-c.Done
 	if result.Err != nil {
 		t.Fatalf("expected no error, got: %v", result.Err)
@@ -488,12 +467,17 @@ func TestExecMounts(t *testing.T) {
 	c := internal.NewContainer(commonImage,
 		internal.WithStdinChannel(stdinChan),
 		internal.WithMounts(path))
+
 	wait, err := program.FromSystem("cat")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
+
 	if err := c.Run(wait); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
+	}
+	if c.ID == "" {
+		t.Fatal("expected non-empty ID, got empty string")
 	}
 
 	p, err := program.FromSystem("cat", program.WithFileArgs(path))
@@ -515,6 +499,7 @@ func TestExecMounts(t *testing.T) {
 	}
 
 	close(stdinChan) // Allow container to close
+
 	result = <-c.Done
 	if result.Err != nil {
 		t.Fatalf("expected no error, got: %v", result.Err)
