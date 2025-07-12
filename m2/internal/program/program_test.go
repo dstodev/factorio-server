@@ -16,7 +16,7 @@ func TestNewProgram(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	if len(p.Args) != 1 {
-		t.Errorf("expected 1 arg, got: %d", len(p.Args))
+		t.Fatalf("expected 1 arg, got: %d", len(p.Args))
 	}
 }
 
@@ -27,7 +27,7 @@ func TestNewProgramBadPath(t *testing.T) {
 		t.Fatalf("expected error to be 'fs.ErrNotExist', got: %v", err)
 	}
 	if p != nil {
-		t.Errorf("expected nil program, got: %v", p)
+		t.Fatalf("expected nil program, got: %v", p)
 	}
 }
 
@@ -39,14 +39,14 @@ func TestFromSystemWithArgs(t *testing.T) {
 
 	expectedArgs := []string{"echo", "Hello,", "World!"}
 	if len(p.Args) != len(expectedArgs) {
-		t.Errorf("expected %d args, got: %d", len(expectedArgs), len(p.Args))
+		t.Fatalf("expected %d args, got: %d", len(expectedArgs), len(p.Args))
 	}
 	for i, arg := range expectedArgs {
 		if p.Args[i] != arg {
-			t.Errorf("expected arg %d to be '%s', got: %s", i, arg, p.Args[i])
+			t.Fatalf("expected arg %d to be '%s', got: %s", i, arg, p.Args[i])
 		}
 		if p.ArgIsFile(i) {
-			t.Errorf("expected arg %d to not be a file", i)
+			t.Fatalf("expected arg %d to not be a file", i)
 		}
 	}
 }
@@ -63,11 +63,11 @@ func TestFromFileWithArgs(t *testing.T) {
 
 	expectedArgs := []string{path, "arg1", "arg2"}
 	if len(p.Args) != len(expectedArgs) {
-		t.Errorf("expected %d args, got: %d", len(expectedArgs), len(p.Args))
+		t.Fatalf("expected %d args, got: %d", len(expectedArgs), len(p.Args))
 	}
 	for i, arg := range expectedArgs {
 		if p.Args[i] != arg {
-			t.Errorf("expected arg %d to be '%s', got: %s", i, arg, p.Args[i])
+			t.Fatalf("expected arg %d to be '%s', got: %s", i, arg, p.Args[i])
 		}
 	}
 }
@@ -87,11 +87,11 @@ func TestNewProgramWithFileArgs(t *testing.T) {
 
 	expectedArgs := []string{path, file1, file2}
 	if len(p.Args) != len(expectedArgs) {
-		t.Errorf("expected %d args, got: %d", len(expectedArgs), len(p.Args))
+		t.Fatalf("expected %d args, got: %d", len(expectedArgs), len(p.Args))
 	}
 	for i, arg := range expectedArgs {
 		if p.Args[i] != arg {
-			t.Errorf("expected arg %d to be '%s', got: %s", i, arg, p.Args[i])
+			t.Fatalf("expected arg %d to be '%s', got: %s", i, arg, p.Args[i])
 		}
 	}
 }
@@ -121,13 +121,13 @@ func TestArgIsFile(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	if !p.ArgIsFile(0) {
-		t.Errorf("expected arg 0 to be a file")
+		t.Fatalf("expected arg 0 to be a file")
 	}
 	if p.ArgIsFile(1) || p.ArgIsFile(2) {
-		t.Errorf("expected args 0 and 1 to not be files")
+		t.Fatalf("expected args 0 and 1 to not be files")
 	}
 	if !p.ArgIsFile(3) || !p.ArgIsFile(4) {
-		t.Errorf("expected args 2 and 3 to be files")
+		t.Fatalf("expected args 2 and 3 to be files")
 	}
 }
 
@@ -148,11 +148,11 @@ func TestAsTokens(t *testing.T) {
 	tokens := p.AsTokens()
 	expectedTokens := []string{path, "arg1", "arg2", file1, file2, "--"}
 	if len(tokens) != len(expectedTokens) {
-		t.Errorf("expected %d tokens, got: %d", len(expectedTokens), len(tokens))
+		t.Fatalf("expected %d tokens, got: %d", len(expectedTokens), len(tokens))
 	}
 	for i, expectedToken := range expectedTokens {
 		if tokens[i] != expectedToken {
-			t.Errorf("expected token %d to be '%s', got: %s", i, expectedToken, tokens[i])
+			t.Fatalf("expected token %d to be '%s', got: %s", i, expectedToken, tokens[i])
 		}
 	}
 }
@@ -192,7 +192,7 @@ func TestAsTokenMutators(t *testing.T) {
 	expectedCount := len(p.Args) // mutators not called for "--"
 
 	if count != expectedCount {
-		t.Errorf("expected %d calls to mutators, got: %d", expectedCount, count)
+		t.Fatalf("expected %d calls to mutators, got: %d", expectedCount, count)
 	}
 
 	expectedTokens := []string{
@@ -205,11 +205,11 @@ func TestAsTokenMutators(t *testing.T) {
 	}
 
 	if len(tokens) != len(expectedTokens) {
-		t.Errorf("expected %d tokens, got: %d", len(expectedTokens), len(tokens))
+		t.Fatalf("expected %d tokens, got: %d", len(expectedTokens), len(tokens))
 	}
 	for i, expectedToken := range expectedTokens {
 		if tokens[i] != expectedToken {
-			t.Errorf("expected token %d to be '%s', got: %s", i, expectedToken, tokens[i])
+			t.Fatalf("expected token %d to be '%s', got: %s", i, expectedToken, tokens[i])
 		}
 	}
 }

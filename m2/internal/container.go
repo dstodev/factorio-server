@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/events"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/google/uuid"
@@ -75,6 +78,8 @@ var ErrNoProgram = fmt.Errorf("no programs registered")
 //
 // It is assumed script1.sh will parse its own arguments, run, then start
 // script2.sh with remaining arguments.
+//
+// TODO: Make more like Exec() in terms of returning a channel
 func (c *Container) Run(programs ...*program.Program) error {
 	if len(programs) == 0 {
 		return ErrNoProgram
@@ -92,11 +97,13 @@ func (c *Container) Run(programs ...*program.Program) error {
 	}
 	c.ctx = context.Background()
 
-	cmdTokens, mounts := c.BuildProgramCmd(programs...)
+	cmdTokens, fileMap := c.BuildProgramCmd(programs...)
 
 	// Mounts are also recorded by WithMounts() so Exec() can use them
-	for _, mount := range mounts {
-		c.hostToGuestMap[mount.Source] = mount.Target
+	for hostPath, guestPath := range fileMap {
+		if _, ok := c.hostToGuestMap[hostPath]; !ok {
+			c.hostToGuestMap[hostPath] = guestPath
+		}
 	}
 
 	config := &container.Config{
@@ -109,6 +116,16 @@ func (c *Container) Run(programs ...*program.Program) error {
 		StdinOnce:    attachStdin,
 		AttachStdout: attachStdout,
 		AttachStderr: attachStderr,
+	}
+
+	mounts := make([]mount.Mount, 0, len(c.hostToGuestMap))
+
+	for hostPath, guestPath := range c.hostToGuestMap {
+		mounts = append(mounts, mount.Mount{
+			Type:   mount.TypeBind,
+			Source: hostPath,
+			Target: guestPath,
+		})
 	}
 
 	hostConfig := &container.HostConfig{
@@ -152,24 +169,21 @@ func (c *Container) Run(programs ...*program.Program) error {
 // paths. Returns the command and mounts to use when starting the container.
 func (c *Container) BuildProgramCmd(programs ...*program.Program) (
 	cmdTokens []string,
-	mounts []mount.Mount,
+	fileMap map[string]string,
 ) {
+	fileMap = make(map[string]string)
 	toGuestMutator := func(p *program.Program, index int, arg string) string {
 		if p.ArgIsFile(index) {
 			hostPath := arg
+
 			var guestPath string
-			if cachedPath, ok := c.hostToGuestMap[hostPath]; ok {
-				// If the program already has a mapping for this path, use it
-				guestPath = cachedPath
+			if path, ok := c.hostToGuestMap[hostPath]; ok {
+				guestPath = path
 			} else {
 				guestPath = toGuestPath(hostPath)
-				c.hostToGuestMap[hostPath] = guestPath
 			}
-			mounts = append(mounts, mount.Mount{
-				Type:   mount.TypeBind,
-				Source: hostPath,
-				Target: guestPath,
-			})
+			fileMap[hostPath] = guestPath
+
 			return guestPath
 		}
 		return arg
@@ -177,7 +191,7 @@ func (c *Container) BuildProgramCmd(programs ...*program.Program) (
 	for _, p := range programs {
 		cmdTokens = append(cmdTokens, p.AsTokens(toGuestMutator)...)
 	}
-	return cmdTokens, mounts
+	return cmdTokens, fileMap
 }
 
 func toGuestPath(hostPath string) string {
@@ -229,25 +243,31 @@ var ErrNotMounted = fmt.Errorf("container has not mounted all file arguments")
 // after the container has started.
 func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan ContainerResult {
 	resultChan := make(chan ContainerResult, 1)
-	result := ContainerResult{
+	execResult := ContainerResult{
 		ID:     "",
 		Status: -1,
 		Err:    nil,
 	}
 	sendErr := func(err error) <-chan ContainerResult {
-		result.Err = err
-		resultChan <- result
+		execResult.Err = err
+		resultChan <- execResult
 		return resultChan
+	}
+
+	if p == nil {
+		return sendErr(ErrNoProgram)
 	}
 
 	if c.ID == "" {
 		return sendErr(ErrNotRunning)
 	}
 
-	cmdTokens, mounts := c.BuildProgramCmd(p)
+	cmdTokens, fileMap := c.BuildProgramCmd(p)
 
-	for _, mount := range mounts {
-		if _, ok := c.hostToGuestMap[mount.Source]; !ok {
+	for hostPath := range fileMap {
+		// c.hostToGuestMap is only written by WithMounts() and by Run() for
+		// initial mounts, so verify all referenced files are mounted.
+		if _, ok := c.hostToGuestMap[hostPath]; !ok {
 			return sendErr(ErrNotMounted)
 		}
 	}
@@ -268,7 +288,7 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Conta
 	if err != nil {
 		return sendErr(err)
 	}
-	result.ID = resp.ID
+	execResult.ID = resp.ID
 
 	ctrSock, err := c.client.ContainerExecAttach(c.ctx, resp.ID, container.ExecAttachOptions{
 		Tty: false,
@@ -277,18 +297,49 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Conta
 		return sendErr(err)
 	}
 
+	// Start listening for "exec_die" events from this container
+	since := time.Now().Format(time.RFC3339)
+	eventStreamCtx, eventStreamCancel := context.WithCancel(c.ctx)
+	msgs, errs := c.client.Events(eventStreamCtx, events.ListOptions{
+		Since: since,
+		Filters: filters.NewArgs(
+			// https://docs.docker.com/reference/cli/docker/system/events/#filter
+			filters.Arg("type", "container"),
+			filters.Arg("event", "exec_die"),
+			filters.Arg("container", c.ID),
+		),
+	})
+
 	cs.StartStreaming(&ctrSock)
 
 	go func() {
 		cs.WaitUntilClosed()
+
+		// Wait for the exec'd program to finish by waiting for its exec_die event.
+		for {
+			done := false
+			select {
+			case msg := <-msgs:
+				execID := msg.Actor.Attributes["execID"]
+				if execID == execResult.ID {
+					done = true
+				}
+			case <-errs:
+				done = true
+			}
+			if done {
+				eventStreamCancel()
+				break
+			}
+		}
 
 		status, err := c.client.ContainerExecInspect(c.ctx, resp.ID)
 		if err != nil {
 			sendErr(err)
 			return
 		}
-		result.Status = status.ExitCode
-		resultChan <- result
+		execResult.Status = status.ExitCode
+		resultChan <- execResult
 		close(resultChan)
 	}()
 
