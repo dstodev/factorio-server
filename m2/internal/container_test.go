@@ -226,13 +226,11 @@ func TestBuildProgramCommandStrings(t *testing.T) {
 func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 	dir := internal.NewTestDir(t)
 	script := dir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"\n", 0755)
-	expectedMsg := "Hello, world!\n"
-	file := dir.WriteFile("file.txt", expectedMsg, 0644)
+	file := dir.TouchFile("file.txt")
 
-	ctrStdout := make(chan string, 1)
-	c := internal.NewContainer(commonImage,
-		internal.WithStdoutChannel(ctrStdout))
+	c := internal.NewContainer(commonImage)
 	p, err := program.FromFile(script,
+		program.WithStringArgs("--file"),
 		program.WithFileArgs(file))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -244,7 +242,7 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 		t.Fatalf("expected 2 mounts, got: %d", len(fileMap))
 	}
 
-	expectedCmd := []string{fileMap[script], fileMap[file], "--"}
+	expectedCmd := []string{fileMap[script], "--file", fileMap[file], "--"}
 	if len(cmdTokens) != len(expectedCmd) {
 		t.Fatalf("expected command tokens %v, got: %v", expectedCmd, cmdTokens)
 	}
@@ -253,6 +251,22 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 		if token != expectedCmd[i] {
 			t.Fatalf("expected command token '%s', got: '%s'", expectedCmd[i], token)
 		}
+	}
+}
+
+func TestContainerAutoMountsRunPrograms(t *testing.T) {
+	dir := internal.NewTestDir(t)
+	script := dir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"\n", 0755)
+	expectedMsg := "Hello, world!\n"
+	file := dir.WriteFile("file.txt", expectedMsg, 0644)
+
+	ctrStdout := make(chan string, 1)
+	c := internal.NewContainer(commonImage,
+		internal.WithStdoutChannel(ctrStdout))
+	p, err := program.FromFile(script,
+		program.WithFileArgs(file))
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
 	}
 
 	if err := c.Run(p); err != nil {
@@ -275,9 +289,9 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 	}
 }
 
-// Assert we can control when a container exits, by e.g. running a command that
-// waits for input on stdin like `cat`, then explicitly allowing the container
-// to close later by closing the stdin channel. This is useful to run multiple
+// Assert we can control when a container exits by running a command that waits
+// for input on stdin like `cat`. This allows us to explicitly control when the
+// container closes by closing the stdin channel. This is useful to run multiple
 // arbitrary commands with Exec() before closing the container.
 func TestIdleContainer(t *testing.T) {
 	ctrStdin := make(chan string, 1)
@@ -324,7 +338,7 @@ func TestExec(t *testing.T) {
 
 	select {
 	case result := <-execResult:
-		t.Fatalf("expected no result, got: %v", result.Err)
+		t.Fatalf("expected no result, got: %+v", result)
 	default:
 	}
 
@@ -478,7 +492,7 @@ done
 
 	select {
 	case result := <-execResult:
-		t.Fatalf("expected no result, got: %v", result.Err)
+		t.Fatalf("expected no result, got: %+v", result)
 	default:
 	}
 

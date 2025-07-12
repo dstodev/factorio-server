@@ -2,16 +2,16 @@
 
 ## Actual Selection
 
-| Component   | Criteria                       | Selection                                                              | Remarks                              |
-| ----------- | ------------------------------ | ---------------------------------------------------------------------- | ------------------------------------ |
-| CPU         | Best single-core performance   | [AMD Ryzen 9 9950X3D](https://www.newegg.com/p/N82E16819113884)        |                                      |
-| CPU cooler  | Sufficient for CPU             | [MSI MAG Coreliquid A13 360](https://www.newegg.com/p/N82E16835846070) | Free in Newegg bundle                |
-| Case        | 3u, radiator support           | [RackChoice 3U 360mm radiatior](https://a.co/d/eUH7jNu)                |                                      |
-| PSU         | SFX form factor                | [CORSAIR SF750](https://a.co/d/8463p3u)                                | For selected case                    |
-| Motherboard | AM5 socket, PCIe 5.0 M.2 slot  | [ASUS TUF Gaming B850M-Plus WiFi](https://a.co/d/gT4oqSV)              |                                      |
-| RAM         | 64GB DDR5, 6000MT/s or higher  | [Corsair Vengeance 2x48GB](https://a.co/d/g8l2US9)                     | 6000MT/s unstable with 2 >48gb DIMMs |
-| SSD         | M.2 PCIe 5.0, 2TB or larger    | [WD_BLACK 2TB SN8100 M.2 2280](https://a.co/d/2vYImYy)                 |                                      |
-| Rack rails  | 1u, adjustable depth, 100+ lbs | [StarTech.com 1U](https://a.co/d/0UWTD8b)                              |                                      |
+| Component   | Criteria                                  | Selection                                                              | Remarks                              |
+| ----------- | ----------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------ |
+| CPU         | Best single-core performance              | [AMD Ryzen 9 9950X3D](https://www.newegg.com/p/N82E16819113884)        |                                      |
+| CPU cooler  | Sufficient for CPU                        | [MSI MAG Coreliquid A13 360](https://www.newegg.com/p/N82E16835846070) | Free in Newegg bundle                |
+| Case        | 3u, radiator support                      | [RackChoice 3U 360mm radiatior](https://a.co/d/eUH7jNu)                |                                      |
+| PSU         | SFX form factor                           | [CORSAIR SF750](https://a.co/d/8463p3u)                                | For selected case                    |
+| Motherboard | AM5 socket, PCIe 5.0 M.2 slot             | [ASUS TUF Gaming B850M-Plus WiFi](https://a.co/d/gT4oqSV)              |                                      |
+| RAM         | 64GB DDR5, 6000MT/s or higher             | [Corsair Vengeance 2x48GB](https://a.co/d/g8l2US9)                     | 6000MT/s unstable with 2 >48gb DIMMs |
+| SSD         | M.2 PCIe 5.0, 2TB or larger               | [WD_BLACK 2TB SN8100 M.2 2280](https://a.co/d/2vYImYy)                 |                                      |
+| Rack rails  | 1u, adjustable depth, 100+ lbs, 22" depth | [NavePoint 1U](https://a.co/d/2nfvoDg)                                 |                                      |
 
 ## Likely Selections
 
