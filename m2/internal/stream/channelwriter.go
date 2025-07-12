@@ -6,25 +6,25 @@ import (
 )
 
 type ChannelWriter struct {
-	targetChan chan<- string
+	target chan<- string
 }
 
-func NewChannelWriter(targetChan chan<- string) io.Writer {
-	if targetChan == nil {
+func NewChannelWriter(target chan<- string) io.Writer {
+	if target == nil {
 		return NewNilWriter()
 	} else {
 		return &ChannelWriter{
-			targetChan: targetChan,
+			target: target,
 		}
 	}
 }
 
 func (cw *ChannelWriter) Write(p []byte) (n int, err error) {
-	if cw.targetChan == nil {
+	if cw.target == nil {
 		return 0, fmt.Errorf("target channel is nil")
 	}
 	value := string(p)
-	cw.targetChan <- value
+	cw.target <- value
 	return len(p), nil
 }
 

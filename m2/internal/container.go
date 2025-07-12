@@ -210,19 +210,19 @@ func toGuestPath(hostPath string) string {
 // startExitHandler waits for the container to exit, then sends the result to
 // the Done channel. It then removes the container.
 func (c *Container) startExitHandler() {
-	statusChan, errChan := c.client.ContainerWait(c.ctx, c.ID, container.WaitConditionNextExit)
+	ctrStatus, ctrErr := c.client.ContainerWait(c.ctx, c.ID, container.WaitConditionNextExit)
 
 	go func() {
 		c.streams.WaitUntilClosed()
 
 		select {
-		case status := <-statusChan:
+		case status := <-ctrStatus:
 			c.Done <- ContainerResult{
 				ID:     c.ID,
 				Status: int(status.StatusCode),
 				Err:    nil,
 			}
-		case err := <-errChan:
+		case err := <-ctrErr:
 			c.Done <- ContainerResult{
 				ID:     c.ID,
 				Status: -1,
@@ -248,16 +248,16 @@ var ErrNotMounted = fmt.Errorf("container has not mounted all file arguments")
 // WithMounts() to do so. Docker does not support mounting additional files
 // after the container has started.
 func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan ContainerResult {
-	resultChan := make(chan ContainerResult, 1)
-	execResult := ContainerResult{
+	execResult := make(chan ContainerResult, 1)
+	result := ContainerResult{
 		ID:     "",
 		Status: -1,
 		Err:    nil,
 	}
 	sendErr := func(err error) <-chan ContainerResult {
-		execResult.Err = err
-		resultChan <- execResult
-		return resultChan
+		result.Err = err
+		execResult <- result
+		return execResult
 	}
 
 	if p == nil {
@@ -295,9 +295,9 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Conta
 	if err != nil {
 		return sendErr(err)
 	}
-	execResult.ID = resp.ID
+	result.ID = resp.ID
 
-	ctrSock, err := c.client.ContainerExecAttach(c.ctx, execResult.ID, container.ExecAttachOptions{
+	ctrSock, err := c.client.ContainerExecAttach(c.ctx, result.ID, container.ExecAttachOptions{
 		Detach: false,
 		Tty:    false,
 	})
@@ -328,7 +328,7 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Conta
 			select {
 			case msg := <-msgs:
 				execID := msg.Actor.Attributes["execID"]
-				if execID == execResult.ID {
+				if execID == result.ID {
 					done = true
 				}
 			case <-errs:
@@ -345,10 +345,10 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Conta
 			sendErr(err)
 			return
 		}
-		execResult.Status = status.ExitCode
-		resultChan <- execResult
-		close(resultChan)
+		result.Status = status.ExitCode
+		execResult <- result
+		close(execResult)
 	}()
 
-	return resultChan
+	return execResult
 }
