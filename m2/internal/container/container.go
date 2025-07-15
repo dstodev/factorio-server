@@ -40,16 +40,16 @@ type Result struct {
 }
 
 func New(image string, opts ...Option) *Container {
-	p := &Container{
+	c := &Container{
 		Image:          image,
 		Done:           make(chan Result, 1),
 		streams:        stream.NewContainerStream(),
 		hostToGuestMap: make(map[string]string),
 	}
 	for _, opt := range opts {
-		opt(p)
+		opt(c)
 	}
-	return p
+	return c
 }
 
 var ErrNoProgram = fmt.Errorf("no programs registered")
@@ -170,8 +170,8 @@ func (c *Container) BuildProgramCmd(programs ...*program.Program) (
 	fileMap map[string]string,
 ) {
 	fileMap = make(map[string]string)
-	toGuestMutator := func(p *program.Program, index int, arg string) string {
-		if p.ArgIsFile(index) {
+	toGuestMutator := func(pgm *program.Program, index int, arg string) string {
+		if pgm.ArgIsFile(index) {
 			hostPath := arg
 			guestPath := c.resolveGuestPath(hostPath)
 			fileMap[hostPath] = guestPath
@@ -179,8 +179,8 @@ func (c *Container) BuildProgramCmd(programs ...*program.Program) (
 		}
 		return arg
 	}
-	for _, p := range programs {
-		cmdTokens = append(cmdTokens, p.AsTokens(toGuestMutator)...)
+	for _, pgm := range programs {
+		cmdTokens = append(cmdTokens, pgm.AsTokens(toGuestMutator)...)
 	}
 	return cmdTokens, fileMap
 }
@@ -246,7 +246,7 @@ var ErrNotMounted = fmt.Errorf("container has not mounted all file arguments")
 // that were not mounted when the container was create. Use ContainerOption
 // WithMounts() to do so. Docker does not support mounting additional files
 // after the container has started.
-func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Result {
+func (c *Container) Exec(pgm *program.Program, opts ...stream.Option) <-chan Result {
 	execResult := make(chan Result, 1)
 	result := Result{
 		ID:     "",
@@ -259,7 +259,7 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Resul
 		return execResult
 	}
 
-	if p == nil {
+	if pgm == nil {
 		return sendErr(ErrNoProgram)
 	}
 
@@ -267,7 +267,7 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Resul
 		return sendErr(ErrNotRunning)
 	}
 
-	cmdTokens, fileMap := c.BuildProgramCmd(p)
+	cmdTokens, fileMap := c.BuildProgramCmd(pgm)
 
 	for hostPath := range fileMap {
 		// c.hostToGuestMap is only written by WithMounts() and by Run() for

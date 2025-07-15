@@ -33,7 +33,7 @@ func (p *Program) ArgIsFile(index int) bool {
 	return p.fileArgIndices.Contains(index)
 }
 
-type ArgMutator func(p *Program, index int, arg string) string
+type ArgMutator func(pgm *Program, index int, arg string) string
 
 func (p *Program) AsTokens(mutators ...ArgMutator) []string {
 	numTokens := len(p.Args) + 1 // +1 for the "--" terminator

@@ -1,35 +1,35 @@
 package container
 
-type Option func(c *Container)
+type Option func(ctr *Container)
 
 func WithStdinChannel(stdin <-chan string) Option {
-	return func(c *Container) {
-		c.streams.Stdin = stdin
+	return func(ctr *Container) {
+		ctr.streams.Stdin = stdin
 	}
 }
 
 func WithStdoutChannel(stdout chan<- string) Option {
-	return func(c *Container) {
-		c.streams.Stdout = stdout
+	return func(ctr *Container) {
+		ctr.streams.Stdout = stdout
 	}
 }
 
 func WithStderrChannel(stderr chan<- string) Option {
-	return func(c *Container) {
-		c.streams.Stderr = stderr
+	return func(ctr *Container) {
+		ctr.streams.Stderr = stderr
 	}
 }
 
 func WithUser(user string) Option {
-	return func(c *Container) {
-		c.user = user
+	return func(ctr *Container) {
+		ctr.user = user
 	}
 }
 
 func WithMounts(hostPaths ...string) Option {
-	return func(c *Container) {
+	return func(ctr *Container) {
 		for _, hostPath := range hostPaths {
-			c.hostToGuestMap[hostPath] = toGuestPath(hostPath)
+			ctr.hostToGuestMap[hostPath] = toGuestPath(hostPath)
 		}
 	}
 }
