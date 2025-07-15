@@ -131,7 +131,7 @@ func TestContainerWithStdoutAndStderr(t *testing.T) {
 
 	expectedOutput := "|Hello,|\n|world!|\n"
 
-	for range 2 {
+	for range 2 { // expect two messages, one on stdout and one on stderr
 		select {
 		case msg := <-ctrStdout:
 			if msg != expectedOutput {
@@ -168,12 +168,12 @@ func TestContainerWithStdin(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	// Call Run() before sending input on ctrStdin because ctrStdin is
-	// unbuffered. Writing to an unbuffered ctrStdin blocks until the stdin
-	// streamer, which starts as part of Run(), reads from it (to write to the
-	// container's stdin).
+	// Call Run() before sending input on ctrStdin because ctrStdin is not
+	// buffered. Writing to an unbuffered channel blocks until read, done here
+	// by the stdin streamer, which starts as part of Run().
 	checkedRun(t, c, p, nil)
 
+	// `read` waits for newline, so we must send a newline after each message.
 	msg := "Hello, world!\n"
 	ctrStdin <- msg
 	close(ctrStdin)
@@ -342,17 +342,34 @@ stdbuf -o0 printf "world!\n"
 // container closes by closing the stdin channel. This is useful to run multiple
 // arbitrary commands with Exec() before closing the container.
 func TestIdleContainer(t *testing.T) {
+	c, ctrClose := newIdleContainer(t)
+	ctrClose() // Test times out without calling this function
+	checkedDone(t, <-c.Done, c.ID, 0, nil)
+}
+
+func newIdleContainer(
+	t *testing.T,
+	opts ...container.Option,
+) (
+	ctr *container.Container,
+	ctrClose func(),
+) {
+	t.Helper()
 	ctrStdin := make(chan string)
-	c := container.New(commonImage, container.WithStdinChannel(ctrStdin))
+	opts = append(opts, container.WithStdinChannel(ctrStdin))
+	ctr = container.New(commonImage, opts...)
 	p, err := program.FromSystem("cat")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	checkedRun(t, c, p, nil)
+	checkedRun(t, ctr, p, nil)
 
-	close(ctrStdin) // Allow container to close
-	checkedDone(t, <-c.Done, c.ID, 0, nil)
+	ctrClose = func() {
+		close(ctrStdin) // Allow container to close
+	}
+
+	return ctr, ctrClose
 }
 
 func TestExec(t *testing.T) {
@@ -414,15 +431,7 @@ func TestExecNoPrograms(t *testing.T) {
 }
 
 func TestExecMissingMounts(t *testing.T) {
-	ctrStdin := make(chan string)
-	c := container.New(commonImage,
-		container.WithStdinChannel(ctrStdin))
-	wait, err := program.FromSystem("cat")
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-
-	checkedRun(t, c, wait, nil)
+	c, ctrClose := newIdleContainer(t)
 
 	path := internal.NewTestDir(t).TouchFile("file.txt")
 	p, err := program.FromSystem("cat", program.WithFileArgs(path))
@@ -430,44 +439,34 @@ func TestExecMissingMounts(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	// Must wait for exec program to finish before closing the container!
+	// Wait for exec program to finish before closing the container!
 	checkedDone(t, <-c.Exec(p), "", -1, container.ErrNotMounted)
 
-	close(ctrStdin) // Allow container to close
+	ctrClose()
 
 	checkedDone(t, <-c.Done, c.ID, 0, nil)
 }
 
 func TestExecMounts(t *testing.T) {
-	ctrStdin := make(chan string)
 	path := internal.NewTestDir(t).TouchFile("file.txt")
-	c := container.New(commonImage,
-		container.WithStdinChannel(ctrStdin),
-		container.WithMounts(path))
-
-	wait, err := program.FromSystem("cat")
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-
-	checkedRun(t, c, wait, nil)
+	c, ctrClose := newIdleContainer(t, container.WithMounts(path))
 
 	p, err := program.FromSystem("cat", program.WithFileArgs(path))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	// Must wait for exec program to finish before closing the container!
+	// Wait for exec program to finish before closing the container!
 	checkedDone(t, <-c.Exec(p), "!", 0, nil)
 
-	close(ctrStdin) // Allow container to close
+	ctrClose()
 
 	checkedDone(t, <-c.Done, c.ID, 0, nil)
 }
 
-func TestExecMultiWrite(t *testing.T) {
-	path := internal.NewTestDir(t).WriteFile(
-		"file.txt",
+func TestExecStdinWrite(t *testing.T) {
+	script := internal.NewTestDir(t).WriteFile(
+		"script.sh",
 		`#!/bin/sh
 while :; do
 	read line
@@ -477,20 +476,9 @@ while :; do
 	echo "$line"
 done
 `, 0744)
-	ctrStdin := make(chan string)
-	c := container.New(commonImage,
-		container.WithStdinChannel(ctrStdin),
-		container.WithMounts(path))
+	c, ctrClose := newIdleContainer(t, container.WithMounts(script))
 
-	wait, err := program.FromSystem("cat")
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if err := c.Run(wait); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-
-	p, err := program.FromFile(path)
+	p, err := program.FromFile(script)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -523,7 +511,7 @@ done
 
 	checkedDone(t, <-execResult, "!", 0, nil)
 
-	close(ctrStdin) // Allow container to close
+	ctrClose()
 
 	msg, ok := <-execStdout
 	if ok {
