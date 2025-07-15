@@ -6,12 +6,12 @@ type Program struct {
 	fileArgIndices Set[int]
 }
 
-func FromSystem(path string, opts ...ProgramOption) (*Program, error) {
-	opts = append([]ProgramOption{WithStringArgs(path)}, opts...) // Prepend the program path
+func FromSystem(path string, opts ...Option) (*Program, error) {
+	opts = append([]Option{WithStringArgs(path)}, opts...) // Prepend the program path
 	return fromOpts(opts)
 }
 
-func fromOpts(opts []ProgramOption) (*Program, error) {
+func fromOpts(opts []Option) (*Program, error) {
 	p := &Program{
 		Args:           nil,
 		fileArgIndices: NewSet[int](),
@@ -24,8 +24,8 @@ func fromOpts(opts []ProgramOption) (*Program, error) {
 	return p, nil
 }
 
-func FromFile(path string, opts ...ProgramOption) (*Program, error) {
-	opts = append([]ProgramOption{WithFileArgs(path)}, opts...) // Prepend the program path
+func FromFile(path string, opts ...Option) (*Program, error) {
+	opts = append([]Option{WithFileArgs(path)}, opts...) // Prepend the program path
 	return fromOpts(opts)
 }
 

@@ -1,4 +1,4 @@
-package internal
+package container
 
 import (
 	"context"
@@ -21,7 +21,7 @@ type Container struct {
 	Image string
 	ID    string
 
-	Done chan ContainerResult
+	Done chan Result
 
 	streams *stream.ContainerStream
 
@@ -33,16 +33,16 @@ type Container struct {
 	client *client.Client
 }
 
-type ContainerResult struct {
+type Result struct {
 	ID     string
 	Status int
 	Err    error
 }
 
-func NewContainer(image string, opts ...ContainerOption) *Container {
+func New(image string, opts ...Option) *Container {
 	p := &Container{
 		Image:          image,
-		Done:           make(chan ContainerResult, 1),
+		Done:           make(chan Result, 1),
 		streams:        stream.NewContainerStream(),
 		hostToGuestMap: make(map[string]string),
 	}
@@ -67,7 +67,7 @@ var ErrNoProgram = fmt.Errorf("no programs registered")
 //	    WithStringArgs("world!"),
 //	    WithFileArgs("/host-path/file.txt"))
 //
-//	c := NewContainer("my-image:latest")
+//	c := container.New("my-image:latest")
 //	err = c.Run(first, second)
 //
 // Here, /my/script1.sh is called inside the container like:
@@ -213,24 +213,23 @@ func (c *Container) startExitHandler() {
 	ctrStatus, ctrErr := c.client.ContainerWait(c.ctx, c.ID, container.WaitConditionNextExit)
 
 	go func() {
+		defer close(c.Done)
 		c.streams.WaitUntilClosed()
 
 		select {
 		case status := <-ctrStatus:
-			c.Done <- ContainerResult{
+			c.Done <- Result{
 				ID:     c.ID,
 				Status: int(status.StatusCode),
 				Err:    nil,
 			}
 		case err := <-ctrErr:
-			c.Done <- ContainerResult{
+			c.Done <- Result{
 				ID:     c.ID,
 				Status: -1,
 				Err:    err,
 			}
 		}
-
-		close(c.Done)
 
 		c.client.ContainerRemove(c.ctx, c.ID, container.RemoveOptions{})
 		c.client.Close()
@@ -247,14 +246,14 @@ var ErrNotMounted = fmt.Errorf("container has not mounted all file arguments")
 // that were not mounted when the container was create. Use ContainerOption
 // WithMounts() to do so. Docker does not support mounting additional files
 // after the container has started.
-func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan ContainerResult {
-	execResult := make(chan ContainerResult, 1)
-	result := ContainerResult{
+func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Result {
+	execResult := make(chan Result, 1)
+	result := Result{
 		ID:     "",
 		Status: -1,
 		Err:    nil,
 	}
-	sendErr := func(err error) <-chan ContainerResult {
+	sendErr := func(err error) <-chan Result {
 		result.Err = err
 		execResult <- result
 		return execResult
@@ -298,8 +297,7 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Conta
 	result.ID = resp.ID
 
 	ctrSock, err := c.client.ContainerExecAttach(c.ctx, result.ID, container.ExecAttachOptions{
-		Detach: false,
-		Tty:    false,
+		Tty: false,
 	})
 	if err != nil {
 		return sendErr(err)
@@ -320,6 +318,7 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Conta
 	})
 
 	go func() {
+		defer close(execResult)
 		cs.WaitUntilClosed()
 
 		// Wait for the exec'd program to finish by waiting for its exec_die event.
@@ -347,7 +346,6 @@ func (c *Container) Exec(p *program.Program, opts ...stream.Option) <-chan Conta
 		}
 		result.Status = status.ExitCode
 		execResult <- result
-		close(execResult)
 	}()
 
 	return execResult

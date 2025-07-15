@@ -1,10 +1,11 @@
-package internal_test
+package container_test
 
 import (
 	"errors"
 	"testing"
 
 	"manage2/internal"
+	"manage2/internal/container"
 	"manage2/internal/program"
 	"manage2/internal/stream"
 )
@@ -13,193 +14,205 @@ const commonImage = "alpine:latest"
 
 func TestContainer(t *testing.T) {
 	image := "some-image:latest"
-	c := internal.NewContainer(image)
+	c := container.New(image)
 
 	if c.Image != image {
 		t.Fatalf("expected image '%s', got: %s", image, c.Image)
 	}
 
-	if err := c.Run(); !errors.Is(err, internal.ErrNoProgram) {
-		t.Fatalf("expected error '%v', got: %v", internal.ErrNoProgram, err)
+	checkedRun(t, c, nil, container.ErrNoProgram)
+}
+
+func checkedRun(
+	t *testing.T,
+	c *container.Container,
+	p *program.Program,
+	expectErr error,
+) {
+	t.Helper()
+	var err error
+
+	if p == nil {
+		err = c.Run()
+	} else {
+		err = c.Run(p)
 	}
-	if c.ID != "" {
+
+	if !errors.Is(err, expectErr) {
+		t.Fatalf("expected error '%v', got: %v", expectErr, err)
+	}
+	if c.ID == "" && expectErr == nil {
+		t.Fatal("expected non-empty ID, got empty string")
+	}
+	if c.ID != "" && expectErr != nil {
 		t.Fatalf("expected empty ID, got: %s", c.ID)
 	}
 }
 
 func TestContainerWithProgram(t *testing.T) {
-	c := internal.NewContainer(commonImage)
+	c := container.New(commonImage)
 	p, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "exit 5"))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if err := c.Run(p); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if c.ID == "" {
-		t.Fatal("expected non-empty ID, got empty string")
-	}
-
-	result := <-c.Done
-	AssertResult(t, result, c.ID, 5, nil)
+	checkedRun(t, c, p, nil)
+	checkedDone(t, <-c.Done, c.ID, 5, nil)
 }
 
-func AssertResult(t *testing.T, result internal.ContainerResult, expectedID string, expectedStatus int, expectedErr error) {
+func checkedDone(
+	t *testing.T,
+	r container.Result,
+	expectedID string,
+	expectedStatus int,
+	expectedErr error,
+) {
 	t.Helper()
 	if expectedID == "!" {
-		if result.ID == "" {
-			t.Errorf("expected non-empty ID, got: %s", result.ID)
+		if r.ID == "" {
+			t.Errorf("expected non-empty ID, got: %s", r.ID)
 		}
 	} else {
-		if result.ID != expectedID {
-			t.Errorf("expected ID '%s', got: %s", expectedID, result.ID)
+		if r.ID != expectedID {
+			t.Errorf("expected ID '%s', got: %s", expectedID, r.ID)
 		}
 	}
-	if result.Status != expectedStatus {
-		t.Errorf("expected exit code %d, got: %d", expectedStatus, result.Status)
+	if r.Status != expectedStatus {
+		t.Errorf("expected exit code %d, got: %d", expectedStatus, r.Status)
 	}
-	if !errors.Is(result.Err, expectedErr) {
-		t.Errorf("expected error '%v', got: %v", expectedErr, result.Err)
+	if !errors.Is(r.Err, expectedErr) {
+		t.Errorf("expected error '%v', got: %v", expectedErr, r.Err)
 	}
 }
 
 func TestContainerWithStdout(t *testing.T) {
-	ctrStdout := make(chan string, 1)
-	c := internal.NewContainer(commonImage,
-		internal.WithStdoutChannel(ctrStdout))
+	ctrStdout := make(chan string)
+	c := container.New(commonImage,
+		container.WithStdoutChannel(ctrStdout))
 	p, err := program.FromSystem("printf", program.WithStringArgs("|%s|\n", "Hello,", "world!"))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if err := c.Run(p); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if c.ID == "" {
-		t.Fatal("expected non-empty ID, got empty string")
-	}
-
-	result := <-c.Done
-	AssertResult(t, result, c.ID, 0, nil)
+	checkedRun(t, c, p, nil)
 
 	expectedOutput := "|Hello,|\n|world!|\n|--|\n"
-	select {
-	case msg := <-ctrStdout:
-		if msg != expectedOutput {
-			t.Fatalf("expected stdout message '%s', got: %s", expectedOutput, msg)
-		}
-	default:
-		t.Fatal("expected a message on stdout")
+
+	// ctrStdout channel is not buffered, so wait for the message
+	// before waiting for the container to finish
+	msg := <-ctrStdout
+	if msg != expectedOutput {
+		t.Fatalf("expected stdout message '%s', got: %s", expectedOutput, msg)
+	}
+
+	checkedDone(t, <-c.Done, c.ID, 0, nil)
+
+	// No further messages
+	msg, ok := <-ctrStdout
+	if ok {
+		t.Fatalf("expected no further messages, got: %s", msg)
 	}
 }
 
 func TestContainerWithStdoutAndStderr(t *testing.T) {
-	ctrStdout := make(chan string, 1)
-	ctrStderr := make(chan string, 1)
-	c := internal.NewContainer(commonImage,
-		internal.WithStdoutChannel(ctrStdout),
-		internal.WithStderrChannel(ctrStderr))
+	ctrStdout := make(chan string)
+	ctrStderr := make(chan string)
+	c := container.New(commonImage,
+		container.WithStdoutChannel(ctrStdout),
+		container.WithStderrChannel(ctrStderr))
 	p, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "printf '|%s|\n' Hello, world! | tee /dev/stderr"))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if err := c.Run(p); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if c.ID == "" {
-		t.Fatal("expected non-empty ID, got empty string")
-	}
+	checkedRun(t, c, p, nil)
 
 	expectedOutput := "|Hello,|\n|world!|\n"
 
-	result := <-c.Done
-	AssertResult(t, result, c.ID, 0, nil)
-
-	select {
-	case msg := <-ctrStdout:
-		if msg != expectedOutput {
-			t.Fatalf("expected stdout message '%s', got: %s", expectedOutput, msg)
+	for range 2 {
+		select {
+		case msg := <-ctrStdout:
+			if msg != expectedOutput {
+				t.Fatalf("expected stdout message '%s', got: %s", expectedOutput, msg)
+			}
+		case msg := <-ctrStderr:
+			if msg != expectedOutput {
+				t.Fatalf("expected stderr message '%s', got: %s", expectedOutput, msg)
+			}
 		}
-	default:
-		t.Fatal("expected a message on stdout")
 	}
 
-	select {
-	case msg := <-ctrStderr:
-		if msg != expectedOutput {
-			t.Fatalf("expected stderr message '%s', got: %s", expectedOutput, msg)
-		}
-	default:
-		t.Fatal("expected a message on stderr")
+	checkedDone(t, <-c.Done, c.ID, 0, nil)
+
+	// No further messages
+	msg, ok := <-ctrStdout
+	if ok {
+		t.Fatalf("expected no further messages on stdout, got: %s", msg)
+	}
+	msg, ok = <-ctrStderr
+	if ok {
+		t.Fatalf("expected no further messages on stderr, got: %s", msg)
 	}
 }
 
 func TestContainerWithStdin(t *testing.T) {
-	ctrStdin := make(chan string, 1)
-	ctrStdout := make(chan string, 1)
-	c := internal.NewContainer(commonImage,
-		internal.WithStdinChannel(ctrStdin),
-		internal.WithStdoutChannel(ctrStdout))
+	ctrStdin := make(chan string)
+	ctrStdout := make(chan string)
+	c := container.New(commonImage,
+		container.WithStdinChannel(ctrStdin),
+		container.WithStdoutChannel(ctrStdout))
 	p, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "read input && echo \"|$input|\""))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
+	// Call Run() before sending input on ctrStdin because ctrStdin is
+	// unbuffered. Writing to an unbuffered ctrStdin blocks until the stdin
+	// streamer, which starts as part of Run(), reads from it (to write to the
+	// container's stdin).
+	checkedRun(t, c, p, nil)
+
 	msg := "Hello, world!\n"
 	ctrStdin <- msg
 	close(ctrStdin)
 
-	if err := c.Run(p); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if c.ID == "" {
-		t.Fatal("expected non-empty ID, got empty string")
-	}
-
-	result := <-c.Done
-	AssertResult(t, result, c.ID, 0, nil)
-
 	expectedMsg := "|Hello, world!|\n"
-	select {
-	case msg := <-ctrStdout:
-		if msg != expectedMsg {
-			t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
-		}
-	default:
-		t.Fatal("expected a message on stdout")
+	msg = <-ctrStdout
+	if msg != expectedMsg {
+		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
+	}
+
+	checkedDone(t, <-c.Done, c.ID, 0, nil)
+
+	// No further messages
+	msg, ok := <-ctrStdout
+	if ok {
+		t.Fatalf("expected no further messages, got: %s", msg)
 	}
 }
 
 func TestContainerStdinOnly(t *testing.T) {
-	ctrStdin := make(chan string, 1)
-	c := internal.NewContainer(commonImage,
-		internal.WithStdinChannel(ctrStdin))
+	ctrStdin := make(chan string)
+	c := container.New(commonImage,
+		container.WithStdinChannel(ctrStdin))
 	p, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "read input && exit $input"))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
+	checkedRun(t, c, p, nil)
+
 	msg := "5\n"
 	ctrStdin <- msg
 	close(ctrStdin)
 
-	if err := c.Run(p); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if c.ID == "" {
-		t.Fatal("expected non-empty ID, got empty string")
-	}
-
-	result := <-c.Done
-	AssertResult(t, result, c.ID, 5, nil)
+	checkedDone(t, <-c.Done, c.ID, 5, nil)
 }
 
 func TestBuildProgramCommandStrings(t *testing.T) {
-	c := internal.NewContainer(commonImage)
+	c := container.New(commonImage)
 	p, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "echo Hello"))
 	if err != nil {
@@ -228,7 +241,7 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 	script := dir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"\n", 0755)
 	file := dir.TouchFile("file.txt")
 
-	c := internal.NewContainer(commonImage)
+	c := container.New(commonImage)
 	p, err := program.FromFile(script,
 		program.WithStringArgs("--file"),
 		program.WithFileArgs(file))
@@ -260,32 +273,67 @@ func TestContainerAutoMountsRunPrograms(t *testing.T) {
 	expectedMsg := "Hello, world!\n"
 	file := dir.WriteFile("file.txt", expectedMsg, 0644)
 
-	ctrStdout := make(chan string, 1)
-	c := internal.NewContainer(commonImage,
-		internal.WithStdoutChannel(ctrStdout))
+	ctrStdout := make(chan string)
+	c := container.New(commonImage,
+		container.WithStdoutChannel(ctrStdout))
 	p, err := program.FromFile(script,
 		program.WithFileArgs(file))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if err := c.Run(p); err != nil {
+	checkedRun(t, c, p, nil)
+
+	msg := <-ctrStdout
+	if msg != expectedMsg {
+		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
+	}
+
+	checkedDone(t, <-c.Done, c.ID, 0, nil)
+}
+
+// Assert we get strings exactly as written--we do not wait for e.g. newline
+// characters before writing to the channel. This gives us more flexibility in
+// how we interpret messages from the container, and we can choose to e.g. line
+// buffer if we want to.
+func TestContainerOutputAsIs(t *testing.T) {
+	// TODO: Use an existing image with coreutils installed. Until then, get
+	// coreutils and redirect apk output to an unused fd like stderr.
+	script := internal.NewTestDir(t).WriteFile(
+		"test.sh",
+		`#!/bin/sh
+apk add --no-cache coreutils >&2
+stdbuf -o0 printf "Hello, "
+stdbuf -o0 printf "world!\n"
+`, 0755)
+	ctrStdout := make(chan string)
+	c := container.New(commonImage,
+		container.WithStdoutChannel(ctrStdout))
+	p, err := program.FromFile(script)
+	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	if c.ID == "" {
-		t.Fatal("expected non-empty ID, got empty string")
+
+	checkedRun(t, c, p, nil)
+
+	msg := <-ctrStdout
+	expectedMsg := "Hello, "
+	if msg != expectedMsg {
+		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
 	}
 
-	result := <-c.Done
-	AssertResult(t, result, c.ID, 0, nil)
+	msg = <-ctrStdout
+	expectedMsg = "world!\n"
+	if msg != expectedMsg {
+		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
+	}
 
-	select {
-	case msg := <-ctrStdout:
-		if msg != expectedMsg {
-			t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
-		}
-	default:
-		t.Fatal("expected a message on stdout")
+	checkedDone(t, <-c.Done, c.ID, 0, nil)
+
+	// No further messages
+	msg, ok := <-ctrStdout
+	if ok {
+		t.Fatalf("expected no further messages, got: %s", msg)
 	}
 }
 
@@ -294,46 +342,32 @@ func TestContainerAutoMountsRunPrograms(t *testing.T) {
 // container closes by closing the stdin channel. This is useful to run multiple
 // arbitrary commands with Exec() before closing the container.
 func TestIdleContainer(t *testing.T) {
-	ctrStdin := make(chan string, 1)
-	c := internal.NewContainer(commonImage,
-		internal.WithStdinChannel(ctrStdin))
+	ctrStdin := make(chan string)
+	c := container.New(commonImage, container.WithStdinChannel(ctrStdin))
 	p, err := program.FromSystem("cat")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if err := c.Run(p); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if c.ID == "" {
-		t.Fatal("expected non-empty ID, got empty string")
-	}
+	checkedRun(t, c, p, nil)
 
-	close(ctrStdin) // Test times out without closing stdin; container is idle
-
-	result := <-c.Done
-	AssertResult(t, result, c.ID, 0, nil)
+	close(ctrStdin) // Allow container to close
+	checkedDone(t, <-c.Done, c.ID, 0, nil)
 }
 
 func TestExec(t *testing.T) {
-	ctrStdin := make(chan string, 1)
-	c := internal.NewContainer(commonImage,
-		internal.WithStdinChannel(ctrStdin))
+	ctrStdin := make(chan string)
+	c := container.New(commonImage,
+		container.WithStdinChannel(ctrStdin))
 	p, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "read input && exit $input"))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if err := c.Run(p); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if c.ID == "" {
-		t.Fatal("expected non-empty ID, got empty string")
-	}
+	checkedRun(t, c, p, nil)
 
-	execStdin := make(chan string, 1)
-
+	execStdin := make(chan string)
 	execResult := c.Exec(p, stream.WithStdinChannel(execStdin))
 
 	select {
@@ -366,92 +400,69 @@ func TestExec(t *testing.T) {
 }
 
 func TestExecNotRunning(t *testing.T) {
-	c := internal.NewContainer(commonImage)
+	c := container.New(commonImage)
 	p, err := program.FromSystem("cat")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	execResult := c.Exec(p)
-
-	result := <-execResult
-	AssertResult(t, result, "", -1, internal.ErrNotRunning)
+	checkedDone(t, <-c.Exec(p), "", -1, container.ErrNotRunning)
 }
 
 func TestExecNoPrograms(t *testing.T) {
-	c := internal.NewContainer(commonImage)
-
-	execResult := c.Exec(nil)
-
-	result := <-execResult
-	AssertResult(t, result, "", -1, internal.ErrNoProgram)
+	c := container.New(commonImage)
+	checkedDone(t, <-c.Exec(nil), "", -1, container.ErrNoProgram)
 }
 
 func TestExecMissingMounts(t *testing.T) {
-	ctrStdin := make(chan string, 1)
-	c := internal.NewContainer(commonImage,
-		internal.WithStdinChannel(ctrStdin))
+	ctrStdin := make(chan string)
+	c := container.New(commonImage,
+		container.WithStdinChannel(ctrStdin))
 	wait, err := program.FromSystem("cat")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if err := c.Run(wait); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if c.ID == "" {
-		t.Fatal("expected non-empty ID, got empty string")
-	}
+	checkedRun(t, c, wait, nil)
 
 	path := internal.NewTestDir(t).TouchFile("file.txt")
 	p, err := program.FromSystem("cat", program.WithFileArgs(path))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	execResult := c.Exec(p)
 
 	// Must wait for exec program to finish before closing the container!
-	result := <-execResult
-	AssertResult(t, result, "", -1, internal.ErrNotMounted)
+	checkedDone(t, <-c.Exec(p), "", -1, container.ErrNotMounted)
 
 	close(ctrStdin) // Allow container to close
 
-	result = <-c.Done
-	AssertResult(t, result, c.ID, 0, nil)
+	checkedDone(t, <-c.Done, c.ID, 0, nil)
 }
 
 func TestExecMounts(t *testing.T) {
-	ctrStdin := make(chan string, 1)
+	ctrStdin := make(chan string)
 	path := internal.NewTestDir(t).TouchFile("file.txt")
-	c := internal.NewContainer(commonImage,
-		internal.WithStdinChannel(ctrStdin),
-		internal.WithMounts(path))
+	c := container.New(commonImage,
+		container.WithStdinChannel(ctrStdin),
+		container.WithMounts(path))
 
 	wait, err := program.FromSystem("cat")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if err := c.Run(wait); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if c.ID == "" {
-		t.Fatal("expected non-empty ID, got empty string")
-	}
+	checkedRun(t, c, wait, nil)
 
 	p, err := program.FromSystem("cat", program.WithFileArgs(path))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	execResult := c.Exec(p)
 
 	// Must wait for exec program to finish before closing the container!
-	result := <-execResult
-	AssertResult(t, result, "!", 0, nil)
+	checkedDone(t, <-c.Exec(p), "!", 0, nil)
 
 	close(ctrStdin) // Allow container to close
 
-	result = <-c.Done
-	AssertResult(t, result, c.ID, 0, nil)
+	checkedDone(t, <-c.Done, c.ID, 0, nil)
 }
 
 func TestExecMultiWrite(t *testing.T) {
@@ -466,10 +477,10 @@ while :; do
 	echo "$line"
 done
 `, 0744)
-	ctrStdin := make(chan string, 1)
-	c := internal.NewContainer(commonImage,
-		internal.WithStdinChannel(ctrStdin),
-		internal.WithMounts(path))
+	ctrStdin := make(chan string)
+	c := container.New(commonImage,
+		container.WithStdinChannel(ctrStdin),
+		container.WithMounts(path))
 
 	wait, err := program.FromSystem("cat")
 	if err != nil {
@@ -483,8 +494,8 @@ done
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	execStdin := make(chan string, 1)
-	execStdout := make(chan string, 1)
+	execStdin := make(chan string)
+	execStdout := make(chan string)
 
 	execResult := c.Exec(p,
 		stream.WithStdinChannel(execStdin),
@@ -510,8 +521,7 @@ done
 
 	close(execStdin) // Signal end of input
 
-	result := <-execResult
-	AssertResult(t, result, "!", 0, nil)
+	checkedDone(t, <-execResult, "!", 0, nil)
 
 	close(ctrStdin) // Allow container to close
 
@@ -523,6 +533,5 @@ done
 		t.Fatalf("expected empty message on stdout, got: %s", msg)
 	}
 
-	result = <-c.Done
-	AssertResult(t, result, c.ID, 0, nil)
+	checkedDone(t, <-c.Done, c.ID, 0, nil)
 }

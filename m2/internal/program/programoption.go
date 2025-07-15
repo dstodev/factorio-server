@@ -4,13 +4,13 @@ import (
 	"os"
 )
 
-// A ProgramOption is a function which adds an argument to the program.
+// A Option is a function which adds an argument to the program.
 // This enables complex argument types, like file paths, to record
 // extra data to the program for later use.
-type ProgramOption func(p *Program) error
+type Option func(p *Program) error
 
 // WithStringArgs adds string arguments to the program.
-func WithStringArgs(args ...string) ProgramOption {
+func WithStringArgs(args ...string) Option {
 	return func(p *Program) error {
 		p.Args = append(p.Args, args...)
 		return nil
@@ -18,7 +18,7 @@ func WithStringArgs(args ...string) ProgramOption {
 }
 
 // WithFileArgs adds file paths as arguments to the program.
-func WithFileArgs(files ...string) ProgramOption {
+func WithFileArgs(files ...string) Option {
 	return func(p *Program) error {
 		for _, file := range files {
 			if err := checkFileExists(file); err != nil {
