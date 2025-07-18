@@ -1,22 +1,24 @@
 package container
 
+import "manage2/internal/stream"
+
 type Option func(ctr *Container)
 
 func WithStdinChannel(stdin <-chan string) Option {
 	return func(ctr *Container) {
-		ctr.streams.Stdin = stdin
+		stream.WithStdinChannel(stdin)(ctr.streams)
 	}
 }
 
 func WithStdoutChannel(stdout chan<- string) Option {
 	return func(ctr *Container) {
-		ctr.streams.Stdout = stdout
+		stream.WithStdoutChannel(stdout)(ctr.streams)
 	}
 }
 
 func WithStderrChannel(stderr chan<- string) Option {
 	return func(ctr *Container) {
-		ctr.streams.Stderr = stderr
+		stream.WithStderrChannel(stderr)(ctr.streams)
 	}
 }
 
@@ -29,7 +31,7 @@ func WithUser(user string) Option {
 func WithMounts(hostPaths ...string) Option {
 	return func(ctr *Container) {
 		for _, hostPath := range hostPaths {
-			ctr.hostToGuestMap[hostPath] = toGuestPath(hostPath)
+			ctr.HostToGuestMap[hostPath] = toGuestPath(hostPath)
 		}
 	}
 }

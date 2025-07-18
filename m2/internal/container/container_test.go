@@ -2,6 +2,7 @@ package container_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"manage2/internal"
@@ -10,8 +11,9 @@ import (
 	"manage2/internal/stream"
 )
 
-const commonImage = "alpine:latest"
+const commonImage = "m2test:latest" // See Makefile target: test-image
 
+// #region Test Container IO
 func TestContainer(t *testing.T) {
 	image := "some-image:latest"
 	ctr := container.New(image)
@@ -20,23 +22,19 @@ func TestContainer(t *testing.T) {
 		t.Fatalf("expected image '%s', got: %s", image, ctr.Image)
 	}
 
-	checkedRun(t, ctr, nil, container.ErrNoProgram)
+	checkedRun(t, ctr, container.ErrNoProgram)
 }
 
 func checkedRun(
 	t *testing.T,
 	ctr *container.Container,
-	pgm *program.Program,
 	expectErr error,
+	programs ...*program.Program,
 ) {
 	t.Helper()
 	var err error
 
-	if pgm == nil {
-		err = ctr.Run()
-	} else {
-		err = ctr.Run(pgm)
-	}
+	err = ctr.Run(programs...)
 
 	if !errors.Is(err, expectErr) {
 		t.Fatalf("expected error '%v', got: %v", expectErr, err)
@@ -57,7 +55,7 @@ func TestContainerWithProgram(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	checkedRun(t, ctr, pgm, nil)
+	checkedRun(t, ctr, nil, pgm)
 	checkedDone(t, <-ctr.Done, ctr.ID, 5, nil)
 }
 
@@ -95,7 +93,7 @@ func TestContainerWithStdout(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	checkedRun(t, ctr, pgm, nil)
+	checkedRun(t, ctr, nil, pgm)
 
 	expectedOutput := "|Hello,|\n|world!|\n|--|\n"
 
@@ -108,7 +106,6 @@ func TestContainerWithStdout(t *testing.T) {
 
 	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
 
-	// No further messages
 	msg, ok := <-ctrStdout
 	if ok {
 		t.Fatalf("expected no further messages, got: %s", msg)
@@ -127,7 +124,7 @@ func TestContainerWithStdoutAndStderr(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	checkedRun(t, ctr, pgm, nil)
+	checkedRun(t, ctr, nil, pgm)
 
 	expectedOutput := "|Hello,|\n|world!|\n"
 
@@ -146,7 +143,6 @@ func TestContainerWithStdoutAndStderr(t *testing.T) {
 
 	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
 
-	// No further messages
 	msg, ok := <-ctrStdout
 	if ok {
 		t.Fatalf("expected no further messages on stdout, got: %s", msg)
@@ -171,7 +167,7 @@ func TestContainerWithStdin(t *testing.T) {
 	// Call Run() before sending input on ctrStdin because ctrStdin is not
 	// buffered. Writing to an unbuffered channel blocks until read, done here
 	// by the stdin streamer, which starts as part of Run().
-	checkedRun(t, ctr, pgm, nil)
+	checkedRun(t, ctr, nil, pgm)
 
 	// `read` waits for newline, so we must send a newline after each message.
 	msg := "Hello, world!\n"
@@ -186,7 +182,6 @@ func TestContainerWithStdin(t *testing.T) {
 
 	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
 
-	// No further messages
 	msg, ok := <-ctrStdout
 	if ok {
 		t.Fatalf("expected no further messages, got: %s", msg)
@@ -202,7 +197,7 @@ func TestContainerStdinOnly(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	checkedRun(t, ctr, pgm, nil)
+	checkedRun(t, ctr, nil, pgm)
 
 	msg := "5\n"
 	ctrStdin <- msg
@@ -210,6 +205,165 @@ func TestContainerStdinOnly(t *testing.T) {
 
 	checkedDone(t, <-ctr.Done, ctr.ID, 5, nil)
 }
+
+// When a file is specified using program.FromFile() or program.WithFileArgs(),
+// that file is automatically mounted into the container. When referenced as an
+// argument using program.WithFileArgs(), the path is translated before passing
+// it to the program as an argument:
+//
+//	pgm, err := program.FromFile(script, program.WithFileArgs(file))
+//
+//	/host/path/to/script.sh -> /tmp/m2/3015c825-186c-4d02-9198-f21873ca544d/test.sh
+//	/host/path/to/file.txt -> /tmp/m2/46183341-9a95-49c2-9e0c-0d654dcba00f/file.txt
+//
+//	Container command line: [
+//	    "/tmp/m2/b440f488-c7fc-490b-bd6f-031887da09a2/test.sh",
+//	    "/tmp/m2/c31e44f9-af2b-4030-9b8b-786d811dd4e0/file.txt",
+//	    "--"]
+func TestContainerAutoMountsRunPrograms(t *testing.T) {
+	dir := internal.NewTestDir(t)
+	script := dir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"\n", 0755)
+	expectedMsg := "Hello, world!\n"
+	file := dir.WriteFile("file.txt", expectedMsg, 0644)
+
+	ctrStdout := make(chan string)
+	ctr := container.New(commonImage,
+		container.WithStdoutChannel(ctrStdout))
+	pgm, err := program.FromFile(script,
+		program.WithFileArgs(file))
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	checkedRun(t, ctr, nil, pgm)
+
+	msg := <-ctrStdout
+	if msg != expectedMsg {
+		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
+	}
+
+	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
+}
+
+// Assert we get strings exactly as written--we do not wait for e.g. newline
+// characters before writing to the channel. This gives us more flexibility in
+// how we interpret messages from the container, and we can choose to e.g. line
+// buffer if we want to.
+func TestContainerOutputAsIs(t *testing.T) {
+	script := internal.NewTestDir(t).WriteFile(
+		"test.sh",
+		`#!/bin/sh
+stdbuf -o0 printf "Hello, "
+stdbuf -o0 printf "world!\n"
+`, 0755)
+	ctrStdout := make(chan string)
+	ctr := container.New(commonImage,
+		container.WithStdoutChannel(ctrStdout))
+	pgm, err := program.FromFile(script)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	checkedRun(t, ctr, nil, pgm)
+
+	msg := <-ctrStdout
+	expectedMsg := "Hello, "
+	if msg != expectedMsg {
+		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
+	}
+
+	msg = <-ctrStdout
+	expectedMsg = "world!\n"
+	if msg != expectedMsg {
+		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
+	}
+
+	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
+
+	msg, ok := <-ctrStdout
+	if ok {
+		t.Fatalf("expected no further messages, got: %s", msg)
+	}
+}
+
+func TestProgramChain(t *testing.T) {
+	script := internal.NewTestDir(t).WriteFile("script.sh", `#!/bin/sh
+canonical=$(getopt --name "$(basename "$0")" \
+	--options xy \
+	--longoptions optX,optY \
+	-- "$@")
+
+eval set -- "$canonical"
+
+echo
+echo "Args: $@"
+
+while :; do
+	arg="$1"
+	shift
+
+	case "$arg" in
+	-x | --optX)
+		optX=true
+		;;
+	-y | --optY)
+		optY=true
+		;;
+	--)
+		break
+		;;
+	esac
+done
+
+optX=${optX-false}
+optY=${optY-false}
+
+if $optX; then
+	echo "Option X is set"
+fi
+if $optY; then
+	echo "Option Y is set"
+fi
+
+"$@"
+`, 0755)
+
+	catStdout := stream.NewCat()
+	ctr := container.New(commonImage,
+		container.WithStdoutChannel(catStdout.Stdin))
+
+	pgm1, err := program.FromFile(script, program.WithStringArgs("-xy", "--optY"))
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	pgm2, err := program.FromFile(script, program.WithStringArgs("-yx", "--optX"))
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	checkedRun(t, ctr, nil, pgm1, pgm2)
+	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
+
+	expectedOutput := fmt.Sprintf(`
+Args: -x -y --optY -- %s -yx --optX --
+Option X is set
+Option Y is set
+
+Args: -y -x --optX --
+Option X is set
+Option Y is set
+`, ctr.HostToGuestMap[script])
+
+	stdout := catStdout.Print()
+
+	if stdout != expectedOutput {
+		t.Fatalf("expected stdout message '%s', got: %s", expectedOutput, stdout)
+	}
+}
+
+// #endregion
+
+// #region Test Container utils
 
 func TestBuildProgramCommandStrings(t *testing.T) {
 	ctr := container.New(commonImage)
@@ -232,7 +386,7 @@ func TestBuildProgramCommandStrings(t *testing.T) {
 		}
 	}
 	if len(mounts) != 0 {
-		t.Fatalf("expected no mounts, got: %v", mounts)
+		t.Fatalf("expected no mapping, got: %v", mounts)
 	}
 }
 
@@ -244,7 +398,8 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 	ctr := container.New(commonImage)
 	pgm, err := program.FromFile(script,
 		program.WithStringArgs("--file"),
-		program.WithFileArgs(file))
+		program.WithFileArgs(file),
+		program.WithFileArgs(script))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -252,10 +407,10 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 	cmdTokens, fileMap := ctr.BuildProgramCmd(pgm)
 
 	if len(fileMap) != 2 { // script & file
-		t.Fatalf("expected 2 mounts, got: %d", len(fileMap))
+		t.Fatalf("expected 2 mapping, got: %d", len(fileMap))
 	}
 
-	expectedCmd := []string{fileMap[script], "--file", fileMap[file], "--"}
+	expectedCmd := []string{fileMap[script], "--file", fileMap[file], fileMap[script], "--"}
 	if len(cmdTokens) != len(expectedCmd) {
 		t.Fatalf("expected command tokens %v, got: %v", expectedCmd, cmdTokens)
 	}
@@ -267,73 +422,42 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 	}
 }
 
-func TestContainerAutoMountsRunPrograms(t *testing.T) {
+func TestBuildProgramNewMappings(t *testing.T) {
 	dir := internal.NewTestDir(t)
 	script := dir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"\n", 0755)
-	expectedMsg := "Hello, world!\n"
-	file := dir.WriteFile("file.txt", expectedMsg, 0644)
+	file := dir.TouchFile("file.txt")
 
-	ctrStdout := make(chan string)
-	ctr := container.New(commonImage,
-		container.WithStdoutChannel(ctrStdout))
+	ctr := container.New(commonImage)
 	pgm, err := program.FromFile(script,
-		program.WithFileArgs(file))
+		program.WithStringArgs("--file"),
+		program.WithFileArgs(file),
+		program.WithFileArgs(script))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	checkedRun(t, ctr, pgm, nil)
+	_, fileMap := ctr.BuildProgramCmd(pgm)
 
-	msg := <-ctrStdout
-	if msg != expectedMsg {
-		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
+	if len(fileMap) != 2 { // script & file
+		t.Fatalf("expected 2 mapping, got: %d", len(fileMap))
 	}
 
-	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
-}
-
-// Assert we get strings exactly as written--we do not wait for e.g. newline
-// characters before writing to the channel. This gives us more flexibility in
-// how we interpret messages from the container, and we can choose to e.g. line
-// buffer if we want to.
-func TestContainerOutputAsIs(t *testing.T) {
-	// TODO: Use an existing image with coreutils installed. Until then, get
-	// coreutils and redirect apk output to an unused fd like stderr.
-	script := internal.NewTestDir(t).WriteFile(
-		"test.sh",
-		`#!/bin/sh
-apk add --no-cache coreutils >&2
-stdbuf -o0 printf "Hello, "
-stdbuf -o0 printf "world!\n"
-`, 0755)
-	ctrStdout := make(chan string)
-	ctr := container.New(commonImage,
-		container.WithStdoutChannel(ctrStdout))
-	pgm, err := program.FromFile(script)
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+	// Test idempotence
+	_, fileMap = ctr.BuildProgramCmd(pgm)
+	if len(fileMap) != 2 {
+		t.Fatalf("expected 2 mapping, got: %d", len(fileMap))
 	}
 
-	checkedRun(t, ctr, pgm, nil)
+	// Test recording a mapping to the container's HostToGuestMap
+	// BuildProgramCmd() should not return it again, since it is no longer new.
+	ctr.HostToGuestMap[script] = fileMap[script]
 
-	msg := <-ctrStdout
-	expectedMsg := "Hello, "
-	if msg != expectedMsg {
-		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
+	_, fileMap = ctr.BuildProgramCmd(pgm)
+	if len(fileMap) != 1 {
+		t.Fatalf("expected 1 mapping, got: %d", len(fileMap))
 	}
-
-	msg = <-ctrStdout
-	expectedMsg = "world!\n"
-	if msg != expectedMsg {
-		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
-	}
-
-	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
-
-	// No further messages
-	msg, ok := <-ctrStdout
-	if ok {
-		t.Fatalf("expected no further messages, got: %s", msg)
+	if _, ok := fileMap[script]; ok {
+		t.Fatalf("expected no new mapping for script, got: %s", fileMap[script])
 	}
 }
 
@@ -342,35 +466,14 @@ stdbuf -o0 printf "world!\n"
 // container closes by closing the stdin channel. This is useful to run multiple
 // arbitrary commands with Exec() before closing the container.
 func TestIdleContainer(t *testing.T) {
-	ctr, ctrClose := newIdleContainer(t)
+	ctr, ctrClose := container.Idle(commonImage)
 	ctrClose() // Test times out without calling this function
 	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
 }
 
-func newIdleContainer(
-	t *testing.T,
-	opts ...container.Option,
-) (
-	ctr *container.Container,
-	ctrClose func(),
-) {
-	t.Helper()
-	ctrStdin := make(chan string)
-	opts = append(opts, container.WithStdinChannel(ctrStdin))
-	ctr = container.New(commonImage, opts...)
-	pgm, err := program.FromSystem("cat")
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
+// #endregion
 
-	checkedRun(t, ctr, pgm, nil)
-
-	ctrClose = func() {
-		close(ctrStdin) // Allow container to close
-	}
-
-	return ctr, ctrClose
-}
+// #region Test Container.Exec
 
 func TestExec(t *testing.T) {
 	ctrStdin := make(chan string)
@@ -382,7 +485,7 @@ func TestExec(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	checkedRun(t, ctr, pgm, nil)
+	checkedRun(t, ctr, nil, pgm)
 
 	execStdin := make(chan string)
 	execResult := ctr.Exec(pgm, stream.WithStdinChannel(execStdin))
@@ -431,7 +534,7 @@ func TestExecNoPrograms(t *testing.T) {
 }
 
 func TestExecMissingMounts(t *testing.T) {
-	ctr, ctrClose := newIdleContainer(t)
+	ctr, ctrClose := container.Idle(commonImage)
 
 	path := internal.NewTestDir(t).TouchFile("file.txt")
 	pgm, err := program.FromSystem("cat", program.WithFileArgs(path))
@@ -449,7 +552,7 @@ func TestExecMissingMounts(t *testing.T) {
 
 func TestExecMounts(t *testing.T) {
 	path := internal.NewTestDir(t).TouchFile("file.txt")
-	ctr, ctrClose := newIdleContainer(t, container.WithMounts(path))
+	ctr, ctrClose := container.Idle(commonImage, container.WithMounts(path))
 
 	pgm, err := program.FromSystem("cat", program.WithFileArgs(path))
 	if err != nil {
@@ -465,9 +568,7 @@ func TestExecMounts(t *testing.T) {
 }
 
 func TestExecStdinWrite(t *testing.T) {
-	script := internal.NewTestDir(t).WriteFile(
-		"script.sh",
-		`#!/bin/sh
+	script := internal.NewTestDir(t).WriteFile("script.sh", `#!/bin/sh
 while :; do
 	read line
 	if [ -z "$line" ]; then
@@ -476,7 +577,7 @@ while :; do
 	echo "$line"
 done
 `, 0744)
-	ctr, ctrClose := newIdleContainer(t, container.WithMounts(script))
+	ctr, ctrClose := container.Idle(commonImage, container.WithMounts(script))
 
 	pgm, err := program.FromFile(script)
 	if err != nil {
@@ -523,3 +624,5 @@ done
 
 	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
 }
+
+// #endregion

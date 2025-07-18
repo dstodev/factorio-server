@@ -27,7 +27,7 @@ type Container struct {
 
 	user string
 
-	hostToGuestMap map[string]string
+	HostToGuestMap map[string]string
 
 	ctx    context.Context
 	client *client.Client
@@ -44,13 +44,38 @@ func New(image string, opts ...Option) *Container {
 		Image:          image,
 		Done:           make(chan Result, 1),
 		streams:        stream.NewContainerStream(),
-		hostToGuestMap: make(map[string]string),
+		HostToGuestMap: make(map[string]string),
 	}
 	for _, opt := range opts {
 		opt(c)
 	}
 	return c
 }
+
+// Idle creates a container that remains open but idle until ctrClose() is
+// called. This is useful to run an arbitrary number of commands with Exec().
+// WithStdinChannel() options are ignored.
+func Idle(image string, opts ...Option) (ctr *Container, ctrClose func()) {
+	ctrStdin := make(chan string)
+	opts = append(opts, WithStdinChannel(ctrStdin))
+	ctr = New(image, opts...)
+	pgm, err := program.FromSystem("cat")
+	if err != nil {
+		return nil, func() {}
+	}
+	if err := ctr.Run(pgm); err != nil {
+		return nil, func() {}
+	}
+
+	ctrClose = func() {
+		// Allow container to close
+		close(ctrStdin)
+	}
+
+	return
+}
+
+// TODO: Find() to find a container by ID or image name, returning a Container
 
 var ErrNoProgram = fmt.Errorf("no programs registered")
 
@@ -60,17 +85,17 @@ var ErrNoProgram = fmt.Errorf("no programs registered")
 // arguments. e.g.:
 //
 //	first, err := program.FromFile(
-//	    "/my/script1.sh",
+//	    "/host/script1.sh",
 //	    WithStringArgs("hello,"))
 //	second, err := program.FromFile(
 //	    "/sub/script2.sh",
 //	    WithStringArgs("world!"),
 //	    WithFileArgs("/host-path/file.txt"))
 //
-//	c := container.New("my-image:latest")
-//	err = c.Run(first, second)
+//	ctr := container.New("my-image:latest")
+//	err = ctr.Run(first, second)
 //
-// Here, /my/script1.sh is called inside the container like:
+// Here, /host/script1.sh is called inside the container like:
 //
 //	/mp/script1.sh "hello," "--" "/mp/script2.sh" "world!" "/mp/file.txt" "--"
 //
@@ -78,7 +103,7 @@ var ErrNoProgram = fmt.Errorf("no programs registered")
 //
 // It is assumed script1.sh will parse its own arguments, run, then start
 // script2.sh with remaining arguments.
-func (c *Container) Run(programs ...*program.Program) error {
+func (c *Container) Run(programs ...*program.Program) error { // TODO: Return Done channel?
 	if len(programs) == 0 {
 		return ErrNoProgram
 	}
@@ -99,8 +124,8 @@ func (c *Container) Run(programs ...*program.Program) error {
 
 	// Mounts are also recorded by WithMounts() so Exec() can use them
 	for hostPath, guestPath := range fileMap {
-		if _, ok := c.hostToGuestMap[hostPath]; !ok {
-			c.hostToGuestMap[hostPath] = guestPath
+		if _, ok := c.HostToGuestMap[hostPath]; !ok {
+			c.HostToGuestMap[hostPath] = guestPath
 		}
 	}
 
@@ -116,9 +141,9 @@ func (c *Container) Run(programs ...*program.Program) error {
 		AttachStderr: attachStderr,
 	}
 
-	mounts := make([]mount.Mount, 0, len(c.hostToGuestMap))
+	mounts := make([]mount.Mount, 0, len(c.HostToGuestMap))
 
-	for hostPath, guestPath := range c.hostToGuestMap {
+	for hostPath, guestPath := range c.HostToGuestMap {
 		mounts = append(mounts, mount.Mount{
 			Type:   mount.TypeBind,
 			Source: hostPath,
@@ -163,18 +188,31 @@ func (c *Container) Run(programs ...*program.Program) error {
 
 // BuildProgramCmd takes registered programs and constructs a command line to
 // run in the container. Guest paths are generated for file arguments referenced
-// by the programs, and mounts are created to bind the host paths to the guest
-// paths. Returns the command and mounts to use when starting the container.
+// by the programs.
+//
+// Returns the command to use when starting the container, and a list of new
+// mappings from host paths to guest paths. These mappings may not be mounted,
+// but Run() uses this list to mount them.
 func (c *Container) BuildProgramCmd(programs ...*program.Program) (
 	cmdTokens []string,
 	fileMap map[string]string,
 ) {
 	fileMap = make(map[string]string)
+
 	toGuestMutator := func(pgm *program.Program, index int, arg string) string {
 		if pgm.ArgIsFile(index) {
 			hostPath := arg
-			guestPath := c.resolveGuestPath(hostPath)
-			fileMap[hostPath] = guestPath
+
+			var guestPath string
+
+			if path, ok := c.HostToGuestMap[hostPath]; ok {
+				guestPath = path
+			} else if path, ok := fileMap[hostPath]; ok {
+				guestPath = path
+			} else {
+				guestPath = toGuestPath(hostPath)
+				fileMap[hostPath] = guestPath
+			}
 			return guestPath
 		}
 		return arg
@@ -182,22 +220,7 @@ func (c *Container) BuildProgramCmd(programs ...*program.Program) (
 	for _, pgm := range programs {
 		cmdTokens = append(cmdTokens, pgm.AsTokens(toGuestMutator)...)
 	}
-	return cmdTokens, fileMap
-}
-
-// resolveGuestPath returns the guest path for a given host path, creating a new
-// guest path if it does not already exist. New paths are not added to the
-// hostToGuestMap automatically. Instead, Run() records new paths before
-// starting the container. This enables Exec() to accurately verify all required
-// files were mounted by ensuring all files referenced by a program are mapped
-// to a guest in hostToGuestMap.
-func (c *Container) resolveGuestPath(hostPath string) (guestPath string) {
-	if path, ok := c.hostToGuestMap[hostPath]; ok {
-		guestPath = path
-	} else {
-		guestPath = toGuestPath(hostPath)
-	}
-	return guestPath
+	return
 }
 
 func toGuestPath(hostPath string) string {
@@ -269,13 +292,10 @@ func (c *Container) Exec(pgm *program.Program, opts ...stream.Option) <-chan Res
 
 	cmdTokens, fileMap := c.BuildProgramCmd(pgm)
 
-	for hostPath := range fileMap {
-		// c.hostToGuestMap is only written by WithMounts() and by Run() for
-		// initial mounts, so verify all referenced files are mounted.
-		// (Docker does not support new mounts after a container has started.)
-		if _, ok := c.hostToGuestMap[hostPath]; !ok {
-			return sendErr(ErrNotMounted)
-		}
+	// If any mappings are new here, they are not yet mounted. There is no way
+	// to mount additional files after the container has started.
+	if len(fileMap) > 0 {
+		return sendErr(ErrNotMounted)
 	}
 
 	cs := stream.NewContainerStream(opts...)

@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"io"
 	"sync"
 
 	"github.com/docker/docker/api/types"
@@ -34,7 +35,7 @@ func (cs *ContainerStream) StartStreaming(ctrSock *types.HijackedResponse) {
 	attachStderr := cs.Stderr != nil
 
 	if attachStdout || attachStderr {
-		cs.startWritingOutputToChannels(attachStdout, attachStderr)
+		cs.startWritingOutputToChannels()
 	}
 
 	if attachStdin {
@@ -48,28 +49,36 @@ func (cs *ContainerStream) StartStreaming(ctrSock *types.HijackedResponse) {
 // writing them to the respective channels. Channels are closed when the
 // container's respective output streams close, if requested. If a channel is
 // nil, output is still accepted from the container, then discarded.
-func (cs *ContainerStream) startWritingOutputToChannels(
-	closeStdout bool,
-	closeStderr bool,
-) {
+func (cs *ContainerStream) startWritingOutputToChannels() {
 	cs.wg.Add(1)
 
 	go func() {
-		defer cs.wg.Done()
+		defer func() {
+			cs.closeOutputChannels()
+			cs.wg.Done()
+		}()
 
-		// Close output channels when container outputs close
-		if closeStdout {
-			defer close(cs.Stdout)
-		}
-		if closeStderr {
-			defer close(cs.Stderr)
+		stdout := io.Discard
+		if cs.Stdout != nil {
+			stdout = NewChannelWriter(cs.Stdout)
 		}
 
-		stdcopy.StdCopy(
-			NewChannelWriter(cs.Stdout),
-			NewChannelWriter(cs.Stderr),
-			cs.ctrSock.Reader)
+		stderr := io.Discard
+		if cs.Stderr != nil {
+			stderr = NewChannelWriter(cs.Stderr)
+		}
+
+		stdcopy.StdCopy(stdout, stderr, cs.ctrSock.Reader)
 	}()
+}
+
+func (cs *ContainerStream) closeOutputChannels() {
+	if cs.Stdout != nil {
+		close(cs.Stdout)
+	}
+	if cs.Stderr != nil {
+		close(cs.Stderr)
+	}
 }
 
 // startReadingInputFromChannel reads from the stdin channel, writing strings

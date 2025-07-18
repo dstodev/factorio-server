@@ -5,6 +5,7 @@
 /logs/
 /server-files*/
 /shelf*/
+/test.sh
 
 tmp*
 temp*

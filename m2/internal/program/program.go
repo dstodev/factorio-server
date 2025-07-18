@@ -11,6 +11,11 @@ func FromSystem(path string, opts ...Option) (*Program, error) {
 	return fromOpts(opts)
 }
 
+func FromFile(path string, opts ...Option) (*Program, error) {
+	opts = append([]Option{WithFileArgs(path)}, opts...) // Prepend the program path
+	return fromOpts(opts)
+}
+
 func fromOpts(opts []Option) (*Program, error) {
 	p := &Program{
 		Args:           nil,
@@ -22,11 +27,6 @@ func fromOpts(opts []Option) (*Program, error) {
 		}
 	}
 	return p, nil
-}
-
-func FromFile(path string, opts ...Option) (*Program, error) {
-	opts = append([]Option{WithFileArgs(path)}, opts...) // Prepend the program path
-	return fromOpts(opts)
 }
 
 func (p *Program) ArgIsFile(index int) bool {
