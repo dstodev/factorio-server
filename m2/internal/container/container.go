@@ -191,8 +191,7 @@ func (c *Container) Run(programs ...*program.Program) error { // TODO: Return Do
 // by the programs.
 //
 // Returns the command to use when starting the container, and a list of new
-// mappings from host paths to guest paths. These mappings may not be mounted,
-// but Run() uses this list to mount them.
+// mappings from host paths to guest paths. Run() uses this list to mount them.
 func (c *Container) BuildProgramCmd(programs ...*program.Program) (
 	cmdTokens []string,
 	fileMap map[string]string,
@@ -202,7 +201,6 @@ func (c *Container) BuildProgramCmd(programs ...*program.Program) (
 	toGuestMutator := func(pgm *program.Program, index int, arg string) string {
 		if pgm.ArgIsFile(index) {
 			hostPath := arg
-
 			var guestPath string
 
 			if path, ok := c.HostToGuestMap[hostPath]; ok {
@@ -213,6 +211,7 @@ func (c *Container) BuildProgramCmd(programs ...*program.Program) (
 				guestPath = toGuestPath(hostPath)
 				fileMap[hostPath] = guestPath
 			}
+
 			return guestPath
 		}
 		return arg
@@ -265,29 +264,22 @@ var ErrNotMounted = fmt.Errorf("container has not mounted all file arguments")
 // Exec runs a program in a running container.
 //
 // File arguments added to a program using WithFileArgs() require special
-// handling: Exec() will return an error if the program has any file arguments
-// that were not mounted when the container was create. Use ContainerOption
-// WithMounts() to do so. Docker does not support mounting additional files
-// after the container has started.
-func (c *Container) Exec(pgm *program.Program, opts ...stream.Option) <-chan Result {
-	execResult := make(chan Result, 1)
-	result := Result{
-		ID:     "",
-		Status: -1,
-		Err:    nil,
-	}
-	sendErr := func(err error) <-chan Result {
-		result.Err = err
-		execResult <- result
-		return execResult
-	}
-
+// handling: Exec() will return ErrNotMounted if the program has any file
+// arguments that were not mounted when the container was created. Use
+// ContainerOption WithMounts() to do so.
+func (c *Container) Exec(
+	pgm *program.Program,
+	opts ...stream.Option,
+) (
+	execDone <-chan Result,
+	err error,
+) {
 	if pgm == nil {
-		return sendErr(ErrNoProgram)
+		return nil, ErrNoProgram
 	}
 
 	if c.ID == "" {
-		return sendErr(ErrNotRunning)
+		return nil, ErrNotRunning
 	}
 
 	cmdTokens, fileMap := c.BuildProgramCmd(pgm)
@@ -295,7 +287,7 @@ func (c *Container) Exec(pgm *program.Program, opts ...stream.Option) <-chan Res
 	// If any mappings are new here, they are not yet mounted. There is no way
 	// to mount additional files after the container has started.
 	if len(fileMap) > 0 {
-		return sendErr(ErrNotMounted)
+		return nil, ErrNotMounted
 	}
 
 	cs := stream.NewContainerStream(opts...)
@@ -312,15 +304,19 @@ func (c *Container) Exec(pgm *program.Program, opts ...stream.Option) <-chan Res
 		AttachStderr: attachStderr,
 	})
 	if err != nil {
-		return sendErr(err)
+		return nil, err
 	}
-	result.ID = resp.ID
+	result := Result{
+		ID:     resp.ID,
+		Status: -1,
+		Err:    nil,
+	}
 
 	ctrSock, err := c.client.ContainerExecAttach(c.ctx, result.ID, container.ExecAttachOptions{
 		Tty: false,
 	})
 	if err != nil {
-		return sendErr(err)
+		return nil, err
 	}
 	cs.StartStreaming(&ctrSock)
 
@@ -336,6 +332,8 @@ func (c *Container) Exec(pgm *program.Program, opts ...stream.Option) <-chan Res
 			filters.Arg("container", c.ID),
 		),
 	})
+
+	execResult := make(chan Result, 1)
 
 	go func() {
 		defer close(execResult)
@@ -360,13 +358,10 @@ func (c *Container) Exec(pgm *program.Program, opts ...stream.Option) <-chan Res
 		}
 
 		status, err := c.client.ContainerExecInspect(c.ctx, resp.ID)
-		if err != nil {
-			sendErr(err)
-			return
-		}
+		result.Err = err
 		result.Status = status.ExitCode
 		execResult <- result
 	}()
 
-	return execResult
+	return execResult, nil
 }

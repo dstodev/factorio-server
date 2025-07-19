@@ -32,9 +32,8 @@ func checkedRun(
 	programs ...*program.Program,
 ) {
 	t.Helper()
-	var err error
 
-	err = ctr.Run(programs...)
+	err := ctr.Run(programs...)
 
 	if !errors.Is(err, expectErr) {
 		t.Fatalf("expected error '%v', got: %v", expectErr, err)
@@ -56,31 +55,31 @@ func TestContainerWithProgram(t *testing.T) {
 	}
 
 	checkedRun(t, ctr, nil, pgm)
-	checkedDone(t, <-ctr.Done, ctr.ID, 5, nil)
+	checkResult(t, <-ctr.Done, ctr.ID, 5, nil)
 }
 
-func checkedDone(
+func checkResult(
 	t *testing.T,
-	r container.Result,
+	result container.Result,
 	expectedID string,
 	expectedStatus int,
 	expectedErr error,
 ) {
 	t.Helper()
 	if expectedID == "!" {
-		if r.ID == "" {
-			t.Errorf("expected non-empty ID, got: %s", r.ID)
+		if result.ID == "" {
+			t.Errorf("expected non-empty ID, got: %s", result.ID)
 		}
 	} else {
-		if r.ID != expectedID {
-			t.Errorf("expected ID '%s', got: %s", expectedID, r.ID)
+		if result.ID != expectedID {
+			t.Errorf("expected ID '%s', got: %s", expectedID, result.ID)
 		}
 	}
-	if r.Status != expectedStatus {
-		t.Errorf("expected exit code %d, got: %d", expectedStatus, r.Status)
+	if result.Status != expectedStatus {
+		t.Errorf("expected exit code %d, got: %d", expectedStatus, result.Status)
 	}
-	if !errors.Is(r.Err, expectedErr) {
-		t.Errorf("expected error '%v', got: %v", expectedErr, r.Err)
+	if !errors.Is(result.Err, expectedErr) {
+		t.Errorf("expected error '%v', got: %v", expectedErr, result.Err)
 	}
 }
 
@@ -104,7 +103,7 @@ func TestContainerWithStdout(t *testing.T) {
 		t.Fatalf("expected stdout message '%s', got: %s", expectedOutput, msg)
 	}
 
-	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
+	checkResult(t, <-ctr.Done, ctr.ID, 0, nil)
 
 	msg, ok := <-ctrStdout
 	if ok {
@@ -141,7 +140,7 @@ func TestContainerWithStdoutAndStderr(t *testing.T) {
 		}
 	}
 
-	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
+	checkResult(t, <-ctr.Done, ctr.ID, 0, nil)
 
 	msg, ok := <-ctrStdout
 	if ok {
@@ -180,7 +179,7 @@ func TestContainerWithStdin(t *testing.T) {
 		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
 	}
 
-	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
+	checkResult(t, <-ctr.Done, ctr.ID, 0, nil)
 
 	msg, ok := <-ctrStdout
 	if ok {
@@ -203,7 +202,7 @@ func TestContainerStdinOnly(t *testing.T) {
 	ctrStdin <- msg
 	close(ctrStdin)
 
-	checkedDone(t, <-ctr.Done, ctr.ID, 5, nil)
+	checkResult(t, <-ctr.Done, ctr.ID, 5, nil)
 }
 
 // When a file is specified using program.FromFile() or program.WithFileArgs(),
@@ -242,7 +241,7 @@ func TestContainerAutoMountsRunPrograms(t *testing.T) {
 		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
 	}
 
-	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
+	checkResult(t, <-ctr.Done, ctr.ID, 0, nil)
 }
 
 // Assert we get strings exactly as written--we do not wait for e.g. newline
@@ -278,7 +277,7 @@ stdbuf -o0 printf "world!\n"
 		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
 	}
 
-	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
+	checkResult(t, <-ctr.Done, ctr.ID, 0, nil)
 
 	msg, ok := <-ctrStdout
 	if ok {
@@ -328,7 +327,7 @@ fi
 "$@"
 `, 0755)
 
-	catStdout := stream.NewCat()
+	catStdout := stream.NewStringCat()
 	ctr := container.New(commonImage,
 		container.WithStdoutChannel(catStdout.Stdin))
 
@@ -342,7 +341,7 @@ fi
 	}
 
 	checkedRun(t, ctr, nil, pgm1, pgm2)
-	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
+	checkResult(t, <-ctr.Done, ctr.ID, 0, nil)
 
 	expectedOutput := fmt.Sprintf(`
 Args: -x -y --optY -- %s -yx --optX --
@@ -468,7 +467,7 @@ func TestBuildProgramNewMappings(t *testing.T) {
 func TestIdleContainer(t *testing.T) {
 	ctr, ctrClose := container.Idle(commonImage)
 	ctrClose() // Test times out without calling this function
-	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
+	checkResult(t, <-ctr.Done, ctr.ID, 0, nil)
 }
 
 // #endregion
@@ -488,10 +487,13 @@ func TestExec(t *testing.T) {
 	checkedRun(t, ctr, nil, pgm)
 
 	execStdin := make(chan string)
-	execResult := ctr.Exec(pgm, stream.WithStdinChannel(execStdin))
+	execDone, err := ctr.Exec(pgm, stream.WithStdinChannel(execStdin))
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
 
 	select {
-	case result := <-execResult:
+	case result := <-execDone:
 		t.Fatalf("expected no result, got: %+v", result)
 	default:
 	}
@@ -499,24 +501,12 @@ func TestExec(t *testing.T) {
 	execStdin <- "4\n"
 	close(execStdin)
 
-	result := <-execResult
-	if result.Err != nil {
-		t.Fatalf("expected no error, got: %v", result.Err)
-	}
-	if result.Status != 4 {
-		t.Fatalf("expected exit code 4, got: %d", result.Status)
-	}
+	checkResult(t, <-execDone, "!", 4, nil)
 
 	ctrStdin <- "5\n"
 	close(ctrStdin)
 
-	result = <-ctr.Done
-	if result.Err != nil {
-		t.Fatalf("expected no error, got: %v", result.Err)
-	}
-	if result.Status != 5 {
-		t.Fatalf("expected exit code 5, got: %d", result.Status)
-	}
+	checkResult(t, <-ctr.Done, ctr.ID, 5, nil)
 }
 
 func TestExecNotRunning(t *testing.T) {
@@ -525,12 +515,24 @@ func TestExecNotRunning(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	checkedDone(t, <-ctr.Exec(pgm), "", -1, container.ErrNotRunning)
+	execDone, err := ctr.Exec(pgm)
+	if err != container.ErrNotRunning {
+		t.Fatalf("expected error '%v', got: %v", container.ErrNotRunning, err)
+	}
+	if execDone != nil {
+		t.Fatalf("expected nil execDone channel, got: %v", execDone)
+	}
 }
 
 func TestExecNoPrograms(t *testing.T) {
 	ctr := container.New(commonImage)
-	checkedDone(t, <-ctr.Exec(nil), "", -1, container.ErrNoProgram)
+	execDone, err := ctr.Exec(nil)
+	if err != container.ErrNoProgram {
+		t.Fatalf("expected error '%v', got: %v", container.ErrNoProgram, err)
+	}
+	if execDone != nil {
+		t.Fatalf("expected nil execDone channel, got: %v", execDone)
+	}
 }
 
 func TestExecMissingMounts(t *testing.T) {
@@ -542,12 +544,18 @@ func TestExecMissingMounts(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	// Wait for exec program to finish before closing the container!
-	checkedDone(t, <-ctr.Exec(pgm), "", -1, container.ErrNotMounted)
+	execDone, err := ctr.Exec(pgm)
+	if err != container.ErrNotMounted {
+		t.Fatalf("expected error '%v', got: %v", container.ErrNotMounted, err)
+	}
+
+	if execDone != nil {
+		t.Fatalf("expected nil execDone channel, got: %v", execDone)
+	}
 
 	ctrClose()
 
-	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
+	checkResult(t, <-ctr.Done, ctr.ID, 0, nil)
 }
 
 func TestExecMounts(t *testing.T) {
@@ -559,12 +567,17 @@ func TestExecMounts(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
+	execDone, err := ctr.Exec(pgm)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
 	// Wait for exec program to finish before closing the container!
-	checkedDone(t, <-ctr.Exec(pgm), "!", 0, nil)
+	checkResult(t, <-execDone, "!", 0, nil)
 
 	ctrClose()
 
-	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
+	checkResult(t, <-ctr.Done, ctr.ID, 0, nil)
 }
 
 func TestExecStdinWrite(t *testing.T) {
@@ -586,14 +599,12 @@ done
 	execStdin := make(chan string)
 	execStdout := make(chan string)
 
-	execResult := ctr.Exec(pgm,
+	execDone, err := ctr.Exec(pgm,
 		stream.WithStdinChannel(execStdin),
 		stream.WithStdoutChannel(execStdout))
 
-	select {
-	case result := <-execResult:
-		t.Fatalf("expected no result, got: %+v", result)
-	default:
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
 	}
 
 	execStdin <- "Hello,\n"
@@ -610,7 +621,7 @@ done
 
 	close(execStdin) // Signal end of input
 
-	checkedDone(t, <-execResult, "!", 0, nil)
+	checkResult(t, <-execDone, "!", 0, nil)
 
 	ctrClose()
 
@@ -622,7 +633,7 @@ done
 		t.Fatalf("expected empty message on stdout, got: %s", msg)
 	}
 
-	checkedDone(t, <-ctr.Done, ctr.ID, 0, nil)
+	checkResult(t, <-ctr.Done, ctr.ID, 0, nil)
 }
 
 // #endregion
