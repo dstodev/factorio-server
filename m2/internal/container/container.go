@@ -21,7 +21,7 @@ type Container struct {
 	Image string
 	ID    string
 
-	Done chan Result
+	done chan Result
 
 	streams *stream.ContainerStream
 
@@ -40,9 +40,11 @@ type Result struct {
 }
 
 func New(image string, opts ...Option) *Container {
+	done := make(chan Result, 1)
+
 	c := &Container{
 		Image:          image,
-		Done:           make(chan Result, 1),
+		done:           done,
 		streams:        stream.NewContainerStream(),
 		HostToGuestMap: make(map[string]string),
 	}
@@ -55,23 +57,23 @@ func New(image string, opts ...Option) *Container {
 // Idle creates a container that remains open but idle until ctrClose() is
 // called. This is useful to run an arbitrary number of commands with Exec().
 // WithStdinChannel() options are ignored.
-func Idle(image string, opts ...Option) (ctr *Container, ctrClose func()) {
+func Idle(image string, opts ...Option) (ctr *Container, ctrClose func() Result) {
 	ctrStdin := make(chan string)
 	opts = append(opts, WithStdinChannel(ctrStdin))
 	ctr = New(image, opts...)
 	pgm, err := program.FromSystem("cat")
 	if err != nil {
-		return nil, func() {}
+		return nil, nil
 	}
-	if err := ctr.Run(pgm); err != nil {
-		return nil, func() {}
+	ctrDone, err := ctr.Run(pgm)
+	if err != nil {
+		return nil, nil
 	}
-
-	ctrClose = func() {
-		// Allow container to close
+	ctrClose = func() Result {
+		// Allow & wait for container to close
 		close(ctrStdin)
+		return <-ctrDone
 	}
-
 	return
 }
 
@@ -103,20 +105,18 @@ var ErrNoProgram = fmt.Errorf("no programs registered")
 //
 // It is assumed script1.sh will parse its own arguments, run, then start
 // script2.sh with remaining arguments.
-func (c *Container) Run(programs ...*program.Program) error { // TODO: Return Done channel?
+func (c *Container) Run(programs ...*program.Program) (ctrDone <-chan Result, err error) {
 	if len(programs) == 0 {
-		return ErrNoProgram
+		return nil, ErrNoProgram
 	}
 
 	attachStdin := c.streams.Stdin != nil
 	attachStdout := c.streams.Stdout != nil
 	attachStderr := c.streams.Stderr != nil
 
-	var err error
-
 	c.client, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	c.ctx = context.Background()
 
@@ -157,7 +157,7 @@ func (c *Container) Run(programs ...*program.Program) error { // TODO: Return Do
 
 	resp, err := c.client.ContainerCreate(c.ctx, config, hostConfig, nil, nil, "")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	c.ID = resp.ID
 
@@ -172,7 +172,7 @@ func (c *Container) Run(programs ...*program.Program) error { // TODO: Return Do
 		Stderr: attachStderr,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	c.streams.StartStreaming(&ctrSock)
@@ -180,10 +180,10 @@ func (c *Container) Run(programs ...*program.Program) error { // TODO: Return Do
 	c.startExitHandler()
 
 	if err := c.client.ContainerStart(c.ctx, c.ID, container.StartOptions{}); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return c.done, nil
 }
 
 // BuildProgramCmd takes registered programs and constructs a command line to
@@ -235,18 +235,18 @@ func (c *Container) startExitHandler() {
 	ctrStatus, ctrErr := c.client.ContainerWait(c.ctx, c.ID, container.WaitConditionNextExit)
 
 	go func() {
-		defer close(c.Done)
+		defer close(c.done)
 		c.streams.WaitUntilClosed()
 
 		select {
 		case status := <-ctrStatus:
-			c.Done <- Result{
+			c.done <- Result{
 				ID:     c.ID,
 				Status: int(status.StatusCode),
 				Err:    nil,
 			}
 		case err := <-ctrErr:
-			c.Done <- Result{
+			c.done <- Result{
 				ID:     c.ID,
 				Status: -1,
 				Err:    err,
