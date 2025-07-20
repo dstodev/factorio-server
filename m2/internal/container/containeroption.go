@@ -1,34 +1,34 @@
 package container
 
-import "manage2/internal/stream"
+import "manage2/internal/container/stream"
 
-type Option func(ctr *Container)
+type ContainerOption func(ctr *Container)
 
-func WithStdinChannel(stdin <-chan string) Option {
+func WithStdinChannel(stdin <-chan string) ContainerOption {
 	return func(ctr *Container) {
-		stream.WithStdinChannel(stdin)(ctr.streams)
+		stream.WithStdinChannel(stdin)(ctr.cs)
 	}
 }
 
-func WithStdoutChannel(stdout chan<- string) Option {
+func WithStdoutChannel(stdout chan<- string) ContainerOption {
 	return func(ctr *Container) {
-		stream.WithStdoutChannel(stdout)(ctr.streams)
+		stream.WithStdoutChannel(stdout)(ctr.cs)
 	}
 }
 
-func WithStderrChannel(stderr chan<- string) Option {
+func WithStderrChannel(stderr chan<- string) ContainerOption {
 	return func(ctr *Container) {
-		stream.WithStderrChannel(stderr)(ctr.streams)
+		stream.WithStderrChannel(stderr)(ctr.cs)
 	}
 }
 
-func WithUser(user string) Option {
+func WithUser(user string) ContainerOption {
 	return func(ctr *Container) {
 		ctr.user = user
 	}
 }
 
-func WithMounts(hostPaths ...string) Option {
+func WithMounts(hostPaths ...string) ContainerOption {
 	return func(ctr *Container) {
 		for _, hostPath := range hostPaths {
 			ctr.HostToGuestMap[hostPath] = toGuestPath(hostPath)

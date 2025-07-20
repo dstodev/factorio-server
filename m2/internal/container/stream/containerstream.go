@@ -17,7 +17,7 @@ type ContainerStream struct {
 	wg      *sync.WaitGroup
 }
 
-func NewContainerStream(opts ...Option) *ContainerStream {
+func NewContainerStream(opts ...StreamOption) *ContainerStream {
 	cs := &ContainerStream{
 		wg: &sync.WaitGroup{},
 	}
@@ -27,6 +27,9 @@ func NewContainerStream(opts ...Option) *ContainerStream {
 	return cs
 }
 
+// StartStreaming starts the container stream, facilitating communication over
+// the container's stdin, stdout, and stderr. Once output streams are closed
+// with CloseOutputChannels(), a ContainerStream is no longer usable.
 func (cs *ContainerStream) StartStreaming(ctrSock *types.HijackedResponse) {
 	cs.ctrSock = ctrSock
 
@@ -51,12 +54,8 @@ func (cs *ContainerStream) StartStreaming(ctrSock *types.HijackedResponse) {
 // nil, output is still accepted from the container, then discarded.
 func (cs *ContainerStream) startWritingOutputToChannels() {
 	cs.wg.Add(1)
-
 	go func() {
-		defer func() {
-			cs.closeOutputChannels()
-			cs.wg.Done()
-		}()
+		defer cs.wg.Done()
 
 		stdout := io.Discard
 		if cs.Stdout != nil {
@@ -72,22 +71,15 @@ func (cs *ContainerStream) startWritingOutputToChannels() {
 	}()
 }
 
-func (cs *ContainerStream) closeOutputChannels() {
-	if cs.Stdout != nil {
-		close(cs.Stdout)
-	}
-	if cs.Stderr != nil {
-		close(cs.Stderr)
-	}
-}
-
 // startReadingInputFromChannel reads from the stdin channel, writing strings
 // to the container's stdin.
 func (cs *ContainerStream) startReadingInputFromChannel() {
 	cs.wg.Add(1)
 	go func() {
-		defer cs.wg.Done()
-		defer cs.ctrSock.CloseWrite() // Close write after stdin channel closes
+		defer func() {
+			cs.ctrSock.CloseWrite()
+			cs.wg.Done()
+		}()
 
 		for input := range cs.Stdin {
 			if _, err := cs.ctrSock.Conn.Write([]byte(input)); err != nil {
@@ -97,12 +89,19 @@ func (cs *ContainerStream) startReadingInputFromChannel() {
 	}()
 }
 
-// WaitUntilClosed waits for all streams to close, then cleans up.
-func (cs *ContainerStream) WaitUntilClosed() {
-	defer func() {
-		if cs.ctrSock != nil {
-			cs.ctrSock.Close()
-		}
-	}()
+func (cs *ContainerStream) Close() {
 	cs.wg.Wait()
+	if cs.ctrSock != nil {
+		cs.ctrSock.Close()
+	}
+	cs.closeOutputChannels()
+}
+
+func (cs *ContainerStream) closeOutputChannels() {
+	if cs.Stdout != nil {
+		close(cs.Stdout)
+	}
+	if cs.Stderr != nil {
+		close(cs.Stderr)
+	}
 }

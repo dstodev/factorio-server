@@ -13,21 +13,18 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/google/uuid"
 
+	"manage2/internal/container/stream"
 	"manage2/internal/program"
-	"manage2/internal/stream"
 )
 
 type Container struct {
 	Image string
 	ID    string
 
-	done chan Result
-
-	streams *stream.ContainerStream
-
-	user string
-
 	HostToGuestMap map[string]string
+
+	cs   *stream.ContainerStream
+	user string
 
 	ctx    context.Context
 	client *client.Client
@@ -39,13 +36,10 @@ type Result struct {
 	Err    error
 }
 
-func New(image string, opts ...Option) *Container {
-	done := make(chan Result, 1)
-
+func New(image string, opts ...ContainerOption) *Container {
 	c := &Container{
 		Image:          image,
-		done:           done,
-		streams:        stream.NewContainerStream(),
+		cs:             stream.NewContainerStream(),
 		HostToGuestMap: make(map[string]string),
 	}
 	for _, opt := range opts {
@@ -57,7 +51,7 @@ func New(image string, opts ...Option) *Container {
 // Idle creates a container that remains open but idle until ctrClose() is
 // called. This is useful to run an arbitrary number of commands with Exec().
 // WithStdinChannel() options are ignored.
-func Idle(image string, opts ...Option) (ctr *Container, ctrClose func() Result) {
+func Idle(image string, opts ...ContainerOption) (ctr *Container, ctrClose func() Result) {
 	ctrStdin := make(chan string)
 	opts = append(opts, WithStdinChannel(ctrStdin))
 	ctr = New(image, opts...)
@@ -79,6 +73,7 @@ func Idle(image string, opts ...Option) (ctr *Container, ctrClose func() Result)
 
 // TODO: Find() to find a container by ID or image name, returning a Container
 
+var ErrNotNew = fmt.Errorf("container must be new to run programs")
 var ErrNoProgram = fmt.Errorf("no programs registered")
 
 // Run invokes a command in the container, mounting file arguments. The first
@@ -106,13 +101,13 @@ var ErrNoProgram = fmt.Errorf("no programs registered")
 // It is assumed script1.sh will parse its own arguments, run, then start
 // script2.sh with remaining arguments.
 func (c *Container) Run(programs ...*program.Program) (ctrDone <-chan Result, err error) {
+	if c.client != nil {
+		return nil, ErrNotNew
+	}
+
 	if len(programs) == 0 {
 		return nil, ErrNoProgram
 	}
-
-	attachStdin := c.streams.Stdin != nil
-	attachStdout := c.streams.Stdout != nil
-	attachStderr := c.streams.Stderr != nil
 
 	c.client, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -128,6 +123,10 @@ func (c *Container) Run(programs ...*program.Program) (ctrDone <-chan Result, er
 			c.HostToGuestMap[hostPath] = guestPath
 		}
 	}
+
+	attachStdin := c.cs.Stdin != nil
+	attachStdout := c.cs.Stdout != nil
+	attachStderr := c.cs.Stderr != nil
 
 	config := &container.Config{
 		Image:        c.Image,
@@ -175,15 +174,17 @@ func (c *Container) Run(programs ...*program.Program) (ctrDone <-chan Result, er
 		return nil, err
 	}
 
-	c.streams.StartStreaming(&ctrSock)
+	done := make(chan Result, 1)
 
-	c.startExitHandler()
+	c.cs.StartStreaming(&ctrSock)
+
+	c.startExitHandler(done)
 
 	if err := c.client.ContainerStart(c.ctx, c.ID, container.StartOptions{}); err != nil {
 		return nil, err
 	}
 
-	return c.done, nil
+	return done, nil
 }
 
 // BuildProgramCmd takes registered programs and constructs a command line to
@@ -231,30 +232,31 @@ func toGuestPath(hostPath string) string {
 
 // startExitHandler waits for the container to exit, then sends the result to
 // the Done channel. It then removes the container.
-func (c *Container) startExitHandler() {
+func (c *Container) startExitHandler(done chan<- Result) {
 	ctrStatus, ctrErr := c.client.ContainerWait(c.ctx, c.ID, container.WaitConditionNextExit)
 
 	go func() {
-		defer close(c.done)
-		c.streams.WaitUntilClosed()
+		defer close(done)
+
+		result := Result{
+			ID:     c.ID,
+			Status: -1,
+			Err:    nil,
+		}
 
 		select {
 		case status := <-ctrStatus:
-			c.done <- Result{
-				ID:     c.ID,
-				Status: int(status.StatusCode),
-				Err:    nil,
-			}
+			result.Status = int(status.StatusCode)
 		case err := <-ctrErr:
-			c.done <- Result{
-				ID:     c.ID,
-				Status: -1,
-				Err:    err,
-			}
+			result.Err = err
 		}
+
+		c.cs.Close()
 
 		c.client.ContainerRemove(c.ctx, c.ID, container.RemoveOptions{})
 		c.client.Close()
+
+		done <- result
 	}()
 }
 
@@ -269,7 +271,7 @@ var ErrNotMounted = fmt.Errorf("container has not mounted all file arguments")
 // ContainerOption WithMounts() to do so.
 func (c *Container) Exec(
 	pgm *program.Program,
-	opts ...stream.Option,
+	opts ...stream.StreamOption,
 ) (
 	execDone <-chan Result,
 	err error,
@@ -337,7 +339,6 @@ func (c *Container) Exec(
 
 	go func() {
 		defer close(execResult)
-		cs.WaitUntilClosed()
 
 		// Wait for the exec'd program to finish by waiting for its exec_die event.
 		for {
@@ -356,6 +357,8 @@ func (c *Container) Exec(
 				break
 			}
 		}
+
+		cs.Close()
 
 		status, err := c.client.ContainerExecInspect(c.ctx, resp.ID)
 		result.Err = err

@@ -7,8 +7,8 @@ import (
 
 	"manage2/internal"
 	"manage2/internal/container"
+	"manage2/internal/container/stream"
 	"manage2/internal/program"
-	"manage2/internal/stream"
 )
 
 const commonImage = "m2test:latest" // See Makefile target: test-image
@@ -61,6 +61,26 @@ func TestContainerWithProgram(t *testing.T) {
 	checkResult(t, <-ctrDone, ctr.ID, 5, nil)
 }
 
+func TestContainerOnlyRunsOnce(t *testing.T) {
+	ctr := container.New(commonImage)
+	pgm, err := program.FromSystem("/bin/sh",
+		program.WithStringArgs("-c", "exit 5"))
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	ctrDone := checkedRun(t, ctr, nil, pgm)
+	checkResult(t, <-ctrDone, ctr.ID, 5, nil)
+
+	ctrDone, err = ctr.Run(pgm)
+	if !errors.Is(err, container.ErrNotNew) {
+		t.Fatalf("expected error '%v', got: %v", container.ErrNotNew, err)
+	}
+	if ctrDone != nil {
+		t.Fatalf("expected nil ctrDone channel, got: %v", ctrDone)
+	}
+}
+
 func checkResult(
 	t *testing.T,
 	result container.Result,
@@ -108,9 +128,13 @@ func TestContainerWithStdout(t *testing.T) {
 
 	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
 
-	msg, ok := <-ctrStdout
-	if ok {
-		t.Fatalf("expected no further messages, got: %s", msg)
+	select {
+	case msg, ok := <-ctrStdout:
+		if ok {
+			t.Fatalf("expected no further messages, got: %s", msg)
+		}
+	default:
+		t.Fatalf("expected channel to close")
 	}
 }
 
@@ -145,13 +169,22 @@ func TestContainerWithStdoutAndStderr(t *testing.T) {
 
 	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
 
-	msg, ok := <-ctrStdout
-	if ok {
-		t.Fatalf("expected no further messages on stdout, got: %s", msg)
+	select {
+	case msg, ok := <-ctrStdout:
+		if ok {
+			t.Fatalf("expected no further messages, got: %s", msg)
+		}
+	default:
+		t.Fatalf("expected channel to close")
 	}
-	msg, ok = <-ctrStderr
-	if ok {
-		t.Fatalf("expected no further messages on stderr, got: %s", msg)
+
+	select {
+	case msg, ok := <-ctrStderr:
+		if ok {
+			t.Fatalf("expected no further messages, got: %s", msg)
+		}
+	default:
+		t.Fatalf("expected channel to close")
 	}
 }
 
@@ -184,9 +217,13 @@ func TestContainerWithStdin(t *testing.T) {
 
 	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
 
-	msg, ok := <-ctrStdout
-	if ok {
-		t.Fatalf("expected no further messages, got: %s", msg)
+	select {
+	case msg, ok := <-ctrStdout:
+		if ok {
+			t.Fatalf("expected no further messages, got: %s", msg)
+		}
+	default:
+		t.Fatalf("expected channel to close")
 	}
 }
 
@@ -282,9 +319,13 @@ stdbuf -o0 printf "world!\n"
 
 	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
 
-	msg, ok := <-ctrStdout
-	if ok {
-		t.Fatalf("expected no further messages, got: %s", msg)
+	select {
+	case msg, ok := <-ctrStdout:
+		if ok {
+			t.Fatalf("expected no further messages, got: %s", msg)
+		}
+	default:
+		t.Fatalf("expected channel to close")
 	}
 }
 
@@ -577,7 +618,7 @@ func TestExecMounts(t *testing.T) {
 	checkResult(t, ctrClose(), ctr.ID, 0, nil)
 }
 
-func TestExecStdinWrite(t *testing.T) {
+func TestExecStdinStdout(t *testing.T) {
 	script := internal.NewTestDir(t).WriteFile("script.sh", `#!/bin/sh
 while :; do
 	read line
@@ -621,12 +662,13 @@ done
 	checkResult(t, <-execDone, "!", 0, nil)
 	checkResult(t, ctrClose(), ctr.ID, 0, nil)
 
-	msg, ok := <-execStdout
-	if ok {
-		t.Fatalf("expected no message on stdout after closing stdin, got: %s", msg)
-	}
-	if msg != "" {
-		t.Fatalf("expected empty message on stdout, got: %s", msg)
+	select {
+	case msg, ok := <-execStdout:
+		if ok {
+			t.Fatalf("expected no further messages, got: %s", msg)
+		}
+	default:
+		t.Fatalf("expected channel to close")
 	}
 }
 
