@@ -194,7 +194,8 @@ func TestContainerWithStdin(t *testing.T) {
 	ctr := container.New(commonImage,
 		container.WithStdinChannel(ctrStdin),
 		container.WithStdoutChannel(ctrStdout))
-	pgm, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "read input && echo \"|$input|\""))
+	pgm, err := program.FromSystem("/bin/sh",
+		program.WithStringArgs("-c", "read input && echo \"|$input|\""))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -416,7 +417,7 @@ func TestBuildProgramCommandStrings(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	cmdTokens, mounts := ctr.BuildProgramCmd(pgm)
+	cmdTokens, mounts := container.BuildProgramCmd(ctr.HostToGuestMap, pgm)
 
 	expectedCmd := []string{"/bin/sh", "-c", "echo Hello", "--"}
 	if len(cmdTokens) != len(expectedCmd) {
@@ -447,7 +448,7 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	cmdTokens, fileMap := ctr.BuildProgramCmd(pgm)
+	cmdTokens, fileMap := container.BuildProgramCmd(ctr.HostToGuestMap, pgm)
 
 	if len(fileMap) != 2 { // script & file
 		t.Fatalf("expected 2 mapping, got: %d", len(fileMap))
@@ -479,14 +480,14 @@ func TestBuildProgramNewMappings(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	_, fileMap := ctr.BuildProgramCmd(pgm)
+	_, fileMap := container.BuildProgramCmd(ctr.HostToGuestMap, pgm)
 
 	if len(fileMap) != 2 { // script & file
 		t.Fatalf("expected 2 mapping, got: %d", len(fileMap))
 	}
 
 	// Test idempotence
-	_, fileMap = ctr.BuildProgramCmd(pgm)
+	_, fileMap = container.BuildProgramCmd(ctr.HostToGuestMap, pgm)
 	if len(fileMap) != 2 {
 		t.Fatalf("expected 2 mapping, got: %d", len(fileMap))
 	}
@@ -495,7 +496,7 @@ func TestBuildProgramNewMappings(t *testing.T) {
 	// BuildProgramCmd() should not return it again, since it is no longer new.
 	ctr.HostToGuestMap[script] = fileMap[script]
 
-	_, fileMap = ctr.BuildProgramCmd(pgm)
+	_, fileMap = container.BuildProgramCmd(ctr.HostToGuestMap, pgm)
 	if len(fileMap) != 1 {
 		t.Fatalf("expected 1 mapping, got: %d", len(fileMap))
 	}
@@ -515,7 +516,7 @@ func TestIdleContainer(t *testing.T) {
 
 // #endregion
 
-// #region Test Container.Exec
+// #region Test Container.Exec()
 
 func TestExec(t *testing.T) {
 	ctrStdin := make(chan string)
@@ -673,3 +674,52 @@ done
 }
 
 // #endregion
+
+// #region Test Container.Find()
+
+func TestFindContainerByID(t *testing.T) {
+	ctrStdin := make(chan string)
+	ctrStdout := make(chan string)
+	ctr := container.New(commonImage,
+		container.WithStdinChannel(ctrStdin),
+		container.WithStdoutChannel(ctrStdout))
+	pgm, err := program.FromSystem("/bin/sh",
+		program.WithStringArgs("-c", "read input && echo \"|$input|\""))
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	ctrDone := checkedRun(t, ctr, nil, pgm)
+
+	//ctrStdin <- "Hello,"
+
+	// attCtr, err := container.Find(ctr.ID)
+	// if err != nil {
+	// 	t.Fatalf("expected no error, got: %v", err)
+	// }
+	// if attCtr == nil {
+	// 	t.Fatal("expected to find container by ID, got nil")
+	// }
+	// if attCtr.ID != ctr.ID {
+	// 	t.Fatalf("expected found container ID '%s', got: %s", ctr.ID, attCtr.ID)
+	// }
+
+	ctrStdin <- "Hello, world!\n"
+
+	close(ctrStdin)
+	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
+
+	// TODO: Test showing dynamic output buffering is necessary for this message
+	// to be receivable after ctrDone
+	message := <-ctrStdout
+	expectedMessage := "|Hello, world!|\n"
+	if message != expectedMessage {
+		t.Fatalf("expected stdout message '%s', got: %s", expectedMessage, message)
+	}
+
+	// msg = <-attStdout
+	// expectedMsg := "Hello, world!"
+	// if msg != expectedMsg {
+	// 	t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
+	// }
+}

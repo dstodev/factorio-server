@@ -13,6 +13,9 @@ type ContainerStream struct {
 	Stdout chan<- string
 	Stderr chan<- string
 
+	stdoutWriter io.WriteCloser
+	stderrWriter io.WriteCloser
+
 	ctrSock *types.HijackedResponse // Container socket
 	wg      *sync.WaitGroup
 }
@@ -53,20 +56,21 @@ func (cs *ContainerStream) StartStreaming(ctrSock *types.HijackedResponse) {
 // container's respective output streams close, if requested. If a channel is
 // nil, output is still accepted from the container, then discarded.
 func (cs *ContainerStream) startWritingOutputToChannels() {
+	stdout := io.Discard
+	stderr := io.Discard
+
+	if cs.Stdout != nil {
+		cs.stdoutWriter = NewChannelWriter(cs.Stdout)
+		stdout = cs.stdoutWriter
+	}
+	if cs.Stderr != nil {
+		cs.stderrWriter = NewChannelWriter(cs.Stderr)
+		stderr = cs.stderrWriter
+	}
+
 	cs.wg.Add(1)
 	go func() {
 		defer cs.wg.Done()
-
-		stdout := io.Discard
-		if cs.Stdout != nil {
-			stdout = NewChannelWriter(cs.Stdout)
-		}
-
-		stderr := io.Discard
-		if cs.Stderr != nil {
-			stderr = NewChannelWriter(cs.Stderr)
-		}
-
 		stdcopy.StdCopy(stdout, stderr, cs.ctrSock.Reader)
 	}()
 }
@@ -98,10 +102,10 @@ func (cs *ContainerStream) Close() {
 }
 
 func (cs *ContainerStream) closeOutputChannels() {
-	if cs.Stdout != nil {
-		close(cs.Stdout)
+	if cs.stdoutWriter != nil {
+		cs.stdoutWriter.Close()
 	}
-	if cs.Stderr != nil {
-		close(cs.Stderr)
+	if cs.stderrWriter != nil {
+		cs.stderrWriter.Close()
 	}
 }

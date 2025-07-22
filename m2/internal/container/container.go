@@ -51,7 +51,13 @@ func New(image string, opts ...ContainerOption) *Container {
 // Idle creates a container that remains open but idle until ctrClose() is
 // called. This is useful to run an arbitrary number of commands with Exec().
 // WithStdinChannel() options are ignored.
-func Idle(image string, opts ...ContainerOption) (ctr *Container, ctrClose func() Result) {
+func Idle(
+	image string,
+	opts ...ContainerOption,
+) (
+	ctr *Container,
+	ctrClose func() Result,
+) {
 	ctrStdin := make(chan string)
 	opts = append(opts, WithStdinChannel(ctrStdin))
 	ctr = New(image, opts...)
@@ -72,6 +78,37 @@ func Idle(image string, opts ...ContainerOption) (ctr *Container, ctrClose func(
 }
 
 // TODO: Find() to find a container by ID or image name, returning a Container
+
+var ErrInvalidID = fmt.Errorf("invalid container ID")
+
+func Find(id string) (ctr *Container, err error) {
+	if id == "" {
+		return nil, ErrInvalidID
+	}
+
+	c := New("")
+	c.client, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+
+	if err != nil {
+		return nil, err
+	}
+	c.ctx = context.Background()
+
+	var ctrInfo container.InspectResponse
+	ctrInfo, err = c.client.ContainerInspect(c.ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if !ctrInfo.State.Running {
+		return nil, fmt.Errorf("container %s is not running", id)
+	}
+
+	c.ID = ctrInfo.ID
+	c.Image = ctrInfo.Config.Image
+
+	return c, nil
+}
 
 var ErrNotNew = fmt.Errorf("container must be new to run programs")
 var ErrNoProgram = fmt.Errorf("no programs registered")
@@ -100,7 +137,12 @@ var ErrNoProgram = fmt.Errorf("no programs registered")
 //
 // It is assumed script1.sh will parse its own arguments, run, then start
 // script2.sh with remaining arguments.
-func (c *Container) Run(programs ...*program.Program) (ctrDone <-chan Result, err error) {
+func (c *Container) Run(
+	programs ...*program.Program,
+) (
+	ctrDone <-chan Result,
+	err error,
+) {
 	if c.client != nil {
 		return nil, ErrNotNew
 	}
@@ -115,9 +157,11 @@ func (c *Container) Run(programs ...*program.Program) (ctrDone <-chan Result, er
 	}
 	c.ctx = context.Background()
 
-	cmdTokens, fileMap := c.BuildProgramCmd(programs...)
+	cmdTokens, fileMap := BuildProgramCmd(c.HostToGuestMap, programs...)
 
-	// Mounts are also recorded by WithMounts() so Exec() can use them
+	// Record newly-generated guest paths to files referenced by the programs
+	// processed by BuildProgramCmd(). Mounts are separately recorded by
+	// ContainerOption.WithMounts() so Exec() can use them
 	for hostPath, guestPath := range fileMap {
 		if _, ok := c.HostToGuestMap[hostPath]; !ok {
 			c.HostToGuestMap[hostPath] = guestPath
@@ -192,8 +236,19 @@ func (c *Container) Run(programs ...*program.Program) (ctrDone <-chan Result, er
 // by the programs.
 //
 // Returns the command to use when starting the container, and a list of new
-// mappings from host paths to guest paths. Run() uses this list to mount them.
-func (c *Container) BuildProgramCmd(programs ...*program.Program) (
+// mappings from host paths to guest paths. Run() uses this list to mount them
+// and records new mappings in HostToGuestMap.
+//
+// Does not write to guestCache. If a path is already in guestCache, it is used
+// by BuildProgramCmd, but is not returned in fileMap; only returns new mappings
+// in fileMap.
+//
+// BuildProgramCmd is a free function to keep it separate from the Container
+// methods, but it is public to keep it easily-testable.
+func BuildProgramCmd(
+	guestCache map[string]string,
+	programs ...*program.Program,
+) (
 	cmdTokens []string,
 	fileMap map[string]string,
 ) {
@@ -204,7 +259,7 @@ func (c *Container) BuildProgramCmd(programs ...*program.Program) (
 			hostPath := arg
 			var guestPath string
 
-			if path, ok := c.HostToGuestMap[hostPath]; ok {
+			if path, ok := guestCache[hostPath]; ok {
 				guestPath = path
 			} else if path, ok := fileMap[hostPath]; ok {
 				guestPath = path
@@ -284,7 +339,7 @@ func (c *Container) Exec(
 		return nil, ErrNotRunning
 	}
 
-	cmdTokens, fileMap := c.BuildProgramCmd(pgm)
+	cmdTokens, fileMap := BuildProgramCmd(c.HostToGuestMap, pgm)
 
 	// If any mappings are new here, they are not yet mounted. There is no way
 	// to mount additional files after the container has started.

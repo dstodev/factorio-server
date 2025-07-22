@@ -1,25 +1,36 @@
 package stream
 
 import (
-	"fmt"
-	"io"
+	"manage2/internal"
 )
 
 type ChannelWriter struct {
-	target chan<- string
+	ch internal.DynamicChan[string]
 }
 
-func NewChannelWriter(target chan<- string) io.Writer {
-	return &ChannelWriter{
-		target: target,
+func NewChannelWriter(target chan<- string) *ChannelWriter {
+	if target == nil {
+		panic("target channel cannot be nil")
 	}
+	cw := &ChannelWriter{
+		ch: internal.NewDynamicChan[string](),
+	}
+	go func() {
+		for value := range cw.ch.Pop {
+			target <- value
+		}
+		close(target)
+	}()
+	return cw
 }
 
 func (cw *ChannelWriter) Write(p []byte) (n int, err error) {
-	if cw.target == nil {
-		return 0, fmt.Errorf("target channel is nil")
-	}
 	value := string(p)
-	cw.target <- value
+	cw.ch.Push <- value
 	return len(p), nil
+}
+
+func (cw *ChannelWriter) Close() error {
+	close(cw.ch.Push)
+	return nil
 }
