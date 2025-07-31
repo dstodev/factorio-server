@@ -15,6 +15,6 @@ test-shell: test-image
 
 test: test-image
 	@go clean -testcache
-	@${TIME} go test -v ./...
+	@-${TIME} go test -v ./...
 	@docker container prune -f
 .PHONY: test

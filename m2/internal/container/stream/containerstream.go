@@ -14,7 +14,9 @@ type ContainerStream struct {
 	Stderr chan<- string
 
 	stdoutWriter io.WriteCloser
+	stdoutDone   <-chan struct{}
 	stderrWriter io.WriteCloser
+	stderrDone   <-chan struct{}
 
 	ctrSock *types.HijackedResponse // Container socket
 	wg      *sync.WaitGroup
@@ -60,11 +62,11 @@ func (cs *ContainerStream) startWritingOutputToChannels() {
 	stderr := io.Discard
 
 	if cs.Stdout != nil {
-		cs.stdoutWriter = NewChannelWriter(cs.Stdout)
+		cs.stdoutWriter, cs.stdoutDone = NewChannelWriter(cs.Stdout)
 		stdout = cs.stdoutWriter
 	}
 	if cs.Stderr != nil {
-		cs.stderrWriter = NewChannelWriter(cs.Stderr)
+		cs.stderrWriter, cs.stderrDone = NewChannelWriter(cs.Stderr)
 		stderr = cs.stderrWriter
 	}
 
@@ -107,5 +109,15 @@ func (cs *ContainerStream) closeOutputChannels() {
 	}
 	if cs.stderrWriter != nil {
 		cs.stderrWriter.Close()
+	}
+}
+
+func (cs *ContainerStream) AwaitStreams() {
+	cs.wg.Wait()
+	if cs.Stdout != nil {
+		<-cs.stdoutDone
+	}
+	if cs.Stderr != nil {
+		<-cs.stderrDone
 	}
 }

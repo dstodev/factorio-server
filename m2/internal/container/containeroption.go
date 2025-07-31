@@ -35,3 +35,9 @@ func WithMounts(hostPaths ...string) ContainerOption {
 		}
 	}
 }
+
+func WithName(name string) ContainerOption {
+	return func(ctr *Container) {
+		ctr.Name = name
+	}
+}

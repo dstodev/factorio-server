@@ -2,10 +2,12 @@ package container
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
 
+	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
@@ -20,6 +22,7 @@ import (
 type Container struct {
 	Image string
 	ID    string
+	Name  string
 
 	HostToGuestMap map[string]string
 
@@ -77,9 +80,8 @@ func Idle(
 	return
 }
 
-// TODO: Find() to find a container by ID or image name, returning a Container
-
 var ErrInvalidID = fmt.Errorf("invalid container ID")
+var ErrNotFound = fmt.Errorf("container not found")
 
 func Find(id string) (ctr *Container, err error) {
 	if id == "" {
@@ -96,16 +98,31 @@ func Find(id string) (ctr *Container, err error) {
 
 	var ctrInfo container.InspectResponse
 	ctrInfo, err = c.client.ContainerInspect(c.ctx, id)
-	if err != nil {
+	if errors.Is(err, errdefs.ErrNotFound) {
+		return nil, ErrNotFound
+	} else if err != nil {
 		return nil, err
 	}
 
 	if !ctrInfo.State.Running {
-		return nil, fmt.Errorf("container %s is not running", id)
+		return nil, ErrNotRunning
 	}
 
 	c.ID = ctrInfo.ID
+
+	name := ctrInfo.Name
+	if len(name) > 0 && name[0] == '/' {
+		name = name[1:] // Remove leading slash
+	}
+	c.Name = name
+
 	c.Image = ctrInfo.Config.Image
+
+	for _, m := range ctrInfo.Mounts {
+		if m.Type == mount.TypeBind {
+			c.HostToGuestMap[m.Source] = m.Destination
+		}
+	}
 
 	return c, nil
 }
@@ -198,7 +215,7 @@ func (c *Container) Run(
 		Mounts: mounts,
 	}
 
-	resp, err := c.client.ContainerCreate(c.ctx, config, hostConfig, nil, nil, "")
+	resp, err := c.client.ContainerCreate(c.ctx, config, hostConfig, nil, nil, c.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -307,6 +324,7 @@ func (c *Container) startExitHandler(done chan<- Result) {
 		}
 
 		c.cs.Close()
+		c.cs.AwaitStreams()
 
 		c.client.ContainerRemove(c.ctx, c.ID, container.RemoveOptions{})
 		c.client.Close()

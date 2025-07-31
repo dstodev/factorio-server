@@ -18,6 +18,10 @@
 		"python.testing.pytestEnabled": true,
 
 		"go.testTimeout": "5s",
+		"go.testFlags": [
+			"-v",
+			"-count=1",
+		],
 
 		"python.analysis.typeCheckingMode": "standard",
 

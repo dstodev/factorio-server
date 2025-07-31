@@ -5,32 +5,40 @@ import (
 )
 
 type ChannelWriter struct {
-	ch internal.DynamicChan[string]
+	ch internal.Queue[string]
 }
 
-func NewChannelWriter(target chan<- string) *ChannelWriter {
+func NewChannelWriter(target chan<- string) (writer *ChannelWriter, writeDone <-chan struct{}) {
 	if target == nil {
 		panic("target channel cannot be nil")
 	}
 	cw := &ChannelWriter{
-		ch: internal.NewDynamicChan[string](),
+		ch: internal.NewQueue[string](),
 	}
+	done := make(chan struct{})
 	go func() {
-		for value := range cw.ch.Pop {
+		defer func() {
+			close(target)
+			close(done) // close done last
+		}()
+		for {
+			value, ok := cw.ch.Dequeue()
+			if !ok {
+				break
+			}
 			target <- value
 		}
-		close(target)
 	}()
-	return cw
+	return cw, done
 }
 
 func (cw *ChannelWriter) Write(p []byte) (n int, err error) {
 	value := string(p)
-	cw.ch.Push <- value
+	cw.ch.Enqueue(value)
 	return len(p), nil
 }
 
 func (cw *ChannelWriter) Close() error {
-	close(cw.ch.Push)
+	cw.ch.Close()
 	return nil
 }

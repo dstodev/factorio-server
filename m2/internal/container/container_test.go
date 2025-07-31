@@ -119,8 +119,6 @@ func TestContainerWithStdout(t *testing.T) {
 
 	expectedOutput := "|Hello,|\n|world!|\n|--|\n"
 
-	// ctrStdout channel is not buffered, so wait for the message
-	// before waiting for the container to finish
 	msg := <-ctrStdout
 	if msg != expectedOutput {
 		t.Fatalf("expected stdout message '%s', got: %s", expectedOutput, msg)
@@ -691,35 +689,126 @@ func TestFindContainerByID(t *testing.T) {
 
 	ctrDone := checkedRun(t, ctr, nil, pgm)
 
-	//ctrStdin <- "Hello,"
+	ctrStdin <- "Hello, "
 
-	// attCtr, err := container.Find(ctr.ID)
-	// if err != nil {
-	// 	t.Fatalf("expected no error, got: %v", err)
-	// }
-	// if attCtr == nil {
-	// 	t.Fatal("expected to find container by ID, got nil")
-	// }
-	// if attCtr.ID != ctr.ID {
-	// 	t.Fatalf("expected found container ID '%s', got: %s", ctr.ID, attCtr.ID)
-	// }
+	foundCtr, err := container.Find(ctr.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if foundCtr == nil {
+		t.Fatal("expected to find container, got nil")
+	}
+	if foundCtr.ID != ctr.ID {
+		t.Fatalf("expected found container ID '%s', got: %s", ctr.ID, foundCtr.ID)
+	}
 
-	ctrStdin <- "Hello, world!\n"
+	ctrStdin <- "world!\n"
 
-	close(ctrStdin)
-	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
-
-	// TODO: Test showing dynamic output buffering is necessary for this message
-	// to be receivable after ctrDone
 	message := <-ctrStdout
 	expectedMessage := "|Hello, world!|\n"
 	if message != expectedMessage {
 		t.Fatalf("expected stdout message '%s', got: %s", expectedMessage, message)
 	}
 
-	// msg = <-attStdout
-	// expectedMsg := "Hello, world!"
-	// if msg != expectedMsg {
-	// 	t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
-	// }
+	close(ctrStdin)
+	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
+}
+
+func TestFindContainerNotFound(t *testing.T) {
+	ctr, err := container.Find("__does-not-exist")
+	if err != container.ErrNotFound {
+		t.Fatalf("expected error '%v', got: %v", container.ErrNotFound, err)
+	}
+	if ctr != nil {
+		t.Fatalf("expected nil container, got: %v", ctr)
+	}
+}
+
+func TestFindContainerByName(t *testing.T) {
+	ctrName := "test-container"
+
+	ctr, err := container.Find(ctrName)
+
+	if err != container.ErrNotFound {
+		t.Fatalf("expected error '%v', got: %v", container.ErrNotFound, err)
+	}
+	if ctr != nil {
+		t.Fatalf("expected nil container, got: %v", ctr)
+	}
+
+	_, ctrClose := container.Idle(commonImage,
+		container.WithName(ctrName))
+
+	ctr, err = container.Find(ctrName)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if ctr == nil {
+		t.Fatal("expected to find container, got nil")
+	}
+	if ctr.ID == "" {
+		t.Fatal("expected non-empty ID, got empty string")
+	}
+	if ctr.Name != ctrName {
+		t.Fatalf("expected container name '%s', got: %s", ctrName, ctr.Name)
+	}
+
+	checkResult(t, ctrClose(), ctr.ID, 0, nil)
+}
+
+func TestFindContainerExec(t *testing.T) {
+	ctrStdin := make(chan string)
+	ctrStdout := make(chan string)
+	ctr := container.New(commonImage,
+		container.WithStdinChannel(ctrStdin),
+		container.WithStdoutChannel(ctrStdout))
+	pgm, err := program.FromSystem("/bin/sh",
+		program.WithStringArgs("-c", "read input && echo \"|$input|\""))
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	ctrDone := checkedRun(t, ctr, nil, pgm)
+
+	ctrStdin <- "Hello, "
+
+	foundCtr, err := container.Find(ctr.ID)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if foundCtr == nil {
+		t.Fatal("expected to find container, got nil")
+	}
+	if foundCtr.ID != ctr.ID {
+		t.Fatalf("expected found container ID '%s', got: %s", ctr.ID, foundCtr.ID)
+	}
+
+	execStdin := make(chan string)
+	execStdout := make(chan string)
+	execDone, err := foundCtr.Exec(pgm,
+		stream.WithStdinChannel(execStdin),
+		stream.WithStdoutChannel(execStdout))
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	execStdin <- "wow!\n"
+	close(execStdin)
+
+	message := <-execStdout
+	expectedMessage := "|wow!|\n"
+	if message != expectedMessage {
+		t.Fatalf("expected stdout message '%s', got: %s", expectedMessage, message)
+	}
+	checkResult(t, <-execDone, "!", 0, nil)
+
+	ctrStdin <- "world!\n"
+
+	message = <-ctrStdout
+	expectedMessage = "|Hello, world!|\n"
+	if message != expectedMessage {
+		t.Fatalf("expected stdout message '%s', got: %s", expectedMessage, message)
+	}
+
+	close(ctrStdin)
+	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
 }
