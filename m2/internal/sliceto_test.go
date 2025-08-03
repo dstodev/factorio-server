@@ -22,7 +22,7 @@ func TestSliceToExcludesNil(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := internal.SliceTo[any](tt.values...); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("expected '%v', got: %v", tt.want, got)
+				t.Errorf("expected '%v', received %v", tt.want, got)
 			}
 		})
 	}
@@ -49,19 +49,19 @@ func TestSliceToAny(t *testing.T) {
 	result := internal.SliceTo[any](1, 2, nil, null, byIface, byType)
 
 	if len(result) != 4 {
-		t.Errorf("expected 4 elements, got: %d", len(result))
+		t.Errorf("expected 4 elements, received %d", len(result))
 	}
 	if result[0] != 1 {
-		t.Errorf("expected first element to be 1, got: %v", result[0])
+		t.Errorf("expected first element to be 1, received %v", result[0])
 	}
 	if result[1] != 2 {
-		t.Errorf("expected second element to be 2, got: %v", result[1])
+		t.Errorf("expected second element to be 2, received %v", result[1])
 	}
 	if result[2] != byIface {
-		t.Errorf("expected third element to be instanceByIface, got: %v", result[2])
+		t.Errorf("expected third element to be instanceByIface, received %v", result[2])
 	}
 	if result[3] != byType {
-		t.Errorf("expected fourth element to be instanceByType, got: %v", result[3])
+		t.Errorf("expected fourth element to be instanceByType, received %v", result[3])
 	}
 
 	checkMessage(t, result[2].(hasMessage), "interface")
@@ -73,13 +73,13 @@ func checkMessage(t *testing.T, m hasMessage, expected string) {
 	reader := bufio.NewReader(m)
 	msg, isPrefix, err := reader.ReadLine()
 	if err != nil {
-		t.Errorf("expected no error reading message, got: %v", err)
+		t.Errorf("expected no error reading message, received %v", err)
 	}
 	if isPrefix {
-		t.Errorf("expected no prefix, got: %v", isPrefix)
+		t.Errorf("expected no prefix, received %v", isPrefix)
 	}
 	if string(msg) != expected {
-		t.Errorf("expected message to be '%s', got: %s", expected, string(msg))
+		t.Errorf("expected message to be '%s', received %s", expected, string(msg))
 	}
 }
 
@@ -91,13 +91,13 @@ func TestSliceToMessenger(t *testing.T) {
 	result := internal.SliceTo[Messenger](1, 2, nil, null, byIface, byType)
 
 	if len(result) != 2 {
-		t.Errorf("expected 2 elements, got: %d", len(result))
+		t.Errorf("expected 2 elements, received %d", len(result))
 	}
 	if result[0] != byIface {
-		t.Errorf("expected first element to be instanceByIface, got: %v", result[0])
+		t.Errorf("expected first element to be instanceByIface, received %v", result[0])
 	}
 	if result[1] != byType {
-		t.Errorf("expected second element to be instanceByType, got: %v", result[1])
+		t.Errorf("expected second element to be instanceByType, received %v", result[1])
 	}
 
 	checkMessage(t, result[0], "interface")

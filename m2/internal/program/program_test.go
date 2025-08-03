@@ -13,10 +13,10 @@ func TestNewProgram(t *testing.T) {
 	path := internal.NewTestDir(t).TouchFile("test.sh")
 	pgm, err := program.FromFile(path)
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received %v", err)
 	}
 	if len(pgm.Args) != 1 {
-		t.Fatalf("expected 1 arg, got: %d", len(pgm.Args))
+		t.Fatalf("expected 1 arg, received %d", len(pgm.Args))
 	}
 }
 
@@ -24,26 +24,26 @@ func TestNewProgramBadPath(t *testing.T) {
 	path := internal.NewTestDir(t).Path + "/test.sh"
 	pgm, err := program.FromFile(path)
 	if !errors.Is(err, fs.ErrNotExist) {
-		t.Fatalf("expected error to be 'fs.ErrNotExist', got: %v", err)
+		t.Fatalf("expected error to be 'fs.ErrNotExist', received %v", err)
 	}
 	if pgm != nil {
-		t.Fatalf("expected nil program, got: %v", pgm)
+		t.Fatalf("expected nil program, received %v", pgm)
 	}
 }
 
 func TestFromSystemWithArgs(t *testing.T) {
 	pgm, err := program.FromSystem("echo", program.WithStringArgs("Hello,", "World!"))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received %v", err)
 	}
 
 	expectedArgs := []string{"echo", "Hello,", "World!"}
 	if len(pgm.Args) != len(expectedArgs) {
-		t.Fatalf("expected %d args, got: %d", len(expectedArgs), len(pgm.Args))
+		t.Fatalf("expected %d args, received %d", len(expectedArgs), len(pgm.Args))
 	}
 	for i, arg := range expectedArgs {
 		if pgm.Args[i] != arg {
-			t.Fatalf("expected arg %d to be '%s', got: %s", i, arg, pgm.Args[i])
+			t.Fatalf("expected arg %d to be '%s', received %s", i, arg, pgm.Args[i])
 		}
 		if pgm.ArgIsFile(i) {
 			t.Fatalf("expected arg %d to not be a file", i)
@@ -58,16 +58,16 @@ func TestFromFileWithArgs(t *testing.T) {
 		program.WithStringArgs("arg1", "arg2"),
 	)
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received %v", err)
 	}
 
 	expectedArgs := []string{path, "arg1", "arg2"}
 	if len(pgm.Args) != len(expectedArgs) {
-		t.Fatalf("expected %d args, got: %d", len(expectedArgs), len(pgm.Args))
+		t.Fatalf("expected %d args, received %d", len(expectedArgs), len(pgm.Args))
 	}
 	for i, arg := range expectedArgs {
 		if pgm.Args[i] != arg {
-			t.Fatalf("expected arg %d to be '%s', got: %s", i, arg, pgm.Args[i])
+			t.Fatalf("expected arg %d to be '%s', received %s", i, arg, pgm.Args[i])
 		}
 	}
 }
@@ -82,16 +82,16 @@ func TestNewProgramWithFileArgs(t *testing.T) {
 		program.WithFileArgs(file1, file2),
 	)
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received %v", err)
 	}
 
 	expectedArgs := []string{path, file1, file2}
 	if len(pgm.Args) != len(expectedArgs) {
-		t.Fatalf("expected %d args, got: %d", len(expectedArgs), len(pgm.Args))
+		t.Fatalf("expected %d args, received %d", len(expectedArgs), len(pgm.Args))
 	}
 	for i, arg := range expectedArgs {
 		if pgm.Args[i] != arg {
-			t.Fatalf("expected arg %d to be '%s', got: %s", i, arg, pgm.Args[i])
+			t.Fatalf("expected arg %d to be '%s', received %s", i, arg, pgm.Args[i])
 		}
 	}
 }
@@ -103,7 +103,7 @@ func TestNewProgramWithBadFileArgs(t *testing.T) {
 		program.WithFileArgs("file.txt"),
 	)
 	if !errors.Is(err, fs.ErrNotExist) {
-		t.Fatalf("expected error to be 'fs.ErrNotExist', got: %v", err)
+		t.Fatalf("expected error to be 'fs.ErrNotExist', received %v", err)
 	}
 }
 
@@ -118,7 +118,7 @@ func TestArgIsFile(t *testing.T) {
 		program.WithFileArgs(file1, file2),
 	)
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received %v", err)
 	}
 	if !pgm.ArgIsFile(0) {
 		t.Fatalf("expected arg 0 to be a file")
@@ -142,17 +142,17 @@ func TestAsTokens(t *testing.T) {
 		program.WithFileArgs(file1, file2),
 	)
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received %v", err)
 	}
 
 	tokens := pgm.AsTokens()
 	expectedTokens := []string{path, "arg1", "arg2", file1, file2, "--"}
 	if len(tokens) != len(expectedTokens) {
-		t.Fatalf("expected %d tokens, got: %d", len(expectedTokens), len(tokens))
+		t.Fatalf("expected %d tokens, received %d", len(expectedTokens), len(tokens))
 	}
 	for i, expectedToken := range expectedTokens {
 		if tokens[i] != expectedToken {
-			t.Fatalf("expected token %d to be '%s', got: %s", i, expectedToken, tokens[i])
+			t.Fatalf("expected token %d to be '%s', received %s", i, expectedToken, tokens[i])
 		}
 	}
 }
@@ -168,7 +168,7 @@ func TestAsTokenMutators(t *testing.T) {
 		program.WithFileArgs(file1, file2),
 	)
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received %v", err)
 	}
 
 	count := 0
@@ -192,7 +192,7 @@ func TestAsTokenMutators(t *testing.T) {
 	expectedCount := len(pgm.Args) // mutators not called for "--"
 
 	if count != expectedCount {
-		t.Fatalf("expected %d calls to mutators, got: %d", expectedCount, count)
+		t.Fatalf("expected %d calls to mutators, received %d", expectedCount, count)
 	}
 
 	expectedTokens := []string{
@@ -205,11 +205,11 @@ func TestAsTokenMutators(t *testing.T) {
 	}
 
 	if len(tokens) != len(expectedTokens) {
-		t.Fatalf("expected %d tokens, got: %d", len(expectedTokens), len(tokens))
+		t.Fatalf("expected %d tokens, received %d", len(expectedTokens), len(tokens))
 	}
 	for i, expectedToken := range expectedTokens {
 		if tokens[i] != expectedToken {
-			t.Fatalf("expected token %d to be '%s', got: %s", i, expectedToken, tokens[i])
+			t.Fatalf("expected token %d to be '%s', received %s", i, expectedToken, tokens[i])
 		}
 	}
 }

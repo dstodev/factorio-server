@@ -3,7 +3,6 @@ package container_test
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 
 	"manage2/internal"
@@ -21,7 +20,7 @@ func TestContainer(t *testing.T) {
 	ctr := container.New(image)
 
 	if ctr.Image != image {
-		t.Fatalf("expected image '%s', got: %s", image, ctr.Image)
+		t.Fatalf("expected image '%s', received: %s", image, ctr.Image)
 	}
 
 	checkedRun(t, ctr, container.ErrNoProgram)
@@ -40,13 +39,13 @@ func checkedRun(
 	ctrDone, err := ctr.Run(programs...)
 
 	if !errors.Is(err, expectErr) {
-		t.Fatalf("expected error '%v', got: %v", expectErr, err)
+		t.Fatalf("expected error '%v', received: %v", expectErr, err)
 	}
 	if ctr.ID == "" && expectErr == nil {
-		t.Fatal("expected non-empty ID, got empty string")
+		t.Fatal("expected non-empty ID, received empty string")
 	}
 	if ctr.ID != "" && expectErr != nil {
-		t.Fatalf("expected empty ID, got: %s", ctr.ID)
+		t.Fatalf("expected empty ID, received: %s", ctr.ID)
 	}
 	return
 }
@@ -57,7 +56,7 @@ func TestContainerWithProgram(t *testing.T) {
 	pgm, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "exit 5"))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	ctrDone := checkedRun(t, ctr, nil, pgm)
@@ -70,7 +69,7 @@ func TestContainerOnlyRunsOnce(t *testing.T) {
 	pgm, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "exit 5"))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	ctrDone := checkedRun(t, ctr, nil, pgm)
@@ -78,10 +77,10 @@ func TestContainerOnlyRunsOnce(t *testing.T) {
 
 	ctrDone, err = ctr.Run(pgm)
 	if !errors.Is(err, container.ErrNotNew) {
-		t.Fatalf("expected error '%v', got: %v", container.ErrNotNew, err)
+		t.Fatalf("expected error '%v', received: %v", container.ErrNotNew, err)
 	}
 	if ctrDone != nil {
-		t.Fatalf("expected nil ctrDone channel, got: %v", ctrDone)
+		t.Fatalf("expected nil ctrDone channel, received: %v", ctrDone)
 	}
 }
 
@@ -95,18 +94,18 @@ func checkResult(
 	t.Helper()
 	if expectedID == "!" {
 		if result.ID == "" {
-			t.Errorf("expected non-empty ID, got: %s", result.ID)
+			t.Errorf("expected non-empty ID, received: %s", result.ID)
 		}
 	} else {
 		if result.ID != expectedID {
-			t.Errorf("expected ID '%s', got: %s", expectedID, result.ID)
+			t.Errorf("expected ID '%s', received: %s", expectedID, result.ID)
 		}
 	}
 	if result.Status != expectedStatus {
-		t.Errorf("expected exit code %d, got: %d", expectedStatus, result.Status)
+		t.Errorf("expected exit code %d, received: %d", expectedStatus, result.Status)
 	}
 	if !errors.Is(result.Err, expectedErr) {
-		t.Errorf("expected error '%v', got: %v", expectedErr, result.Err)
+		t.Errorf("expected error '%v', received: %v", expectedErr, result.Err)
 	}
 }
 
@@ -117,19 +116,17 @@ func TestContainerWithStdout(t *testing.T) {
 		container.WithStdoutChannel(catStdout.Stdin))
 	pgm, err := program.FromSystem("printf", program.WithStringArgs("|%s|\n", "Hello,", "world!"))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	ctrDone := checkedRun(t, ctr, nil, pgm)
-
-	expectedOutput := "|Hello,|\n|world!|\n|--|\n"
-
-	msg := catStdout.Print()
-	if msg != expectedOutput {
-		t.Fatalf("expected stdout message '%s', got: %s", expectedOutput, msg)
-	}
-
 	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
+
+	expected := "|Hello,|\n|world!|\n|--|\n"
+	received := catStdout.Print()
+	if expected != received {
+		t.Fatalf("expected stdout message '%s', received: %s", expected, received)
+	}
 }
 
 func TestContainerWithStdoutAndStderr(t *testing.T) {
@@ -142,23 +139,21 @@ func TestContainerWithStdoutAndStderr(t *testing.T) {
 	pgm, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "printf '|%s|\n' Hello, world! | tee /dev/stderr"))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	ctrDone := checkedRun(t, ctr, nil, pgm)
-
-	expectedOutput := "|Hello,|\n|world!|\n"
-
-	msg := catStdout.Print()
-	if msg != expectedOutput {
-		t.Fatalf("expected stdout message '%s', got: %s", expectedOutput, msg)
-	}
-	msg = catStderr.Print()
-	if msg != expectedOutput {
-		t.Fatalf("expected stderr message '%s', got: %s", expectedOutput, msg)
-	}
-
 	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
+
+	expected := "|Hello,|\n|world!|\n"
+	received := catStdout.Print()
+	if expected != received {
+		t.Fatalf("expected stdout message '%s', received: %s", expected, received)
+	}
+	received = catStderr.Print()
+	if expected != received {
+		t.Fatalf("expected stderr message '%s', received: %s", expected, received)
+	}
 }
 
 func TestContainerWithStdin(t *testing.T) {
@@ -171,7 +166,7 @@ func TestContainerWithStdin(t *testing.T) {
 	pgm, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "read input && echo \"|$input|\""))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	// Call Run() before sending input on ctrStdin because ctrStdin is not
@@ -180,14 +175,13 @@ func TestContainerWithStdin(t *testing.T) {
 	ctrDone := checkedRun(t, ctr, nil, pgm)
 
 	// `read` waits for newline, so we must send a newline after each message.
-	msg := "Hello, world!\n"
-	ctrStdin <- msg
+	ctrStdin <- "Hello, world!\n"
 	close(ctrStdin)
 
-	expectedMsg := "|Hello, world!|\n"
-	msg = <-ctrStdout
-	if msg != expectedMsg {
-		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
+	expected := "|Hello, world!|\n"
+	received := <-ctrStdout
+	if expected != received {
+		t.Fatalf("expected stdout message '%s', received: %s", expected, received)
 	}
 
 	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
@@ -195,7 +189,7 @@ func TestContainerWithStdin(t *testing.T) {
 	select {
 	case msg, ok := <-ctrStdout:
 		if ok {
-			t.Fatalf("expected no further messages, got: %s", msg)
+			t.Fatalf("expected no further messages, received: %s", msg)
 		}
 	default:
 		t.Fatalf("expected channel to close")
@@ -209,7 +203,7 @@ func TestContainerStdinOnly(t *testing.T) {
 		container.WithStdinChannel(ctrStdin))
 	pgm, err := program.FromSystem("/bin/sh", program.WithStringArgs("-c", "read input && exit $input"))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	ctrDone := checkedRun(t, ctr, nil, pgm)
@@ -239,8 +233,8 @@ func TestContainerAutoMountsRunPrograms(t *testing.T) {
 	t.Parallel()
 	dir := internal.NewTestDir(t)
 	script := dir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"\n", 0755)
-	expectedMsg := "Hello, world!\n"
-	file := dir.WriteFile("file.txt", expectedMsg, 0644)
+	expected := "Hello, world!\n"
+	file := dir.WriteFile("file.txt", expected, 0644)
 
 	ctrStdout := make(chan string)
 	ctr := container.New(commonImage,
@@ -248,14 +242,14 @@ func TestContainerAutoMountsRunPrograms(t *testing.T) {
 	pgm, err := program.FromFile(script,
 		program.WithFileArgs(file))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	ctrDone := checkedRun(t, ctr, nil, pgm)
 
-	msg := <-ctrStdout
-	if msg != expectedMsg {
-		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
+	received := <-ctrStdout
+	if expected != received {
+		t.Fatalf("expected stdout message '%s', received: %s", expected, received)
 	}
 
 	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
@@ -273,37 +267,21 @@ func TestContainerOutputAsIs(t *testing.T) {
 stdbuf -o0 printf "Hello, "
 stdbuf -o0 printf "world!\n"
 `, 0755)
-	ctrStdout := make(chan string)
+	catStdout := stream.NewStringCat()
 	ctr := container.New(commonImage,
-		container.WithStdoutChannel(ctrStdout))
+		container.WithStdoutChannel(catStdout.Stdin))
 	pgm, err := program.FromFile(script)
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	ctrDone := checkedRun(t, ctr, nil, pgm)
-
-	var ctrOutput strings.Builder
-
-	for msg := range ctrStdout {
-		ctrOutput.WriteString(msg)
-	}
-	msg := ctrOutput.String()
-
-	expectedMsg := "Hello, world!\n"
-	if msg != expectedMsg {
-		t.Fatalf("expected stdout message '%s', got: %s", expectedMsg, msg)
-	}
-
 	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
 
-	select {
-	case msg, ok := <-ctrStdout:
-		if ok {
-			t.Fatalf("expected no further messages, got: %s", msg)
-		}
-	default:
-		t.Fatalf("expected channel to close")
+	expected := "Hello, world!\n"
+	received := catStdout.Print()
+	if expected != received {
+		t.Fatalf("expected stdout message '%s', received: %s", expected, received)
 	}
 }
 
@@ -356,17 +334,17 @@ fi
 
 	pgm1, err := program.FromFile(script, program.WithStringArgs("-xy", "--optY"))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 	pgm2, err := program.FromFile(script, program.WithStringArgs("-yx", "--optX"))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	ctrDone := checkedRun(t, ctr, nil, pgm1, pgm2)
 	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
 
-	expectedOutput := fmt.Sprintf(`
+	expected := fmt.Sprintf(`
 Args: -x -y --optY -- %s -yx --optX --
 Option X is set
 Option Y is set
@@ -376,10 +354,10 @@ Option X is set
 Option Y is set
 `, ctr.HostToGuestMap[script])
 
-	stdout := catStdout.Print()
+	received := catStdout.Print()
 
-	if stdout != expectedOutput {
-		t.Fatalf("expected stdout message '%s', got: %s", expectedOutput, stdout)
+	if expected != received {
+		t.Fatalf("expected stdout message '%s', received: %s", expected, received)
 	}
 }
 
@@ -393,23 +371,23 @@ func TestBuildProgramCommandStrings(t *testing.T) {
 	pgm, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "echo Hello"))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	cmdTokens, mounts := container.BuildProgramCmd(ctr.HostToGuestMap, pgm)
 
 	expectedCmd := []string{"/bin/sh", "-c", "echo Hello", "--"}
 	if len(cmdTokens) != len(expectedCmd) {
-		t.Fatalf("expected command tokens %v, got: %v", expectedCmd, cmdTokens)
+		t.Fatalf("expected command tokens %v, received: %v", expectedCmd, cmdTokens)
 	}
 	for i, token := range cmdTokens {
 		if token != expectedCmd[i] {
-			t.Fatalf("expected command token '%s', got: '%s'", expectedCmd[i],
+			t.Fatalf("expected command token '%s', received: '%s'", expectedCmd[i],
 				token)
 		}
 	}
 	if len(mounts) != 0 {
-		t.Fatalf("expected no mapping, got: %v", mounts)
+		t.Fatalf("expected no mapping, received: %v", mounts)
 	}
 }
 
@@ -425,23 +403,23 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 		program.WithFileArgs(file),
 		program.WithFileArgs(script))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	cmdTokens, fileMap := container.BuildProgramCmd(ctr.HostToGuestMap, pgm)
 
 	if len(fileMap) != 2 { // script & file
-		t.Fatalf("expected 2 mapping, got: %d", len(fileMap))
+		t.Fatalf("expected 2 mapping, received: %d", len(fileMap))
 	}
 
 	expectedCmd := []string{fileMap[script], "--file", fileMap[file], fileMap[script], "--"}
 	if len(cmdTokens) != len(expectedCmd) {
-		t.Fatalf("expected command tokens %v, got: %v", expectedCmd, cmdTokens)
+		t.Fatalf("expected command tokens %v, received: %v", expectedCmd, cmdTokens)
 	}
 
 	for i, token := range cmdTokens {
 		if token != expectedCmd[i] {
-			t.Fatalf("expected command token '%s', got: '%s'", expectedCmd[i], token)
+			t.Fatalf("expected command token '%s', received: '%s'", expectedCmd[i], token)
 		}
 	}
 }
@@ -458,19 +436,19 @@ func TestBuildProgramNewMappings(t *testing.T) {
 		program.WithFileArgs(file),
 		program.WithFileArgs(script))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	_, fileMap := container.BuildProgramCmd(ctr.HostToGuestMap, pgm)
 
 	if len(fileMap) != 2 { // script & file
-		t.Fatalf("expected 2 mapping, got: %d", len(fileMap))
+		t.Fatalf("expected 2 mapping, received: %d", len(fileMap))
 	}
 
 	// Test idempotence
 	_, fileMap = container.BuildProgramCmd(ctr.HostToGuestMap, pgm)
 	if len(fileMap) != 2 {
-		t.Fatalf("expected 2 mapping, got: %d", len(fileMap))
+		t.Fatalf("expected 2 mapping, received: %d", len(fileMap))
 	}
 
 	// Test recording a mapping to the container's HostToGuestMap
@@ -479,10 +457,10 @@ func TestBuildProgramNewMappings(t *testing.T) {
 
 	_, fileMap = container.BuildProgramCmd(ctr.HostToGuestMap, pgm)
 	if len(fileMap) != 1 {
-		t.Fatalf("expected 1 mapping, got: %d", len(fileMap))
+		t.Fatalf("expected 1 mapping, received: %d", len(fileMap))
 	}
 	if _, ok := fileMap[script]; ok {
-		t.Fatalf("expected no new mapping for script, got: %s", fileMap[script])
+		t.Fatalf("expected no new mapping for script, received: %s", fileMap[script])
 	}
 }
 
@@ -508,7 +486,7 @@ func TestExec(t *testing.T) {
 	pgm, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "read input && exit $input"))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	ctrDone := checkedRun(t, ctr, nil, pgm)
@@ -516,12 +494,12 @@ func TestExec(t *testing.T) {
 	execStdin := make(chan string)
 	execDone, err := ctr.Exec(pgm, stream.WithStdinChannel(execStdin))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	select {
 	case result := <-execDone:
-		t.Fatalf("expected no result, got: %+v", result)
+		t.Fatalf("expected no result, received: %+v", result)
 	default:
 	}
 
@@ -541,14 +519,14 @@ func TestExecNotRunning(t *testing.T) {
 	ctr := container.New(commonImage)
 	pgm, err := program.FromSystem("cat")
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 	execDone, err := ctr.Exec(pgm)
 	if !errors.Is(err, container.ErrNotRunning) {
-		t.Fatalf("expected error '%v', got: %v", container.ErrNotRunning, err)
+		t.Fatalf("expected error '%v', received: %v", container.ErrNotRunning, err)
 	}
 	if execDone != nil {
-		t.Fatalf("expected nil execDone channel, got: %v", execDone)
+		t.Fatalf("expected nil execDone channel, received: %v", execDone)
 	}
 }
 
@@ -557,10 +535,10 @@ func TestExecNoPrograms(t *testing.T) {
 	ctr := container.New(commonImage)
 	execDone, err := ctr.Exec(nil)
 	if !errors.Is(err, container.ErrNoProgram) {
-		t.Fatalf("expected error '%v', got: %v", container.ErrNoProgram, err)
+		t.Fatalf("expected error '%v', received: %v", container.ErrNoProgram, err)
 	}
 	if execDone != nil {
-		t.Fatalf("expected nil execDone channel, got: %v", execDone)
+		t.Fatalf("expected nil execDone channel, received: %v", execDone)
 	}
 }
 
@@ -571,16 +549,16 @@ func TestExecMissingMounts(t *testing.T) {
 	path := internal.NewTestDir(t).TouchFile("file.txt")
 	pgm, err := program.FromSystem("cat", program.WithFileArgs(path))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	execDone, err := ctr.Exec(pgm)
 	if !errors.Is(err, container.ErrNotMounted) {
-		t.Fatalf("expected error '%v', got: %v", container.ErrNotMounted, err)
+		t.Fatalf("expected error '%v', received: %v", container.ErrNotMounted, err)
 	}
 
 	if execDone != nil {
-		t.Fatalf("expected nil execDone channel, got: %v", execDone)
+		t.Fatalf("expected nil execDone channel, received: %v", execDone)
 	}
 
 	checkResult(t, ctrClose(), ctr.ID, 0, nil)
@@ -593,12 +571,12 @@ func TestExecMounts(t *testing.T) {
 
 	pgm, err := program.FromSystem("cat", program.WithFileArgs(path))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	execDone, err := ctr.Exec(pgm)
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	// Wait for exec program to finish before closing the container!
@@ -621,7 +599,7 @@ done
 
 	pgm, err := program.FromFile(script)
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 	execStdin := make(chan string)
 	execStdout := make(chan string)
@@ -631,19 +609,19 @@ done
 		stream.WithStdoutChannel(execStdout))
 
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	execStdin <- "Hello,\n"
 	msg := <-execStdout
 	if msg != "Hello,\n" {
-		t.Fatalf("expected stdout message 'Hello,', got: %s", msg)
+		t.Fatalf("expected stdout message 'Hello,', received: %s", msg)
 	}
 
 	execStdin <- "world!\n"
 	msg = <-execStdout
 	if msg != "world!\n" {
-		t.Fatalf("expected stdout message 'world!', got: %s", msg)
+		t.Fatalf("expected stdout message 'world!', received: %s", msg)
 	}
 
 	close(execStdin) // Signal end of input
@@ -654,7 +632,7 @@ done
 	select {
 	case msg, ok := <-execStdout:
 		if ok {
-			t.Fatalf("expected no further messages, got: %s", msg)
+			t.Fatalf("expected no further messages, received: %s", msg)
 		}
 	default:
 		t.Fatalf("expected channel to close")
@@ -675,7 +653,7 @@ func TestFindContainerByID(t *testing.T) {
 	pgm, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "read input && echo \"|$input|\""))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	ctrDone := checkedRun(t, ctr, nil, pgm)
@@ -684,21 +662,21 @@ func TestFindContainerByID(t *testing.T) {
 
 	foundCtr, err := container.Find(ctr.ID)
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 	if foundCtr == nil {
-		t.Fatal("expected to find container, got nil")
+		t.Fatal("expected to find container, received nil")
 	}
 	if foundCtr.ID != ctr.ID {
-		t.Fatalf("expected found container ID '%s', got: %s", ctr.ID, foundCtr.ID)
+		t.Fatalf("expected found container ID '%s', received: %s", ctr.ID, foundCtr.ID)
 	}
 
 	ctrStdin <- "world!\n"
 
-	message := <-ctrStdout
-	expectedMessage := "|Hello, world!|\n"
-	if message != expectedMessage {
-		t.Fatalf("expected stdout message '%s', got: %s", expectedMessage, message)
+	expected := "|Hello, world!|\n"
+	received := <-ctrStdout
+	if expected != received {
+		t.Fatalf("expected stdout message '%s', received: %s", expected, received)
 	}
 
 	close(ctrStdin)
@@ -709,10 +687,10 @@ func TestFindContainerNotFound(t *testing.T) {
 	t.Parallel()
 	ctr, err := container.Find("__does-not-exist")
 	if !errors.Is(err, container.ErrNotFound) {
-		t.Fatalf("expected error '%v', got: %v", container.ErrNotFound, err)
+		t.Fatalf("expected error '%v', received: %v", container.ErrNotFound, err)
 	}
 	if ctr != nil {
-		t.Fatalf("expected nil container, got: %v", ctr)
+		t.Fatalf("expected nil container, received: %v", ctr)
 	}
 }
 
@@ -723,10 +701,10 @@ func TestFindContainerByName(t *testing.T) {
 	ctr, err := container.Find(ctrName)
 
 	if !errors.Is(err, container.ErrNotFound) {
-		t.Fatalf("expected error '%v', got: %v", container.ErrNotFound, err)
+		t.Fatalf("expected error '%v', received: %v", container.ErrNotFound, err)
 	}
 	if ctr != nil {
-		t.Fatalf("expected nil container, got: %v", ctr)
+		t.Fatalf("expected nil container, received: %v", ctr)
 	}
 
 	_, ctrClose := container.Idle(commonImage,
@@ -734,16 +712,16 @@ func TestFindContainerByName(t *testing.T) {
 
 	ctr, err = container.Find(ctrName)
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 	if ctr == nil {
-		t.Fatal("expected to find container, got nil")
+		t.Fatal("expected to find container, received nil")
 	}
 	if ctr.ID == "" {
-		t.Fatal("expected non-empty ID, got empty string")
+		t.Fatal("expected non-empty ID, received empty string")
 	}
 	if ctr.Name != ctrName {
-		t.Fatalf("expected container name '%s', got: %s", ctrName, ctr.Name)
+		t.Fatalf("expected container name '%s', received: %s", ctrName, ctr.Name)
 	}
 
 	checkResult(t, ctrClose(), ctr.ID, 0, nil)
@@ -759,7 +737,7 @@ func TestFindContainerExec(t *testing.T) {
 	pgm, err := program.FromSystem("/bin/sh",
 		program.WithStringArgs("-c", "read input && echo \"|$input|\""))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 
 	ctrDone := checkedRun(t, ctr, nil, pgm)
@@ -768,13 +746,13 @@ func TestFindContainerExec(t *testing.T) {
 
 	foundCtr, err := container.Find(ctr.ID)
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
 	if foundCtr == nil {
-		t.Fatal("expected to find container, got nil")
+		t.Fatal("expected to find container, received nil")
 	}
 	if foundCtr.ID != ctr.ID {
-		t.Fatalf("expected found container ID '%s', got: %s", ctr.ID, foundCtr.ID)
+		t.Fatalf("expected found container ID '%s', received: %s", ctr.ID, foundCtr.ID)
 	}
 
 	execStdin := make(chan string)
@@ -783,24 +761,25 @@ func TestFindContainerExec(t *testing.T) {
 		stream.WithStdinChannel(execStdin),
 		stream.WithStdoutChannel(execStdout))
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+		t.Fatalf("expected no error, received: %v", err)
 	}
+
 	execStdin <- "wow!\n"
 	close(execStdin)
 
-	message := <-execStdout
-	expectedMessage := "|wow!|\n"
-	if message != expectedMessage {
-		t.Fatalf("expected stdout message '%s', got: %s", expectedMessage, message)
+	expected := "|wow!|\n"
+	received := <-execStdout
+	if expected != received {
+		t.Fatalf("expected stdout message '%s', received: %s", expected, received)
 	}
 	checkResult(t, <-execDone, "!", 0, nil)
 
 	ctrStdin <- "world!\n"
 
-	message = <-ctrStdout
-	expectedMessage = "|Hello, world!|\n"
-	if message != expectedMessage {
-		t.Fatalf("expected stdout message '%s', got: %s", expectedMessage, message)
+	received = <-ctrStdout
+	expected = "|Hello, world!|\n"
+	if expected != received {
+		t.Fatalf("expected stdout message '%s', received: %s", expected, received)
 	}
 
 	close(ctrStdin)

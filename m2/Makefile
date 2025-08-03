@@ -2,20 +2,16 @@ TIME := /usr/bin/time -f ":: Time elapsed: %es"
 
 GO_BIN := $(if $(GOBIN),$(GOBIN),$(shell go env GOPATH)/bin)
 
-shell: image-m2test
-	docker run --rm -it m2test
-.PHONY: shell
-
 test: _test-clean
 .PHONY: test
 
 _test-reset:
 	@go clean -testcache
-.PHONY: reset-test-cache
+.PHONY: _test-reset
 
-_test-run: _test-reset gotest image-m2test
+_test-run: _test-reset gotest m2test-image
 	@-$(TIME) $(GO_BIN)/gotest $(GOFLAGS) ./...
-.PHONY: test
+.PHONY: _test-run
 
 _test-clean: _test-run
 	@docker container prune -f
@@ -25,13 +21,17 @@ gotest:
 	@go install github.com/rakyll/gotest@latest
 .PHONY: gotest
 
-image-m2test:
+m2test-image:
 	@docker build docker \
 		--quiet \
 		-f docker/m2test.dockerfile \
 		-t m2test \
 		>/dev/null
-.PHONY: image-m2test
+.PHONY: m2test-image
+
+m2test-shell: m2test-image
+	@docker run --rm -it m2test
+.PHONY: m2test-shell
 
 print-go-paths:
 	@echo "GOBIN: $(GOBIN)"
