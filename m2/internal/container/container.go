@@ -324,7 +324,6 @@ func (c *Container) startExitHandler(done chan<- Result) {
 		}
 
 		c.cs.Close()
-		c.cs.AwaitStreams()
 
 		c.client.ContainerRemove(c.ctx, c.ID, container.RemoveOptions{})
 		c.client.Close()

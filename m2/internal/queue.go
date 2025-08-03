@@ -20,6 +20,9 @@ func NewQueue[T any]() Queue[T] {
 		var outCh chan<- T
 
 		defer func() {
+			// Send all items before closing dequeue. This blocks until all
+			// messages are either consumed, or stored in dequeue if it is
+			// buffered.
 			for _, item := range buffer {
 				dequeue <- item
 			}
@@ -42,6 +45,8 @@ func NewQueue[T any]() Queue[T] {
 				buffer = append(buffer, msg)
 
 			case outCh <- next:
+				// Do not remove from buffer until actually written. Prevents
+				// loss of item if enqueue closes before writing it to dequeue.
 				buffer = buffer[1:]
 			}
 		}

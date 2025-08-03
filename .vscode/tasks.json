@@ -19,6 +19,42 @@
 	// Tasks
 	"tasks": [
 		{
+			"label": "Manage2: Run Tests",
+			"type": "shell",
+			"icon": { "id": "beaker", "color": "terminal.ansiGreen" },
+			"command": "make",
+			"args": [ "test" ],
+			"problemMatcher": [ "$go" ],
+			"group": { "kind": "test", "isDefault": true },
+			"presentation": {
+				"panel": "dedicated",
+				"showReuseMessage": false,
+			},
+			"options": {
+				"cwd": "${workspaceFolder}/m2",
+			},
+		},
+		{
+			"label": "Manage2: Run Tests (Verbose)",
+			"type": "shell",
+			"icon": { "id": "beaker", "color": "terminal.ansiGreen" },
+			"command": "make",
+			"args": [ "test" ],
+			"problemMatcher": [ "$go" ],
+			"group": { "kind": "test" },
+			"presentation": {
+				"panel": "dedicated",
+				"showReuseMessage": false,
+			},
+			"options": {
+				"cwd": "${workspaceFolder}/m2",
+				"env": {
+					"GOFLAGS": "-v",
+				},
+			},
+		},
+		{
+			"hide": true,
 			"label": "Manage: Run Pytest",
 			"type": "shell",
 			"icon": { "id": "beaker", "color": "terminal.ansiGreen" },
@@ -32,13 +68,14 @@
 				"--dist", "worksteal",
 			],
 			"problemMatcher": [ "$python" ],
-			"group": { "kind": "test", "isDefault": true },
+			"group": { "kind": "test" },
 			"presentation": {
 				"panel": "dedicated",
 				"showReuseMessage": false,
 			}
 		},
 		{
+			"hide": true,
 			"label": "Manage: Run CLI",
 			"icon": { "id": "terminal" },
 			"type": "shell",
@@ -47,6 +84,7 @@
 			"problemMatcher": [ "$python" ],
 		},
 		{
+			"hide": true,
 			"label": "Manage: Run CLI: help",
 			"icon": { "id": "terminal" },
 			"type": "shell",
@@ -55,6 +93,7 @@
 			"problemMatcher": [ "$python" ],
 		},
 		{
+			"hide": true,
 			"label": "Manage: Python shell",
 			"icon": { "id": "python" },
 			"type": "shell",
@@ -64,6 +103,7 @@
 			"presentation": { "group": "pyshell", }
 		},
 		{
+			"hide": true,
 			"label": "Manage: Python shell: rebuild",
 			"icon": { "id": "python" },
 			"type": "shell",
@@ -73,6 +113,7 @@
 			"presentation": { "group": "pyshell" }
 		},
 		{
+			"hide": true,
 			"label": "Manage: Environment Shell",
 			"icon": { "id": "python" },
 			"type": "shell",

@@ -101,6 +101,7 @@ func (cs *ContainerStream) Close() {
 		cs.ctrSock.Close()
 	}
 	cs.closeOutputChannels()
+	cs.awaitStreams()
 }
 
 func (cs *ContainerStream) closeOutputChannels() {
@@ -112,7 +113,7 @@ func (cs *ContainerStream) closeOutputChannels() {
 	}
 }
 
-func (cs *ContainerStream) AwaitStreams() {
+func (cs *ContainerStream) awaitStreams() {
 	cs.wg.Wait()
 	if cs.Stdout != nil {
 		<-cs.stdoutDone
