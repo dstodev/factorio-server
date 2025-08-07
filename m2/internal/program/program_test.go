@@ -5,12 +5,12 @@ import (
 	"io/fs"
 	"testing"
 
-	"manage2/internal"
 	"manage2/internal/program"
+	"manage2/internal/test"
 )
 
 func TestNewProgram(t *testing.T) {
-	path := internal.NewTestDir(t).TouchFile("test.sh")
+	path := test.Workdir(t).TouchFile("test.sh")
 	pgm, err := program.FromFile(path)
 	if err != nil {
 		t.Fatalf("expected no error, received %v", err)
@@ -21,7 +21,7 @@ func TestNewProgram(t *testing.T) {
 }
 
 func TestNewProgramBadPath(t *testing.T) {
-	path := internal.NewTestDir(t).Path + "/test.sh"
+	path := test.Workdir(t).Path + "/test.sh"
 	pgm, err := program.FromFile(path)
 	if !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("expected error to be 'fs.ErrNotExist', received %v", err)
@@ -52,7 +52,7 @@ func TestFromSystemWithArgs(t *testing.T) {
 }
 
 func TestFromFileWithArgs(t *testing.T) {
-	path := internal.NewTestDir(t).TouchFile("test.sh")
+	path := test.Workdir(t).TouchFile("test.sh")
 
 	pgm, err := program.FromFile(path,
 		program.WithStringArgs("arg1", "arg2"),
@@ -73,7 +73,7 @@ func TestFromFileWithArgs(t *testing.T) {
 }
 
 func TestNewProgramWithFileArgs(t *testing.T) {
-	dir := internal.NewTestDir(t)
+	dir := test.Workdir(t)
 	path := dir.TouchFile("test.sh")
 	file1 := dir.TouchFile("file1.txt")
 	file2 := dir.TouchFile("file2.txt")
@@ -97,7 +97,7 @@ func TestNewProgramWithFileArgs(t *testing.T) {
 }
 
 func TestNewProgramWithBadFileArgs(t *testing.T) {
-	path := internal.NewTestDir(t).TouchFile("test.sh")
+	path := test.Workdir(t).TouchFile("test.sh")
 
 	_, err := program.FromFile(path,
 		program.WithFileArgs("file.txt"),
@@ -108,7 +108,7 @@ func TestNewProgramWithBadFileArgs(t *testing.T) {
 }
 
 func TestArgIsFile(t *testing.T) {
-	dir := internal.NewTestDir(t)
+	dir := test.Workdir(t)
 	path := dir.TouchFile("test.sh")
 	file1 := dir.TouchFile("file1.txt")
 	file2 := dir.TouchFile("file2.txt")
@@ -132,7 +132,7 @@ func TestArgIsFile(t *testing.T) {
 }
 
 func TestAsTokens(t *testing.T) {
-	dir := internal.NewTestDir(t)
+	dir := test.Workdir(t)
 	path := dir.TouchFile("test.sh")
 	file1 := dir.TouchFile("file1.txt")
 	file2 := dir.TouchFile("file2.txt")
@@ -158,7 +158,7 @@ func TestAsTokens(t *testing.T) {
 }
 
 func TestAsTokenMutators(t *testing.T) {
-	dir := internal.NewTestDir(t)
+	dir := test.Workdir(t)
 	path := dir.TouchFile("test.sh")
 	file1 := dir.TouchFile("file1.txt")
 	file2 := dir.TouchFile("file2.txt")

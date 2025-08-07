@@ -2,7 +2,7 @@ package stream
 
 import "strings"
 
-type StringCat struct {
+type Cat struct {
 	Stdin chan<- string
 	stdin <-chan string
 
@@ -10,9 +10,9 @@ type StringCat struct {
 	done   chan struct{}
 }
 
-func NewStringCat() *StringCat {
+func NewCat() *Cat {
 	stdin := make(chan string)
-	cat := &StringCat{
+	cat := &Cat{
 		Stdin: stdin,
 		stdin: stdin,
 		done:  make(chan struct{}),
@@ -21,7 +21,7 @@ func NewStringCat() *StringCat {
 	return cat
 }
 
-func (c *StringCat) start() {
+func (c *Cat) start() {
 	go func() {
 		for line := range c.stdin {
 			c.buffer.WriteString(line)
@@ -30,7 +30,7 @@ func (c *StringCat) start() {
 	}()
 }
 
-func (c *StringCat) Print() string {
+func (c *Cat) String() string {
 	<-c.done
 	return c.buffer.String()
 }

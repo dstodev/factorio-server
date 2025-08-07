@@ -55,8 +55,7 @@ func (cs *ContainerStream) StartStreaming(ctrSock *types.HijackedResponse) {
 
 // startWritingOutputToChannels reads from the container's stdout and stderr,
 // writing them to the respective channels. Channels are closed when the
-// container's respective output streams close, if requested. If a channel is
-// nil, output is still accepted from the container, then discarded.
+// container's respective output streams close.
 func (cs *ContainerStream) startWritingOutputToChannels() {
 	stdout := io.Discard
 	stderr := io.Discard
