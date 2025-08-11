@@ -9,26 +9,26 @@ import (
 )
 
 func TestWorkdir(t *testing.T) {
-	cwd := test.Workdir(t)
-	if cwd.Path == "" {
+	workdir := test.Workdir(t)
+	if workdir.Path == "" {
 		t.Fatal("expected non-empty path for workdir")
 	}
-	if _, err := os.Stat(cwd.Path); errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("expected workdir to exist: %s", cwd.Path)
+	if _, err := os.Stat(workdir.Path); errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected workdir to exist: %s", workdir.Path)
 	}
 }
 
 func TestTouchFile(t *testing.T) {
-	cwd := test.Workdir(t)
+	workdir := test.Workdir(t)
 	fileName := "testfile.txt"
 
-	filePath := cwd.Path + "/" + fileName
+	filePath := workdir.Path + "/" + fileName
 
 	if _, err := os.Stat(filePath); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("expected file to not exist: %s", filePath)
 	}
 
-	touchPath := cwd.TouchFile(fileName)
+	touchPath := workdir.TouchFile(fileName)
 	if touchPath != filePath {
 		t.Fatalf("expected path '%s', received: %s", filePath, filePath)
 	}
@@ -43,7 +43,7 @@ func TestTouchFile(t *testing.T) {
 }
 
 func TestWriteFile(t *testing.T) {
-	cwd := test.Workdir(t)
+	workdir := test.Workdir(t)
 
 	cases := []struct {
 		name            string
@@ -85,13 +85,13 @@ func TestWriteFile(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			filePath := cwd.Path + "/" + c.name
+			filePath := workdir.Path + "/" + c.name
 
 			if _, err := os.Stat(filePath); !errors.Is(err, os.ErrNotExist) {
 				t.Fatalf("expected file to not exist: %s", filePath)
 			}
 
-			writePath := cwd.WriteFile(c.name, c.inputContent, c.mode)
+			writePath := workdir.WriteFile(c.name, c.inputContent, c.mode)
 			if writePath != filePath {
 				t.Fatalf("expected path '%s', received: %s", filePath, writePath)
 			}

@@ -127,7 +127,7 @@ func Find(id string) (ctr *Container, err error) {
 	return c, nil
 }
 
-var ErrNotNew = fmt.Errorf("container must be new to run programs")
+var ErrRunning = fmt.Errorf("container is already running")
 var ErrNoProgram = fmt.Errorf("no programs registered")
 
 // Run invokes a command in the container, mounting file arguments. The first
@@ -161,7 +161,7 @@ func (c *Container) Run(
 	err error,
 ) {
 	if c.client != nil {
-		return nil, ErrNotNew
+		return nil, ErrRunning
 	}
 
 	if len(programs) == 0 {
@@ -260,8 +260,8 @@ func (c *Container) Run(
 // by BuildProgramCmd, but is not returned in fileMap; only returns new mappings
 // in fileMap.
 //
-// BuildProgramCmd is a free function to keep it separate from the Container
-// methods, but it is public to keep it easily-testable.
+// BuildProgramCmd is a free function to keep it separate from Container, but it
+// is public to keep it easily-testable.
 func BuildProgramCmd(
 	guestCache map[string]string,
 	programs ...*program.Program,

@@ -76,8 +76,8 @@ func TestContainerOnlyRunsOnce(t *testing.T) {
 	checkResult(t, <-ctrDone, ctr.ID, 5, nil)
 
 	ctrDone, err = ctr.Run(pgm)
-	if !errors.Is(err, container.ErrNotNew) {
-		t.Fatalf("expected error '%v', received: %v", container.ErrNotNew, err)
+	if !errors.Is(err, container.ErrRunning) {
+		t.Fatalf("expected error '%v', received: %v", container.ErrRunning, err)
 	}
 	if ctrDone != nil {
 		t.Fatalf("expected nil ctrDone channel, received: %v", ctrDone)
@@ -231,10 +231,10 @@ func TestContainerStdinOnly(t *testing.T) {
 //	    "--"]
 func TestContainerAutoMountsRunPrograms(t *testing.T) {
 	t.Parallel()
-	cwd := test.Workdir(t)
-	script := cwd.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"", 0o755)
+	workdir := test.Workdir(t)
+	script := workdir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"", 0o755)
 	expected := "Hello, world!\n"
-	file := cwd.WriteFile("file.txt", expected, 0o644)
+	file := workdir.WriteFile("file.txt", expected, 0o644)
 
 	ctrStdout := make(chan string)
 	ctr := container.New(commonImage,
@@ -393,9 +393,9 @@ func TestBuildProgramCommandStrings(t *testing.T) {
 
 func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 	t.Parallel()
-	cwd := test.Workdir(t)
-	script := cwd.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"", 0755)
-	file := cwd.TouchFile("file.txt")
+	workdir := test.Workdir(t)
+	script := workdir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"", 0755)
+	file := workdir.TouchFile("file.txt")
 
 	ctr := container.New(commonImage)
 	pgm, err := program.FromFile(script,
@@ -426,9 +426,9 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 
 func TestBuildProgramNewMappings(t *testing.T) {
 	t.Parallel()
-	cwd := test.Workdir(t)
-	script := cwd.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"", 0755)
-	file := cwd.TouchFile("file.txt")
+	workdir := test.Workdir(t)
+	script := workdir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"", 0755)
+	file := workdir.TouchFile("file.txt")
 
 	ctr := container.New(commonImage)
 	pgm, err := program.FromFile(script,
@@ -759,4 +759,30 @@ func TestFindContainerExec(t *testing.T) {
 
 	close(ctrStdin)
 	checkResult(t, <-ctrDone, ctr.ID, 0, nil)
+}
+
+func TestFindContainerRunNotAllowed(t *testing.T) {
+	t.Parallel()
+	ctr, ctrClose := container.Idle(commonImage)
+
+	foundCtr, err := container.Find(ctr.ID)
+	if err != nil {
+		t.Fatalf("expected no error, received: %v", err)
+	}
+	if foundCtr == nil {
+		t.Fatal("expected to find container, received nil")
+	}
+	if foundCtr.ID != ctr.ID {
+		t.Fatalf("expected found container ID '%s', received: %s", ctr.ID, foundCtr.ID)
+	}
+
+	ctrDone, err := foundCtr.Run()
+	if !errors.Is(err, container.ErrRunning) {
+		t.Fatalf("expected error '%v', received: %v", container.ErrRunning, err)
+	}
+	if ctrDone != nil {
+		t.Fatalf("expected nil ctrDone channel, received: %v", ctrDone)
+	}
+
+	checkResult(t, ctrClose(), ctr.ID, 0, nil)
 }

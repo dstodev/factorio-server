@@ -47,7 +47,7 @@ func TestQueue(t *testing.T) {
 
 	sum := (numValues * (numValues - 1)) / 2
 	if count != sum {
-		t.Errorf("Expected count %d, got %d", sum, count)
+		t.Errorf("Expected count %d, received %d", sum, count)
 	}
 	if value, ok := q.Dequeue(); ok {
 		t.Error("Expected closed channel, received:", value)
