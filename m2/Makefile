@@ -43,7 +43,7 @@ m2test-image:
 .PHONY: m2test-image
 
 m2test-shell: m2test-image
-	@docker run --rm -it m2test
+	docker run --rm -it m2test
 .PHONY: m2test-shell
 
 server-image:

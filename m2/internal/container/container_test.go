@@ -394,7 +394,7 @@ func TestBuildProgramCommandStrings(t *testing.T) {
 func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 	t.Parallel()
 	workdir := test.Workdir(t)
-	script := workdir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"", 0755)
+	script := workdir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"", 0o755)
 	file := workdir.TouchFile("file.txt")
 
 	ctr := container.New(commonImage)
@@ -427,7 +427,7 @@ func TestBuildProgramCommandWithFileArgs(t *testing.T) {
 func TestBuildProgramNewMappings(t *testing.T) {
 	t.Parallel()
 	workdir := test.Workdir(t)
-	script := workdir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"", 0755)
+	script := workdir.WriteFile("test.sh", "#!/bin/sh\ncat \"$@\"", 0o755)
 	file := workdir.TouchFile("file.txt")
 
 	ctr := container.New(commonImage)

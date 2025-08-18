@@ -2,10 +2,11 @@ package test_test
 
 import (
 	"errors"
-	"manage2/internal/test"
 	"os"
 	"strings"
 	"testing"
+
+	"manage2/internal/test"
 )
 
 func TestWorkdir(t *testing.T) {
