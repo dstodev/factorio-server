@@ -7,8 +7,8 @@
 /shelf*/
 /test.sh
 
-tmp*
-temp*
+/tmp*
+/temp*
 secret
 
 .screenrc
