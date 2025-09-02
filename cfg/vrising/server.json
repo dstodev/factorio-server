@@ -1,0 +1,17 @@
+{
+  "rcon": {
+    "save-pre": "/save-off",
+    "save": "/save-all flush",
+    "save-post": "/save-on",
+    "say": "/tellraw @a [{\"text\":\"SERVER\",\"color\":\"gold\"},{\"text\":\" | ::\",\"color\":\"white\"}]",
+    "stop": "/stop"
+  },
+  "port": {
+    "game": 34360,
+    "rcon": 34010
+  },
+  "user": {
+    "name": "server-user:30120",
+    "group": "server-group:30120"
+  }
+}

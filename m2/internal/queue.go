@@ -6,7 +6,7 @@ type Queue[T any] struct {
 }
 
 func NewQueue[T any]() Queue[T] {
-	enqueue := make(chan T)
+	enqueue := make(chan T, 1)
 	dequeue := make(chan T)
 
 	q := Queue[T]{

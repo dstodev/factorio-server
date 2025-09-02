@@ -24,6 +24,9 @@ class Download:
     The script need not be idempotent, meaning it does not need to care about
     what to do when downloading to an already-populated directory, because this
     class will only call it when populating a fresh server directory.
+
+    If downloading with steamcmd, name the script 'steamcmd.sh' instead of
+    'download.sh' to run the script in a container based on the steamcmd image.
     '''
 
     def __init__(self, name: str) -> None:
@@ -34,7 +37,9 @@ class Download:
         '''
         self.server_dir = game.server_dir(name)
 
-        image, _logs = game.docker_image(name)
+        image, logs = game.docker_image(name)
+        if logs:
+            print(logs)
 
         binds = [
             Bind(host=self.server_dir.parent, guest='/game', writeable=True),

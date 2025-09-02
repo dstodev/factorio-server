@@ -86,7 +86,10 @@ def backup_script(name: str) -> Path:
 
 def download_script(name: str) -> Path:
     '''Get the path to the server download script.'''
-    script = cfg_dir(name) / 'download.sh'
+    if cfg_dir(name).joinpath('steamcmd.sh').exists():
+        script = cfg_dir(name) / 'steamcmd.sh'
+    else:
+        script = cfg_dir(name) / 'download.sh'
     return script
 
 
@@ -195,8 +198,10 @@ def build_args(name: str) -> dict[str, str]:
     try:
         fields = {}
         ports = cfg['port']
-        fields['game_port'] = str(ports['game'])
-        fields['rcon_port'] = str(ports['rcon'])
+        if 'game' in ports:
+            fields['game_port'] = str(ports['game'])
+        if 'rcon' in ports:
+            fields['rcon_port'] = str(ports['rcon'])
         args.update(fields)
     except KeyError:
         pass

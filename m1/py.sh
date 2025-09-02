@@ -158,9 +158,9 @@ jobs="$(($(nproc) - 1))"
 
 if $prepare; then
 	if [ "$VERBOSE" -gt 0 ]; then
-		(cd "$source_dir/rcon" && make --jobs $jobs docker)
+		(cd "$source_dir/rcon" && make --jobs $jobs image)
 	else
-		(cd "$source_dir/rcon" && make --jobs $jobs docker) >/dev/null 2>&1
+		(cd "$source_dir/rcon" && make --jobs $jobs image) >/dev/null 2>&1
 	fi
 fi
 

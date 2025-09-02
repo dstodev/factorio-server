@@ -8,7 +8,7 @@ CXX := g++
 CXXFLAGS := -std=c++17 -O3 -Wall -Wextra
 
 DOCKERFILE := Dockerfile
-DOCKER_IMAGE := rcon:latest
+IMAGE_TAG := rcon:latest
 
 all: image
 .PHONY: all
@@ -29,9 +29,9 @@ clean:
 .PHONY: clean
 
 image:
-	docker build -f $(DOCKERFILE) -t $(DOCKER_IMAGE) .
+	docker build -f $(DOCKERFILE) -t $(IMAGE_TAG) .
 .PHONY: image
 
 shell: image
-	docker run -it --rm $(DOCKER_IMAGE)
+	docker run -it --rm $(IMAGE_TAG)
 .PHONY: shell

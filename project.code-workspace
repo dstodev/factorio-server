@@ -10,10 +10,10 @@
 
 		"shellcheck.useWorkspaceRootAsCwd": true,
 
-		"python.defaultInterpreterPath": "${workspaceFolder}/manage/.venv/bin/python",
+		"python.defaultInterpreterPath": "${workspaceFolder}/m1/.venv/bin/python",
 		"python.envFile": "${workspaceFolder}/.env",
 		"python.terminal.activateEnvironment": false,
-		"python.testing.cwd": "${workspaceFolder}/manage",
+		"python.testing.cwd": "${workspaceFolder}/m1",
 		"python.testing.pytestArgs": [ ],
 		"python.testing.pytestEnabled": true,
 

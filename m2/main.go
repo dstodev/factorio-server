@@ -8,6 +8,8 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+const defaultLogLevel = "info"
+
 func main() {
 	app := &cli.Command{
 		Name:      "m2",
@@ -15,15 +17,15 @@ func main() {
 		UsageText: "m2 -g GAME COMMAND [OPTION...]",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "log-level",
-				Usage:   "Set log `LEVEL`: error, warn, info, debug",
-				Aliases: []string{"l"},
-				Value:   "info",
+				Name:        "log-level",
+				Usage:       "Set log `LEVEL`: error, warn, info, debug",
+				Aliases:     []string{"l"},
+				DefaultText: defaultLogLevel,
+				Value:       defaultLogLevel,
 			},
 			&cli.StringFlag{
 				Name:     "game",
-				Usage:    "Run command for `GAME`",
-				Category: "Required options:",
+				Usage:    "Run command for `GAME` (required)",
 				Required: true,
 				Aliases:  []string{"g"},
 			},
