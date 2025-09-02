@@ -1,10 +1,7 @@
 {
   "rcon": {
-    "save-pre": "/save-off",
-    "save": "/save-all flush",
-    "save-post": "/save-on",
-    "say": "/tellraw @a [{\"text\":\"SERVER\",\"color\":\"gold\"},{\"text\":\" | ::\",\"color\":\"white\"}]",
-    "stop": "/stop"
+    "say": "announce ::",
+    "stop": "shutdown"
   },
   "port": {
     "game": 34360,

@@ -6,16 +6,16 @@ set -euo pipefail
 hot_dir="$1"
 rcon_password="$2"
 
-touch /tmp/stopfile  # TODO: Remove this line
-
+# TODO: Get from host/config?
 game_port=34360
+rcon_port=34010
 
 cd "$hot_dir" || exit 1
 
 Xvfb :1 -screen 0 640x480x16 -nolisten tcp -nolisten unix &
 export DISPLAY=:1
 
-export WINEPREFIX="$(pwd)/wine"
+export WINEPREFIX="$(pwd)/wine"  # TODO: Share from host? This dir is huge.
 
 cfg_dir="$hot_dir/save-data/Settings"
 host_cfg="$cfg_dir/ServerHostSettings.json"
@@ -30,7 +30,7 @@ tmp_cfg="$(mktemp)"
 jq "$(cat <<-EOF
 	.Rcon.Enabled = true |
 	.Password = "vampirebtw" |
-	.Rcon.Port = 34010 |
+	.Rcon.Port = $rcon_port |
 	.Rcon.Password = "$rcon_password" |
 	.Port = $game_port
 	EOF
