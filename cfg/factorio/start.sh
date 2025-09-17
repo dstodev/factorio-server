@@ -1,7 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-# script/start-server.sh should run this script. It is not meant to run directly.
 # Requires provided inputs:
 #   $1 - rcon port
 #   $2 - rcon password

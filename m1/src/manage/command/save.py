@@ -18,7 +18,7 @@ class Save:
     To support this, Save accepts a Command "between_cmd" to run between steps 2
     and 3.
 
-    To use this, in the server.json entry for the save command, use the extended
+    To use this, in the config.json entry for the save command, use the extended
     save command syntax:
 
     "rcon": {

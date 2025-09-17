@@ -53,7 +53,7 @@ def shelf_dir(name: str) -> Path:
 
 def cfg_file(name: str) -> Path:
     '''Get the path to the game's configuration file.'''
-    path = cfg_dir(name) / 'server.json'
+    path = cfg_dir(name) / 'config.json'
     return path
 
 

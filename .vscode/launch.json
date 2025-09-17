@@ -9,7 +9,7 @@
 			"type": "debugpy",
 			"request": "launch",
 			"module": "pytest",
-			"cwd": "${workspaceFolder}/manage",
+			"cwd": "${workspaceFolder}/m1",
 			"args": [ ],
 		},
 		{
@@ -17,7 +17,7 @@
 			"type": "debugpy",
 			"request": "launch",
 			"module": "cli",
-			"cwd": "${workspaceFolder}/manage",
+			"cwd": "${workspaceFolder}/m1",
 			"args": "${input:argstr}"
 		}
 	],

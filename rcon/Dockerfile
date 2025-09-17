@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:noble
 #    ubuntu:latest tracks the latest LTS release
 
 RUN apt-get update \

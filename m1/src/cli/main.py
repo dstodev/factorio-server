@@ -36,16 +36,16 @@ def main():
 
     match args.command:
         case 'download':
-            action = Download(args.name)
+            action = Download(args.name, verbose=args.verbose)
 
         case 'start':
             action = Start(args.name)
 
         case 'stop':
-            action = Stop(args.name)
+            action = Stop(args.name, timeout_s=120)
 
         case 'backup':
-            action = Backup(args.name)
+            action = Backup(args.name, timeout_s=120)
 
         case 'shelf':
             action = Shelf(args.name)

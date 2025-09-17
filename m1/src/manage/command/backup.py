@@ -18,13 +18,14 @@ class Backup:
     Does not require the server to be running.
     '''
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, timeout_s: int = 10) -> None:
         '''Initialize the backup command.
 
         :param name: The game to back up.
         :type name: str
         '''
         self.name = name
+        self.timeout = timeout_s
 
         # server_dir looks like: <repo>/server-files/<game-name>/hot
         self.server_dir = game.server_dir(name)
@@ -95,7 +96,7 @@ class Backup:
                 self.container.start(entrypoint=['/bin/sh', '-c'],
                                      command=[command])
 
-                result = self.container.wait(timeout=600)
+                result = self.container.wait(timeout=self.timeout)
                 self.last_result = result
 
             finally:

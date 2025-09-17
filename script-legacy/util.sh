@@ -17,25 +17,27 @@ timestamp() {
 	date +"%Y-%m-%dT%H+%M+%S%z"
 }
 
-# Print '-q' if VERBOSE is unset or 0.
-# Useful to "forward" non-verbosity to commands supporting -q.
+verbose() {
+	if [ "${VERBOSE:-0}" -gt 0 ]; then
+		echo "$@"
+	fi
+}
+
+flag_verbose() {
+	verbose '-v'
+}
+
 flag_quiet() {
 	if [ "${VERBOSE:-0}" -eq 0 ]; then
 		echo '-q'
 	fi
 }
 
-# Print '-v' if VERBOSE is greater than 0.
-# Useful to "forward" verbosity to commands supporting -v.
-flag_verbose() {
-	verbose '-v'
-}
-
-# Print a message if VERBOSE is set & greater than 0.
-verbose() {
-	if [ "${VERBOSE:-0}" -gt 0 ]; then
-		echo "$@"
-	fi
+# True if version $1 >= $2
+version_ge() {
+	# Sorts in ascending order, so the first line is the lowest
+	# If $2 is the lowest version, then $1 >= $2
+	[ "$(printf '%s\n' "$1" "$2" | sort --version-sort | head --lines 1)" = "$2" ]
 }
 
 # Find and return a working python interpreter of at least the provided version
@@ -81,11 +83,4 @@ py_interpreter() {
 	echo "       Please install $version or higher." >&2
 
 	return 1
-}
-
-# True if version $1 >= $2
-version_ge() {
-	# Sorts in ascending order, so the first line is the lowest
-	# If $2 is the lowest version, then $1 >= $2
-	[ "$(printf '%s\n' "$1" "$2" | sort --version-sort | head --lines 1)" = "$2" ]
 }

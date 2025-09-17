@@ -1,7 +1,7 @@
 {
   "rcon": {
     "say": "announce ::",
-    "stop": "shutdown"
+    "stop": "shutdown 1"
   },
   "port": {
     "game": 34360,

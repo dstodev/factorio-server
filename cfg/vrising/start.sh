@@ -19,6 +19,7 @@ export WINEPREFIX="$(pwd)/wine"  # TODO: Share from host? This dir is huge.
 
 cfg_dir="$hot_dir/save-data/Settings"
 host_cfg="$cfg_dir/ServerHostSettings.json"
+game_cfg="$cfg_dir/ServerGameSettings.json"
 
 if [ ! -f "$host_cfg" ]; then
 	tar -C "$hot_dir/VRisingServer_Data/StreamingAssets/Settings" -cf - . | \
@@ -26,7 +27,6 @@ if [ ! -f "$host_cfg" ]; then
 fi
 
 tmp_cfg="$(mktemp)"
-
 jq "$(cat <<-EOF
 	.Rcon.Enabled = true |
 	.Password = "vampirebtw" |
@@ -35,8 +35,17 @@ jq "$(cat <<-EOF
 	.Port = $game_port
 	EOF
 )" "$host_cfg" > "$tmp_cfg"
-
 cat "$tmp_cfg" > "$host_cfg"
+rm "$tmp_cfg"
+
+tmp_cfg="$(mktemp)"
+jq "$(cat <<-EOF
+	.GameModeType = "PvE" |
+	.ClanSize = 20 |
+	.TeleportBoundItems = false
+	EOF
+)" "$game_cfg" > "$tmp_cfg"
+cat "$tmp_cfg" > "$game_cfg"
 rm "$tmp_cfg"
 
 # https://vrising.fandom.com/wiki/V_Rising_Dedicated_Server#Launch_Commands

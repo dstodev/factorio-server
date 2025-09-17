@@ -18,7 +18,6 @@ help() {
 		  -r, --refresh   Reinitialize the virtual environment.
 		                  Repeat to fully rebuild the environment.
 		  -s, --shell     Start a shell in the virtual environment.
-		  -p, --prepare   Prepare additional environment tools e.g. Docker images.
 
 		  -- [COMMAND] [ARG]...   Run a command in the environment.
 
@@ -32,8 +31,8 @@ help() {
 canonical=$(
 	# Requires util-linux getopt(1) to support long options like GNU getopt_long(3)
 	getopt --name "$(basename "$0")" \
-		--options hvrsp \
-		--longoptions help,verbose,refresh,shell,prepare \
+		--options hvrs \
+		--longoptions help,verbose,refresh,shell \
 		-- "$@"
 ) || status=$?
 
@@ -65,9 +64,6 @@ while :; do
 	-s | --shell)
 		shell=true
 		;;
-	-p | --prepare)
-		prepare=true
-		;;
 
 	--)
 		shift # --
@@ -78,7 +74,6 @@ while :; do
 done
 
 shell="${shell-false}"
-prepare="${prepare-false}"
 
 umask 0002
 
@@ -156,13 +151,14 @@ fi
 
 jobs="$(($(nproc) - 1))"
 
-if $prepare; then
+prepare() {
 	if [ "$VERBOSE" -gt 0 ]; then
 		(cd "$source_dir/rcon" && make --jobs $jobs image)
 	else
 		(cd "$source_dir/rcon" && make --jobs $jobs image) >/dev/null 2>&1
 	fi
-fi
+}
+prepare
 
 # docker-py and urllib emit a lot of warnings :(
 PYTHONWARNINGS="${PYTHONWARNINGS:-ignore}"

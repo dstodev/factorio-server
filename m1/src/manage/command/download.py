@@ -29,7 +29,7 @@ class Download:
     'download.sh' to run the script in a container based on the steamcmd image.
     '''
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, verbose: bool = False) -> None:
         '''Initialize the Download command.
 
         :param name: The game to download.
@@ -38,7 +38,7 @@ class Download:
         self.server_dir = game.server_dir(name)
 
         image, logs = game.docker_image(name)
-        if logs:
+        if verbose and logs:
             print(logs)
 
         binds = [

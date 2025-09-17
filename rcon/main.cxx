@@ -417,8 +417,7 @@ int main(int argc, char const* argv[])
 
 	if (argc < 2) {
 		std::cout << "RCON client: " << basename << "\n\n"
-		          << "Usage: " << basename << " host[:port] [command] <<< rcon_password\n"
-		          << "   or: echo rcon_password | " << basename << " host[:port] [command]\n"
+		          << "Usage: echo rcon_password | " << basename << " host[:port] [command]\n"
 		          << "   or: cat file_with_rcon_password | " << basename << " host[:port] [command]\n"
 		          << "   or: " << basename << " test\n\n"
 		          << "If a command is not provided, the client will print whether or not it can connect to the "

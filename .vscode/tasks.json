@@ -54,7 +54,7 @@
 			},
 		},
 		{
-			"hide": true,
+			"hide": false,
 			"label": "Manage: Run Pytest",
 			"type": "shell",
 			"icon": { "id": "beaker", "color": "terminal.ansiGreen" },
