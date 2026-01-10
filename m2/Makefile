@@ -5,11 +5,18 @@ TIME := /usr/bin/time -f ':: Time elapsed: %es'
 THIS_MAKEFILE := $(realpath $(lastword $(MAKEFILE_LIST)))
 THIS_DIR := $(patsubst %/,%,$(dir $(THIS_MAKEFILE)))
 
-GO_BIN := $(if $(GOBIN),$(GOBIN),$(shell go env GOPATH)/bin)
+GO_PATH := $(shell go env GOPATH)
+GO_BIN := $(if $(GOBIN),$(GOBIN),$(GO_PATH)/bin)
+
+# Only include files after defining THIS_MAKEFILE above,
+# because `include` appends to MAKEFILE_LIST
+
+include script/util.mk
 
 help:
 	@echo "Available targets:"
-	@awk -F: '/^[^_.][A-Za-z0-9_-]*:/ { print "  " $$1 }' $(MAKEFILE_LIST)
+# avoid listing targets of all makefiles by using THIS_MAKEFILE over MAKEFILE_LIST
+	@awk -F: '/^[^_.][A-Za-z0-9_-]*:/ { print "  " $$1 }' $(THIS_MAKEFILE)
 .PHONY: help
 
 test:
@@ -46,6 +53,8 @@ m2test-shell: m2test-image
 	docker run --rm -it m2test
 .PHONY: m2test-shell
 
+# Build in the context of ../rcon, but use m2/docker/server.dockerfile instead
+# of ../rcon/Dockerfile
 server-image:
 	@cd $(THIS_DIR)/..; docker build rcon \
 		--quiet \
@@ -58,10 +67,17 @@ server-shell: server-image
 	@docker run --rm -it m2-server
 .PHONY: server-shell
 
-vars:
-	@echo "THIS_MAKEFILE: $(THIS_MAKEFILE)"
-	@echo "THIS_DIR: $(THIS_DIR)"
-	@echo "GOBIN: $(GOBIN)"
-	@echo "GOPATH: $(shell go env GOPATH)"
-	@echo "GO_BIN: $(GO_BIN)"
-.PHONY: vars
+# List this makefile's variables
+# see: https://stackoverflow.com/a/26339924
+var-names:
+# 	@$(MAKE) \
+# 		--print-data-base \
+# 		--question \
+# 		--no-builtin-rules \
+# 		--no-builtin-variables \
+# 		--file $(THIS_MAKEFILE) \
+# 		: 2>/dev/null |
+	@grep --extended-regexp '^[^[:space:].#=]+[[:space:]]*[^=]?=' $(THIS_MAKEFILE) \
+	| cut -d' ' -f1 \
+	| LC_ALL=C sort
+.PHONY: var-names

@@ -53,7 +53,7 @@ func New(image string, opts ...ContainerOption) *Container {
 
 // Idle creates a container that remains open but idle until ctrClose() is
 // called. This is useful to run an arbitrary number of commands with Exec().
-// WithStdinChannel() options are ignored.
+// Ignores WithStdinChannel.
 func Idle(
 	image string,
 	opts ...ContainerOption,
@@ -302,8 +302,8 @@ func toGuestPath(hostPath string) string {
 	return guestPath
 }
 
-// startExitHandler waits for the container to exit, then sends the result to
-// the Done channel. It then removes the container.
+// startExitHandler starts a goroutine which waits for the container to exit,
+// sends its result to the Done channel, then removes the container.
 func (c *Container) startExitHandler(done chan<- Result) {
 	ctrStatus, ctrErr := c.client.ContainerWait(c.ctx, c.ID, container.WaitConditionNextExit)
 

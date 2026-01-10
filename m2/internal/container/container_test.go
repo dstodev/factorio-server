@@ -464,9 +464,7 @@ func TestBuildProgramNewMappings(t *testing.T) {
 	}
 }
 
-// Assert we can control when a container exits by running a command that waits
-// for input on stdin like `cat`. This allows us to explicitly control when the
-// container closes by closing the stdin channel. This is useful to run multiple
+// Assert we can control when a container exits. This is useful to run multiple
 // arbitrary commands with Exec() before closing the container.
 func TestIdleContainer(t *testing.T) {
 	t.Parallel()

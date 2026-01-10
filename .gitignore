@@ -1,13 +1,14 @@
 /.vscode/settings.json
 
-/backup/
-/cfg/*.json
-/logs/
-/server-files*/
+backup/
+logs/
+hot/
+
 /shelf*/
-/test.sh
+/test*.sh
 
 /tmp*
+/TODO*
 /temp*
 secret
 

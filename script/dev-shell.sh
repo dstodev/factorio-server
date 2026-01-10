@@ -7,12 +7,12 @@ set -euo pipefail
 
 help() {
 	cat <<-EOF
-	Usage: $0 game [-r]
+		Usage: $0 game [-r]
 
-	Launch a shell in the server environment for a game.
+		Launch a shell in the server environment for a game.
 
-	-h, --help   Print this message.
-	-r, --root   Run as root instead of as server's user.
+		-h, --help   Print this message.
+		-r, --root   Run as root instead of as server's user.
 	EOF
 }
 
@@ -54,7 +54,7 @@ done
 
 this_dir="$(dirname -- "$(readlink -f -- "$0")")"
 source_dir="$(readlink -f -- "$this_dir/..")"
-rcon_dir="$source_dir/rcon"
+#rcon_dir="$source_dir/rcon" # TODO: expose RCON client? m1 cli supports rcon --send.
 
 game="${1-}"
 shift || true
@@ -100,11 +100,37 @@ user_uid="${user_namestr##*:}"
 user_gid="${user_groupstr##*:}"
 
 host_hot="$source_dir/server-files/$game/hot"
+host_shelf="$source_dir/shelf/$game"
 
 mounts=(
 	"$source_dir:/src"
 	"$host_hot:/hot"
+	"$host_shelf:/shelf"
 )
+
+preamble() {
+	echo
+	echo 'Mounts:'
+	column \
+		--table \
+		--separator '>' \
+		--output-separator '>' \
+		--table-right 1 \
+		<<-EOF
+			$(print_mounts "${mounts[@]}")
+		EOF
+	echo
+	column \
+		--table \
+		--separator : \
+		--output-separator : \
+		--table-right 1 \
+		<<-EOF
+			$user_name:$user_group
+			 $user_uid:$user_gid
+		EOF
+	echo
+}
 
 print_mounts() {
 	local mounts=("$@")
@@ -113,7 +139,6 @@ print_mounts() {
 		return
 	fi
 
-	echo "Mounts:"
 	for m in "${mounts[@]}"; do
 		host="${m%%:*}"
 		guest="${m#*:}"
@@ -121,29 +146,9 @@ print_mounts() {
 	done
 }
 
-preamble() {
-	cat <<-EOF
-
-		Game: $game
-
-		$(print_mounts "${mounts[@]}")
-
-		EOF
-
-	column \
-		--table \
-		--separator : \
-		--output-separator : \
-		--table-right 1 \
-	<<-EOF
-		$user_name:$user_group
-		 $user_uid:$user_gid
-	EOF
-	echo
-}
 preamble
 
-("$source_dir/m1/py.sh" -- -m cli "$game" download)
+("$source_dir/m1/py.sh" -- -m cli "$game" download) # builds the image
 
 run_mounts=()
 for m in "${mounts[@]}"; do

@@ -7,7 +7,7 @@ rcon_password="$2"
 touch /tmp/stopfile
 
 game_port=34120
-rcon_port=34240
+rcon_port=34111
 
 cd "$hot_dir" || exit 1
 

@@ -202,6 +202,10 @@ def build_args(name: str) -> dict[str, str]:
             fields['game_port'] = str(ports['game'])
         if 'rcon' in ports:
             fields['rcon_port'] = str(ports['rcon'])
+        if 'query' in ports:
+            fields['query_port'] = str(ports['query'])
+        if 'vnc' in ports:
+            fields['vnc_port'] = str(ports['vnc'])
         args.update(fields)
     except KeyError:
         pass

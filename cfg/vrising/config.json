@@ -5,7 +5,7 @@
   },
   "port": {
     "game": 34360,
-    "rcon": 34010
+    "rcon": 34111
   },
   "user": {
     "name": "server-user:30120",

@@ -45,7 +45,7 @@ def main():
             action = Stop(args.name, timeout_s=120)
 
         case 'backup':
-            action = Backup(args.name, timeout_s=120)
+            action = Backup(args.name, timeout_s=6000)
 
         case 'shelf':
             action = Shelf(args.name)

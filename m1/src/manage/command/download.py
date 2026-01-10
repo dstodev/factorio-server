@@ -77,7 +77,7 @@ class Download:
                 self.container.start(entrypoint=['/bin/sh', '-c'],
                                      command=[command])
 
-                result = self.container.wait(timeout=300)
+                result = self.container.wait(timeout=600)
             finally:
                 parent_dir.chmod(restore_mode)
                 clean_docker(self.container.name)

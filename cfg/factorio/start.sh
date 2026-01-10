@@ -5,6 +5,7 @@ set -euo pipefail
 #   $1 - rcon port
 #   $2 - rcon password
 
+# TODO: These are no-longer the correct args
 rcon_port="$1"
 rcon_password="$2"
 

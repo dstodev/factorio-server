@@ -28,11 +28,34 @@ class Start:
 
         ports = {}
 
+        cfg = game.cfg_data(name)
+
         try:
-            game_port = game.cfg_data(self.name)['port']['game']
+            game_port = cfg['port']['game']
             ports[f'{game_port}/tcp'] = int(game_port)
             ports[f'{game_port}/udp'] = int(game_port)
+        except KeyError:
+            pass
 
+        try:
+            query_port = cfg['port']['query']
+            ports[f'{query_port}/tcp'] = int(query_port)
+            ports[f'{query_port}/udp'] = int(query_port)
+        except KeyError:
+            pass
+
+        try:
+            vnc_port = cfg['port']['vnc']
+            ports[f'{vnc_port}/tcp'] = int(vnc_port)
+        except KeyError:
+            pass
+
+        try:
+            extra_binds = cfg['binds']
+            for bind in extra_binds:
+                binds.append(Bind(host=bind['host'],
+                                  guest=bind['guest'],
+                                  writeable=bind.get('writeable', False)))
         except KeyError:
             pass
 
@@ -50,7 +73,14 @@ class Start:
         # /game aligns with guest value for server_dir.parent bind mount in __init__
         guest_server_dir = '/game/hot'
 
-        rcon_password = rcon.password(self.name, new=True)
+        rcon_length = 128
+        try:
+            cfg = game.cfg_data(self.name)
+            rcon_length = cfg['rcon']['length']
+        except KeyError:
+            pass
+
+        rcon_password = rcon.password(self.name, new=True, length=rcon_length)
 
         command = ' && '.join([
             'umask 0002',

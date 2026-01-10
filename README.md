@@ -30,7 +30,7 @@ These ports are configurable in `./docker/.env`.
 ### For the first time
 
 To start the server for the first time, run:  
-`./script/start-server.sh --update-only`
+`./script/legacy/start-server.sh --update-only`
 
 to download the server files without starting the server.
 
@@ -39,12 +39,12 @@ Then, update configuration files in `./cfg` and start the server normally:
 ### Normally
 
 To start the server normally, run:  
-`./script/start-server.sh`
+`./script/legacy/start-server.sh`
 
 ### With updated server files
 
 To update the server before starting, run:  
-`./script/start-server.sh --update --restore`
+`./script/legacy/start-server.sh --update --restore`
 
 to move the current server files to `./shelf` and update the server files.
 After updating, `--restore` will copy world and configuration files from the
@@ -54,27 +54,27 @@ starts normally.
 ## Stop server
 
 To save the world and gracefully stop the server, run:  
-`./script/stop-server.sh`
+`./script/legacy/stop-server.sh`
 
 Gracefully stopping the server requires RCON (see below).
 
 To forcefully stop the server, pass the `--force` flag:  
-`./script/stop-server.sh --force`
+`./script/legacy/stop-server.sh --force`
 
 this will stop the server without saving the world or backing up server files.
 
 ## Restart server
 
 To restart the server:  
-`./script/stop-server.sh --restart`
+`./script/legacy/stop-server.sh --restart`
 
 You may schedule automatic restarts using e.g. a cron job.
-See `./script/stop-server.sh` for details.
+See `./script/legacy/stop-server.sh` for details.
 
 ## RCON
 
 To send RCON commands to the server, run:  
-`./script/send-rcon.sh MyRconCommand`
+`./script/legacy/send-rcon.sh MyRconCommand`
 
 This script assumes the server is accessible via `localhost`, but the
 underlying C++ client `./rcon/main.cxx` supports sending messages to any host.
@@ -82,11 +82,11 @@ underlying C++ client `./rcon/main.cxx` supports sending messages to any host.
 ## Backups
 
 To backup important server files, run:  
-`./script/backup.sh --force`
+`./script/legacy/backup.sh --force`
 
 Backups are created automatically when the server is stopped via `stop-server.sh`.
 
-You should schedule automatic backups using e.g. a cron job. See `./script/backup.sh`
+You should schedule automatic backups using e.g. a cron job. See `./script/legacy/backup.sh`
 for details.
 
 ### Restore from backup
@@ -123,7 +123,7 @@ Then replace files in `./server-files/` with files from the backup.
 
 ## Permissions
 
-Running `./script/start-server.sh --update` will cause:
+Running `./script/legacy/start-server.sh --update` will cause:
 
 - Group `server-group` exists
 - User `server-user` (in group `server-group`) exists

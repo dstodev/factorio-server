@@ -5,7 +5,7 @@ hot_dir="$1"
 backup_dir="$2"
 
 world_dir="$(find "$hot_dir" -maxdepth 2 -type d -name 'world')"
-world_parent_dir="$(dirname "$world_dir")"
+world_parent_dir="$(dirname -- "$world_dir")"
 
 # Wait for the world directory to stop being modified
 inotifywait --recursive --monitor \

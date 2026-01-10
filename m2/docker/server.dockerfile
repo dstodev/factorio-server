@@ -4,6 +4,7 @@ FROM ubuntu:latest
 RUN apt-get update \
 	&& apt-get install -y \
 	build-essential \
+	&& apt-get clean \
 	&& rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root
@@ -28,6 +29,7 @@ RUN groupadd \
 	$user_name
 
 EXPOSE $game_port/udp
+# EXPOSE $rcon_port/tcp
 
 USER $user_name
 WORKDIR /home/$user_name

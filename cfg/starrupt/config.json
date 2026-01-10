@@ -1,0 +1,16 @@
+{
+  "rcon": {
+    "say": "::",
+    "stop": "shutdown 1",
+    "length": 108
+  },
+  "port": {
+    "game": 7777,
+    "rcon": 50000,
+    "query": 27015
+  },
+  "user": {
+    "name": "server-user:30120",
+    "group": "server-group:30120"
+  }
+}
