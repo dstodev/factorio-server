@@ -4,9 +4,9 @@ set -euo pipefail
 SERVER_PKG_URL='https://factorio.com/get-download/stable/headless/linux64'
 
 this_dir="$(dirname -- "$(readlink -f -- "$0")")"
-source_dir="$(readlink -f -- "$this_dir/..")"
+repo_dir="$(readlink -f -- "$this_dir/..")"
 
-output_dir="${1-$source_dir/server-files}"
+output_dir="${1-$repo_dir/server-files}"
 
 copy=(rsync --archive --no-compress)
 tmp_dir="$this_dir/tmp-package"
@@ -27,7 +27,7 @@ fi
 # Always look in server-files, not $output_dir, for the current hash file.
 # start-server.sh passes a temporary directory as $output_dir which will never
 # contain the hash file.
-cur_hash_file="$source_dir/server-files/package.md5"
+cur_hash_file="$repo_dir/server-files/package.md5"
 
 if [ -f "$cur_hash_file" ]; then
 	cur_hash=$(cat "$cur_hash_file")
@@ -55,7 +55,7 @@ chmod --recursive g+w "$tmp_dir/unpack/"
 md5sum "$pkg_dest" | cut --delimiter ' ' --fields 1 >"$output_dir/package.md5"
 cleanup
 
-cfg_dir="$source_dir/cfg"
+cfg_dir="$repo_dir/cfg"
 
 # Copy new configuration files to top-level config directory
 mkdir --parents --verbose "$cfg_dir"

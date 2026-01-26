@@ -1,35 +1,47 @@
 {
 	"folders": [
 		{
-			"name": "Game Server",
+			"name": "Servers",
 			"path": ".",
 		},
 	],
 	"settings": {
-		"C_Cpp.autoAddFileAssociations": false,
-
 		"shellcheck.useWorkspaceRootAsCwd": true,
 
-		"python.defaultInterpreterPath": "${workspaceFolder}/m1/.venv/bin/python",
+		"python.analysis.importFormat": "absolute",
+		"python.analysis.typeCheckingMode": "standard",
+		"python.defaultInterpreterPath": "${workspaceFolder}/m1/.venv/bin/python3",
 		"python.envFile": "${workspaceFolder}/.env",
 		"python.terminal.activateEnvironment": false,
 		"python.testing.cwd": "${workspaceFolder}/m1",
 		"python.testing.pytestArgs": [ ],
 		"python.testing.pytestEnabled": true,
 
-		"go.testTimeout": "5s",
 		"go.testFlags": [
 			"-v",
 			"-count=1",
 		],
+		"go.testTimeout": "5s",
 
-		"python.analysis.typeCheckingMode": "standard",
+		"files.associations": {
+			"env.in": "dotenv",
+		},
 
 		"files.exclude": {
+			// true
 			"**/*.egg-info": true,
-
+			// false
 			"**/__pycache__": false,
 			"**/*.pyc": false,
 		},
+
+		"C_Cpp.autoAddFileAssociations": false,
+		"C_Cpp.files.exclude": {
+			"**/backup": true,
+			"**/cfg": true,
+			"**/logs": true,
+			"**/server-files": true,
+			"**/shelf": true,
+		}
 	},
 }

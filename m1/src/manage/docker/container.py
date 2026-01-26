@@ -12,11 +12,11 @@ from docker.errors import APIError, NotFound
 from docker.models.containers import Container
 from docker.models.images import Image
 from docker.types import Mount
-
-import docker  # https://docker-py.readthedocs.io/en/stable/index.html
-from manage import PROJECT_NAME
+from manage import PROJECT_NAME_SHORT
 from manage.docker.util import wait_for_container
 from manage.shell import Result
+
+import docker  # https://docker-py.readthedocs.io/en/stable/index.html
 
 
 class ExecResult(NamedTuple):
@@ -48,10 +48,10 @@ def monitor(container_id: str, log_path: Path, auto_rm: bool = False):  # pragma
             logfile.flush()
 
         if auto_rm:
-            logfile.write(f'({PROJECT_NAME}) removing container {container_id}\n')
+            logfile.write(f'({PROJECT_NAME_SHORT}) removing container {container_id}\n')
             container.remove()
 
-        logfile.write(f'({PROJECT_NAME}) closing logfile writer\n')
+        logfile.write(f'({PROJECT_NAME_SHORT}) closing logfile writer\n')
 
 
 class Bind(NamedTuple):

@@ -5,12 +5,17 @@ import shutil
 from functools import partial
 
 import pytest
-
 from manage import game, paths, rcon
 from manage.docker.container import GameContainer
-from manage.docker.util import build_image
+from manage.docker.util import build_image as _build_image
 from manage.rcon import RconError
 from manage.util import clean_docker
+
+
+# Patch build_image to disable caching for all tests in this module
+def build_image(*args, **kwargs):
+    kwargs.pop('cache', None)
+    return _build_image(*args, **kwargs, cache=False)
 
 
 def test_rcon_password(mocker, tmp_path, uncap):
@@ -98,7 +103,7 @@ def test_rcon_send_shim_echo(mocker, tmp_path, tmp_file, uncap):
                           'FROM alpine:latest',
                           'COPY rcon.sh /usr/bin/rcon')
 
-    server_json = tmp_file(f'cfg/{name}/server.json',
+    server_json = tmp_file(f'cfg/{name}/config.json',
                            json.dumps({
                                'port': {
                                    'rcon': 12345
@@ -146,7 +151,7 @@ def test_rcon_send_no_container(mocker, tmp_path, tmp_file, uncap):
 
     name = 'test-game'
 
-    tmp_file(f'cfg/{name}/server.json',
+    tmp_file(f'cfg/{name}/config.json',
              json.dumps({
                  'port': {
                      'rcon': 12345
@@ -164,7 +169,7 @@ def test_rcon_send_no_password(mocker, tmp_path, tmp_file, uncap):
 
     name = 'test-game'
 
-    tmp_file(f'cfg/{name}/server.json',
+    tmp_file(f'cfg/{name}/config.json',
              json.dumps({
                  'port': {
                      'rcon': 12345
@@ -182,14 +187,14 @@ def test_rcon_send_no_client_in_image(mocker, tmp_path, tmp_file, uncap):
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
                           'FROM alpine:latest')
 
-    server_json = tmp_file(f'cfg/{name}/server.json',
+    server_json = tmp_file(f'cfg/{name}/config.json',
                            json.dumps({'port': {'rcon': 12345}}, indent=2))
 
     uncap(dockerfile)
     uncap(server_json)
 
     try:
-        image, _logs = game.docker_image(name)
+        image, _logs = game.docker_image(name, cache=False)
 
         container = GameContainer(f'{name}-server', image)
 
@@ -222,12 +227,21 @@ def test_rcon_send(mocker, tmp_path, tmp_file, uncap):
     rcon_image_name = 'rcon-test-rcon-send'
 
     dockerfile = tmp_file(f'cfg/{name}/server.dockerfile',
-                          f'FROM {rcon_image_name}:latest')
+                          f'FROM {rcon_image_name}:latest',
+                          'ARG user_id',
+                          'ARG user_name',
+                          'ARG group_id',
+                          'ARG group_name',
+                          'RUN groupadd - -gid "$group_id" "$group_name" \\',
+                          '&& useradd - -uid "$user_id" \\',
+                          '- -gid "$group_id" \\',
+                          '- -create-home \\',
+                          '"$user_name"')
 
     expected_uid = 30120
     expected_gid = 30121
 
-    server_json = tmp_file(f'cfg/{name}/server.json',
+    server_json = tmp_file(f'cfg/{name}/config.json',
                            json.dumps({
                                'port': {
                                    'rcon': 12345
@@ -244,7 +258,7 @@ def test_rcon_send(mocker, tmp_path, tmp_file, uncap):
     try:
         build_image(paths.get('rcon') / 'Dockerfile', rcon_image_name, game.build_args(name))
 
-        image, _logs = game.docker_image(name)
+        image, _logs = game.docker_image(name, cache=False)
 
         container = GameContainer(f'{name}-server', image)
 

@@ -1,38 +1,25 @@
-# Variables in this script are automatically interpolated from variables whose
-# defaults are defined in docker/.env when building service images.
+# References:
+# - https://develop.nginxproxymanager.com/guide
+# - https://hub.docker.com/r/jc21/nginx-proxy-manager
 
-name: $SERVER_NAME
+name: $PROJECT_NAME
 
 services:
-  base:
-    build:
-      context: .
-      dockerfile: server.dockerfile
-      args:
-        server_port: $SERVER_PORT
-        rcon_port: $RCON_PORT
-        user_id: $SERVER_USER_ID
-        user_name: $SERVER_USER_NAME
-        group_id: $SERVER_GROUP_ID
-        group_name: $SERVER_GROUP_NAME
-    image: $COMPOSE_PROJECT_NAME-server:1.0
-    user: "$SERVER_USER_NAME:$SERVER_GROUP_NAME"
-
-  server:
-    depends_on: [ base ]
-    image: $COMPOSE_PROJECT_NAME-server:1.0
-    container_name: $COMPOSE_PROJECT_NAME-server
-    entrypoint: [ '/server-files/server/start.sh' ]
+  gateway:
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: unless-stopped
+    environment:
+      TZ: "America/Los_Angeles"
+      PUID: $USER_ID
+      PGID: $GROUP_ID
     ports:
-      # - $SERVER_PORT:$SERVER_PORT/tcp
-      - $SERVER_PORT:$SERVER_PORT/udp
-      - $RCON_PORT:$RCON_PORT/tcp
+      - '$GW_PORT_ADMIN:81'
+      - '$GW_PORT_HTTP:80'
+      - '$GW_PORT_HTTPS:443'
     volumes:
-      - ../server-files/:/server-files/
+      - data:/data
+      - cert:/etc/letsencrypt
 
-  cmd:
-    extends: server
-    container_name: $COMPOSE_PROJECT_NAME-cmd
-    entrypoint:
-      - /bin/bash
-      - -c
+volumes:
+  data:
+  cert:

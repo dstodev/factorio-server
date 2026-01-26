@@ -5,7 +5,8 @@ import stat
 from manage import game
 from manage.docker import Bind, GameContainer
 from manage.shell import Result
-from manage.util import clean_docker
+from manage.util import clean_docker, timestamp
+from python_on_whales import DockerException
 
 
 class Download:
@@ -35,11 +36,13 @@ class Download:
         :param name: The game to download.
         :type name: str
         '''
+        self.name = name
         self.server_dir = game.server_dir(name)
 
-        image, logs = game.docker_image(name)
-        if verbose and logs:
-            print(logs)
+        try:
+            image, _log = game.docker_image(name, verbose=verbose)
+        except DockerException as e:
+            raise RuntimeError(f'Failed to build Docker image for {name}') from e
 
         binds = [
             Bind(host=self.server_dir.parent, guest='/game', writeable=True),
@@ -74,10 +77,14 @@ class Download:
                 # Temporarily set full permissions (o+w so server user can write) & set sticky bit
                 parent_dir.chmod(restore_mode | 0o777 | stat.S_ISVTX)
 
+                time = timestamp()
+
                 self.container.start(entrypoint=['/bin/sh', '-c'],
-                                     command=[command])
+                                     command=[command],
+                                     log_file=game.logs_dir(self.name) / f'{time}-download.log')
 
                 result = self.container.wait(timeout=600)
+                print(f'Downloaded to: {self.server_dir}')
             finally:
                 parent_dir.chmod(restore_mode)
                 clean_docker(self.container.name)

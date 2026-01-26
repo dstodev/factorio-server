@@ -11,6 +11,8 @@ import (
 const defaultLogLevel = "info"
 
 func main() {
+	// fmt.Printf("Args: %#v\n", os.Args)
+	// return
 	app := &cli.Command{
 		Name:      "m2",
 		Usage:     "Manage game servers",
@@ -38,7 +40,7 @@ func main() {
 			},
 			{
 				Name:   "daemon",
-				Usage:  "Start a server daemon",
+				Usage:  "Run server daemon",
 				Hidden: true,
 				Action: commands.Daemon,
 			},

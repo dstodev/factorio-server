@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+
+this_dir="$(dirname -- "$(readlink -f -- "$0")")"
+repo_dir="$(readlink -f -- "$this_dir/../..")"
+docker_dir="$repo_dir/docker"
+
+# shellcheck source=docker/util/docker.sh
+. "$docker_dir/util/docker.sh"
+
+compose "$@"

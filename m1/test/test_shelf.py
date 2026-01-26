@@ -101,7 +101,7 @@ def test_shelf_permissions(mocker, tmp_path, tmp_file, uncap):
     expected_uid = 30120
     expected_gid = 30121
 
-    server_json = tmp_file(f'cfg/{name}/server.json',
+    server_json = tmp_file(f'cfg/{name}/config.json',
                            json.dumps({
                                'user': {
                                    'name': f'server-user:{expected_uid}',

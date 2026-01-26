@@ -3,13 +3,19 @@
 
 import pytest
 from docker.errors import NotFound
-
-import docker
-from manage import PROJECT_NAME
-from manage.docker import build_image
+from manage import PROJECT_NAME_SHORT
+from manage.docker import build_image as _build_image
 from manage.docker.container import Bind, GameContainer
 from manage.shell import Result
 from manage.util import clean_docker
+
+import docker
+
+
+# Patch build_image to disable caching for all tests in this module
+def build_image(*args, **kwargs):
+    kwargs.pop('cache', None)
+    return _build_image(*args, **kwargs, cache=False)
 
 
 class TestContainer:
@@ -30,7 +36,7 @@ class TestContainer:
 
         uncap(dockerfile)
 
-        image, _logs = build_image(dockerfile, self.container_name)
+        image, _log = build_image(dockerfile, self.container_name)
 
         container = GameContainer(self.container_name, image)
 
@@ -73,7 +79,7 @@ class TestContainer:
         uncap(dockerfile)
         uncap(script)
 
-        image, _logs = build_image(dockerfile, self.container_name)
+        image, _log = build_image(dockerfile, self.container_name)
 
         guest_script = '/src/some-script.sh'
 
@@ -111,7 +117,7 @@ class TestContainer:
         uncap(dockerfile)
         uncap(script)
 
-        image, _logs = build_image(dockerfile, self.container_name)
+        image, _log = build_image(dockerfile, self.container_name)
 
         guest_script = '/src/some-script.sh'
 
@@ -139,7 +145,7 @@ class TestContainer:
 
         uncap(dockerfile)
 
-        image, _logs = build_image(dockerfile, self.container_name)
+        image, _log = build_image(dockerfile, self.container_name)
 
         container = GameContainer(self.container_name, image)
 
@@ -160,7 +166,7 @@ class TestContainer:
         uncap(dockerfile)
         uncap(log_file)
 
-        image, _logs = build_image(dockerfile, self.container_name)
+        image, _log = build_image(dockerfile, self.container_name)
 
         container = GameContainer(self.container_name, image)
 
@@ -195,7 +201,7 @@ class TestContainer:
         uncap(dockerfile)
         uncap(log_file)
 
-        image, _logs = build_image(dockerfile, self.container_name)
+        image, _log = build_image(dockerfile, self.container_name)
 
         container = GameContainer(self.container_name, image)
         monitor = container.monitor
@@ -234,7 +240,7 @@ class TestContainer:
         assert result.stdout == '1 2 3 4\n'
         assert result.stderr == ''
 
-        assert log_file.read_text() == f'1 2 3 4\n({PROJECT_NAME}) closing logfile writer\n'
+        assert log_file.read_text() == f'1 2 3 4\n({PROJECT_NAME_SHORT}) closing logfile writer\n'
 
     def test_execute(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
@@ -262,7 +268,7 @@ class TestContainer:
             'group_name': 'server-group'
         }
 
-        image, _logs = build_image(dockerfile, self.container_name, build_args)
+        image, _log = build_image(dockerfile, self.container_name, build_args)
 
         container = GameContainer(self.container_name, image)
 
@@ -295,7 +301,7 @@ class TestContainer:
 
         uncap(dockerfile)
 
-        image, _logs = build_image(dockerfile, self.container_name)
+        image, _log = build_image(dockerfile, self.container_name)
 
         container = GameContainer(self.container_name, image)
 
@@ -308,7 +314,7 @@ class TestContainer:
 
         uncap(dockerfile)
 
-        image, _logs = build_image(dockerfile, self.container_name)
+        image, _log = build_image(dockerfile, self.container_name)
 
         container = GameContainer(self.container_name, image)
 
@@ -325,7 +331,7 @@ class TestContainer:
 
         uncap(dockerfile)
 
-        image, _logs = build_image(dockerfile, self.container_name)
+        image, _log = build_image(dockerfile, self.container_name)
 
         container = GameContainer(self.container_name, image)
 
@@ -352,7 +358,7 @@ class TestContainer:
 
         uncap(dockerfile)
 
-        image, _logs = build_image(dockerfile, self.container_name)
+        image, _log = build_image(dockerfile, self.container_name)
 
         container = GameContainer(self.container_name, image)
 

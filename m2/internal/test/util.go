@@ -2,6 +2,7 @@ package test
 
 import (
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -42,4 +43,13 @@ func (d *TestDir) WriteFile(name, content string, mode os.FileMode) string {
 		d.t.Fatalf("failed to write file '%s': %v", path, err)
 	}
 	return path
+}
+
+func AssertEqual[T any](t *testing.T, expected T, received T) bool {
+	t.Helper()
+	if !reflect.DeepEqual(expected, received) {
+		t.Errorf("expected: %#v != received: %#v", expected, received)
+		return false
+	}
+	return true
 }

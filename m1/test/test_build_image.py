@@ -2,9 +2,15 @@
 
 import pytest
 from docker.errors import BuildError
-
-from manage.docker import build_image
+from manage.docker import build_image as _build_image
 from manage.util import clean_docker
+from python_on_whales import DockerException
+
+
+# Patch build_image to disable caching for all tests in this module
+def build_image(*args, **kwargs):
+    kwargs.pop('cache', None)
+    return _build_image(*args, **kwargs, cache=False)
 
 
 class TestBuildImage:
@@ -26,16 +32,13 @@ class TestBuildImage:
 
         uncap(dockerfile)
 
-        image, logs = build_image(dockerfile, self.image_name)
-
-        uncap(logs)
+        image, log = build_image(dockerfile, self.image_name)
 
         assert image is not None
         assert image.tags == [f'{self.image_name}:latest']
 
-        assert 'Successfully built' in logs
-        assert f'Successfully tagged {self.image_name}:latest' in logs
-        assert 'Hello, World!' in logs
+        assert f'writing image {image.id}' in log
+        assert 'Hello, World!' in log
 
     def test_build_image_args(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
@@ -60,8 +63,7 @@ class TestBuildImage:
         uncap(log)
 
         assert image is not None
-        assert 'Successfully built' in log
-        assert f'Successfully tagged {self.image_name}:latest' in log
+        assert f'writing image {image.id}' in log
 
     def test_rebuild_image(self, tmp_file, uncap):
         dockerfile = tmp_file('test-image.dockerfile',
@@ -70,28 +72,26 @@ class TestBuildImage:
 
         uncap(dockerfile)
 
-        image, logs = build_image(dockerfile, self.image_name)
+        image, log = build_image(dockerfile, self.image_name)
 
-        uncap(logs)
+        uncap(log)
 
         assert image is not None
 
-        assert 'Successfully built' in logs
-        assert 'Hello,' in logs
-        assert 'World!' not in logs
-        assert f'Successfully tagged {self.image_name}:latest' in logs
+        assert f'writing image {image.id}' in log
+        assert 'Hello,' in log
+        assert 'World!' not in log
 
         with dockerfile.open('a') as f:
             f.write('RUN ["echo", "World!"]\n')
 
-        image, logs = build_image(dockerfile, self.image_name)
+        image, log = build_image(dockerfile, self.image_name)
 
-        uncap(logs)
+        uncap(log)
 
-        assert 'Successfully built' in logs
-        assert 'Hello,' in logs
-        assert 'World!' in logs
-        assert f'Successfully tagged {self.image_name}:latest' in logs
+        assert f'writing image {image.id}' in log
+        assert 'Hello,' in log
+        assert 'World!' in log
 
     def test_rebuild_image_change_buildargs(self, tmp_file, uncap):
         initial_uid = 30120
@@ -119,15 +119,14 @@ class TestBuildImage:
             'group_id': f'{initial_gid}',
         }
 
-        image, logs = build_image(dockerfile, self.image_name, build_args)
+        image, log = build_image(dockerfile, self.image_name, build_args)
 
         assert image is not None
-        assert 'Successfully built' in logs
-        assert f'Successfully tagged {self.image_name}:latest' in logs
-        assert f'User: {initial_uid}' in logs
-        assert f'Group: {initial_gid}' in logs
-        assert f'User: {next_uid}' not in logs
-        assert f'Group: {next_gid}' not in logs
+        assert f'writing image {image.id}' in log
+        assert f'User: {initial_uid}' in log
+        assert f'Group: {initial_gid}' in log
+        assert f'User: {next_uid}' not in log
+        assert f'Group: {next_gid}' not in log
 
         # Store the current ID because it is about to be replaced by a new image
         # with different build arguments. This is used to clean up the image
@@ -139,15 +138,14 @@ class TestBuildImage:
             'group_id': f'{next_gid}',
         }
 
-        image, logs = build_image(dockerfile, self.image_name, build_args)
+        image, log = build_image(dockerfile, self.image_name, build_args)
 
         assert image is not None
-        assert 'Successfully built' in logs
-        assert f'Successfully tagged {self.image_name}:latest' in logs
-        assert f'User: {initial_uid}' not in logs
-        assert f'Group: {initial_gid}' not in logs
-        assert f'User: {next_uid}' in logs
-        assert f'Group: {next_gid}' in logs
+        assert f'writing image {image.id}' in log
+        assert f'User: {initial_uid}' not in log
+        assert f'Group: {initial_gid}' not in log
+        assert f'User: {next_uid}' in log
+        assert f'Group: {next_gid}' in log
 
         assert previous_image is not None
         clean_docker(previous_image)
@@ -158,7 +156,7 @@ class TestBuildImage:
 
         uncap(dockerfile)
 
-        with pytest.raises(BuildError):
+        with pytest.raises(DockerException):
             build_image(dockerfile, self.image_name)
 
     def test_can_base_on_another_image(self, tmp_file, uncap):
@@ -201,24 +199,20 @@ class TestBuildImage:
         }
 
         try:
-            image_1, logs_1 = build_image(dockerfile_1, name_1, build_args)
-            image_2, logs_2 = build_image(dockerfile_2, name_2, build_args)
+            image_1, log_1 = build_image(dockerfile_1, name_1, build_args)
+            image_2, log_2 = build_image(dockerfile_2, name_2, build_args)
         finally:
             clean_docker(name_1)
             clean_docker(name_2)
 
-        uncap(logs_1)
-        uncap(logs_2)
+        uncap(log_1)
+        uncap(log_2)
 
         assert image_1 is not None
         assert image_2 is not None
 
-        assert 'Successfully built' in logs_1
-        assert 'Successfully tagged' in logs_1
-        assert f'Successfully tagged {name_1}:latest' in logs_1
-        assert name_2 not in logs_1
+        assert f'writing image {image_1.id}' in log_1
+        assert name_2 not in log_1
 
-        assert 'Successfully built' in logs_2
-        assert 'Successfully tagged' in logs_2
-        assert f'Successfully tagged {name_2}:latest' in logs_2
-        assert name_1 in logs_2
+        assert f'writing image {image_2.id}' in log_2
+        assert name_1 in log_2

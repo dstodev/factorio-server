@@ -4,7 +4,6 @@ import json
 from functools import partial
 
 import pytest
-
 from manage import game, paths
 from manage.util import clean_docker
 
@@ -54,7 +53,7 @@ def test_game_dirs(tmp_path, mocker, func_name, expected_dir):
 
 
 @pytest.mark.parametrize('func_name,expected_stem', [
-    ('cfg_file', 'server.json'),
+    ('cfg_file', 'config.json'),
     ('dockerfile', 'server.dockerfile'),
     ('backup_script', 'backup.sh'),
     ('download_script', 'download.sh'),
@@ -156,9 +155,8 @@ def test_game_docker_image(mocker, tmp_path, tmp_file, uncap):
 
     uncap(dockerfile)
 
-    image, logs = game.docker_image(name)
+    image, log = game.docker_image(name, cache=False)
     clean_docker(name)
 
     assert image is not None
-    assert 'Successfully built' in logs
-    assert f'Successfully tagged {name}:latest' in logs
+    assert f'writing image {image.id}' in log

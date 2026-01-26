@@ -7,6 +7,8 @@ this_dir="$(dirname -- "$(readlink -f -- "$0")")"
 relative_path="$(realpath --relative-to="$(pwd -P)" "$this_dir")"
 this_name="$(basename "$0")"
 
+export DOCKER_BUILDKIT=1
+
 help() {
 	cat <<-EOF
 		This script sets up and provides access to a Python virtual environment.
@@ -88,10 +90,10 @@ export PYTEST_ADDOPTS
 
 cd "$this_dir"
 
-source_dir="$(readlink -f -- "$this_dir/..")"
+repo_dir="$(readlink -f -- "$this_dir/..")"
 
 # shellcheck source=script/util.sh
-source "$source_dir/script/util.sh"
+source "$repo_dir/script/util.sh"
 
 fv="$(flag_verbose)" # flag_verbose() from util.sh
 fq="$(flag_quiet)"   # flag_quiet() from util.sh
@@ -100,6 +102,7 @@ pretty_rm() {
 	rm ${fv:+"$fv"} --force --recursive "$1" | tail --lines 1 | sed 's/^/-- /'
 }
 
+# Wraps `find`
 clean() {
 	if [ $# -gt 0 ]; then
 		find "$this_dir" "$@" | while read -r file; do
@@ -117,7 +120,7 @@ venv_init() {
 	echo "-- Initializing Python virtual environment: $venv_dir"
 
 	# Remove venv_dir from PATH before searching for Python
-	# Important if running with -rr from an already-acitvated environment
+	# Important if running with -rr from an already-activated environment
 	PATH="$(echo "$PATH" | tr ':' '\n' | grep -v "$venv_dir" | tr '\n' ':' | sed 's/:$//')"
 
 	py="$(py_interpreter "$PYTHON_VERSION")" # py_interpreter() from util.sh
@@ -131,7 +134,7 @@ venv_init() {
 	# After venv activate, python and pip are available as commands from the venv
 	pip ${fq:+"$fq"} install --upgrade pip
 
-	find "$source_dir" -type f -name pyproject.toml | while read -r pyproject; do
+	find "$repo_dir" -type f -name pyproject.toml | while read -r pyproject; do
 		verbose "-- Installing project: $pyproject"
 		dir="$(dirname -- "$pyproject")"
 		pip ${fq:+"$fq"} install --editable "$dir"'[dev]'
@@ -153,9 +156,9 @@ jobs="$(($(nproc) - 1))"
 
 prepare() {
 	if [ "$VERBOSE" -gt 0 ]; then
-		(cd "$source_dir/rcon" && make --jobs $jobs image)
+		(cd "$repo_dir/rcon" && make --jobs $jobs image)
 	else
-		(cd "$source_dir/rcon" && make --jobs $jobs image) >/dev/null 2>&1
+		(cd "$repo_dir/rcon" && make --jobs $jobs image) >/dev/null 2>&1
 	fi
 }
 prepare

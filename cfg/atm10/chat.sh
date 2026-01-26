@@ -2,8 +2,8 @@
 set -euo pipefail
 
 this_dir="$(dirname -- "$(readlink -f -- "$0")")"
-source_dir="$(readlink -f -- "$this_dir/../..")"
-log_root="$source_dir/logs"
+repo_dir="$(readlink -f -- "$this_dir/../..")"
+log_root="$repo_dir/logs"
 
 game="$(basename -- "$this_dir")"
 log_dir="$log_root/$game"

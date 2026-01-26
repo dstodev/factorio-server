@@ -1,5 +1,4 @@
 FROM ubuntu:noble
-#    ubuntu:latest tracks the latest LTS release
 
 RUN apt-get update \
 	&& apt-get install -y \

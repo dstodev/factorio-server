@@ -95,7 +95,11 @@ class Start:
 
         time = timestamp()
 
+        log_file = game.logs_dir(self.name) / f'{time}-start.log'
+
         self.container.start(entrypoint=['/bin/sh', '-c'],
                              command=[command],
-                             log_file=game.logs_dir(self.name) / f'{time}.log',
+                             log_file=log_file,
                              auto_rm=auto_rm)
+
+        print(f'Writing {self.name} logs to: {log_file}')

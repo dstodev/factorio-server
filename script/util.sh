@@ -20,18 +20,26 @@ timestamp() {
 # Print '-q' if VERBOSE is unset or 0.
 # Useful to "forward" non-verbosity to commands supporting -q.
 flag_quiet() {
-	if [ "${VERBOSE:-0}" -eq 0 ]; then
-		echo '-q'
-	fi
+	quiet '-q'
 }
 
-# Print '-v' if VERBOSE is greater than 0.
+# Print '-v' if VERBOSE is set and greater than 0.
 # Useful to "forward" verbosity to commands supporting -v.
 flag_verbose() {
 	verbose '-v'
 }
 
-# Print a message if VERBOSE is set & greater than 0.
+# Print a message if VERBOSE is unset or 0.
+#
+# Use carefully: printing a message is conventionally antithetical to "quiet"
+# operation.
+quiet() {
+	if [ "${VERBOSE:-0}" -eq 0 ]; then
+		echo "$@"
+	fi
+}
+
+# Print a message if VERBOSE is set and greater than 0.
 verbose() {
 	if [ "${VERBOSE:-0}" -gt 0 ]; then
 		echo "$@"

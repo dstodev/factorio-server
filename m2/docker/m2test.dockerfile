@@ -5,6 +5,10 @@ ENV GROUP=testgroup
 ENV UID=30120
 ENV GID=$UID
 
+RUN apk add --no-cache \
+	coreutils \
+	util-linux
+
 RUN addgroup \
 	--gid "$GID" \
 	"$GROUP" \
@@ -14,9 +18,5 @@ RUN addgroup \
 	--disabled-password \
 	--gecos "" \
 	"$USER"
-
-RUN apk add --no-cache \
-	coreutils \
-	util-linux
 
 USER $USER

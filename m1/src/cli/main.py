@@ -3,7 +3,6 @@
 from argparse import Namespace
 
 from cli import cli
-
 from manage import game, paths, rcon
 from manage.command import Backup, Download, Shelf, Start, Stop
 from manage.docker import build_image
@@ -30,7 +29,7 @@ def main():
         return
 
     # Update rcon image with game's build args
-    build_image(paths.get('rcon') / 'Dockerfile', 'rcon', game.build_args(args.name))
+    _image, _logs = build_image(paths.get('rcon') / 'Dockerfile', f'{args.name}-rcon', game.build_args(args.name))
 
     action = None
 

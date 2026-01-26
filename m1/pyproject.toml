@@ -2,21 +2,33 @@
 name = 'manage'
 version = '1.0.0'
 requires-python = ">=3.10"
-dependencies = ['docker']
+dependencies = [
+  'docker',
+  'python-on-whales',
+]
 
 [project.scripts]
 manage = 'cli.main:main'
 
 [project.optional-dependencies]
-dev = ['pytest', 'pytest-cov', 'pytest-mock', 'pytest-xdist']
+dev = [
+  'pytest',
+  'pytest-cov',
+  'pytest-mock',
+  'pytest-xdist',
+]
 
 [build-system]
-requires = ['setuptools']
+requires = [
+  'setuptools',
+]
 build-backend = 'setuptools.build_meta'
 
 # See: https://docs.pytest.org/en/stable/reference/customize.html#pyproject-toml
 [tool.pytest.ini_options]
-testpaths = ['test']
+testpaths = [
+  'test',
+]
 
 [tool.coverage.run]
 data_file = '.venv/.coverage'

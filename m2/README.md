@@ -26,7 +26,6 @@ m2 factorio shelf
 m2 factorio stdin commands-to-send
 m2 factorio rcon commands-to-send
 m2 factorio say message-to-say
-
 ```
 
 ## Guidelines Followed

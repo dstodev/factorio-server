@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import NamedTuple
 
 from docker.models.images import Image
-
 from manage import paths
 from manage.docker.util import build_image
 
@@ -121,7 +120,7 @@ def user(name: str) -> User:
     return User(name=name, uid=int(uid), group=group, gid=int(gid))
 
 
-def docker_image(name: str, context_files: list[Path] | None = None) -> tuple[Image, str]:
+def docker_image(name: str, context_files: list[Path] | None = None, verbose: bool = False, cache: bool = True) -> tuple[Image, str]:
     '''Build the game's image.
 
     Build errors are raised as exceptions.
@@ -137,9 +136,9 @@ def docker_image(name: str, context_files: list[Path] | None = None) -> tuple[Im
     '''
     with tempfile.TemporaryDirectory() as tmpdir:
         dockerfile_ = docker_context(dockerfile(name), Path(tmpdir), context_files)
-        image, logs = build_image(dockerfile_, name, build_args(name))
+        image, log_full = build_image(dockerfile_, name, build_args(name), verbose=verbose, cache=cache)
 
-    return image, logs
+    return image, log_full
 
 
 def docker_context(dockerfile_: Path,

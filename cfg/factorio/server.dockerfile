@@ -1,5 +1,4 @@
-FROM ubuntu:latest
-#    ubuntu:latest tracks the latest LTS release
+FROM rcon:latest
 
 RUN apt update \
 	&& DEBIAN_FRONTEND=noninteractive \

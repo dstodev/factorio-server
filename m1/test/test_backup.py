@@ -4,7 +4,7 @@ import json
 import os
 from functools import partial
 
-from manage import PROJECT_NAME, game, paths, rcon
+from manage import PROJECT_NAME_SHORT, game, paths, rcon
 from manage.command import Backup, Download, Rcon, Start
 from manage.util import clean_docker, timestamp
 
@@ -43,7 +43,7 @@ def test_backup(mocker, tmp_path, tmp_file, uncap):
     expected_uid = 30120
     expected_gid = 30121
 
-    server_json = tmp_file(f'cfg/{name}/server.json',
+    server_json = tmp_file(f'cfg/{name}/config.json',
                            json.dumps({
                                'user': {
                                    'name': f'server-user:{expected_uid}',
@@ -164,7 +164,7 @@ def test_backup_tries_rcon_save(mocker, tmp_path, tmp_file, uncap):
     rcon_port = 12345
     save_cmd_str = '/save'
 
-    server_json = tmp_file(f'cfg/{name}/server.json',
+    server_json = tmp_file(f'cfg/{name}/config.json',
                            json.dumps({
                                'port': {
                                    'rcon': rcon_port
@@ -252,4 +252,4 @@ def test_backup_tries_rcon_save(mocker, tmp_path, tmp_file, uncap):
 
     content = log.read_text(encoding='utf-8')
 
-    assert content == f'({PROJECT_NAME}) closing logfile writer\n'
+    assert content == f'({PROJECT_NAME_SHORT}) closing logfile writer\n'

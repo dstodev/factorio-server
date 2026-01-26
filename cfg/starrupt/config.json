@@ -1,8 +1,7 @@
 {
   "rcon": {
     "say": "::",
-    "stop": "shutdown 1",
-    "length": 108
+    "stop": "shutdown 1"
   },
   "port": {
     "game": 7777,

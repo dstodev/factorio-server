@@ -4,7 +4,7 @@ import json
 from functools import partial
 from test.util import PKillTail
 
-from manage import PROJECT_NAME, game, paths, rcon
+from manage import PROJECT_NAME_SHORT, game, paths, rcon
 from manage.command import Rcon, Start, Stop
 from manage.util import clean_docker
 
@@ -56,7 +56,7 @@ def test_stop(mocker, tmp_path, tmp_file, uncap):
 
     content = log.read_text(encoding='utf-8')
 
-    assert content == f'{result.stdout}({PROJECT_NAME}) closing logfile writer\n'
+    assert content == f'{result.stdout}({PROJECT_NAME_SHORT}) closing logfile writer\n'
 
 
 def test_stop_no_container(mocker, tmp_path):
@@ -98,7 +98,7 @@ def test_stop_tries_rcon_save_stop(mocker, tmp_path, tmp_file, uncap):
     save_cmd_str = '/save'
     stop_cmd_str = '/stop'
 
-    server_json = tmp_file(f'cfg/{name}/server.json',
+    server_json = tmp_file(f'cfg/{name}/config.json',
                            json.dumps({
                                'port': {
                                    'rcon': rcon_port
@@ -172,4 +172,4 @@ def test_stop_tries_rcon_save_stop(mocker, tmp_path, tmp_file, uncap):
 
     content = log.read_text(encoding='utf-8')
 
-    assert content == f'{result.stdout}{result.stderr}({PROJECT_NAME}) closing logfile writer\n'
+    assert content == f'{result.stdout}{result.stderr}({PROJECT_NAME_SHORT}) closing logfile writer\n'

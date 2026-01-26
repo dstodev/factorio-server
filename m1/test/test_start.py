@@ -4,7 +4,7 @@ import json
 import os
 from functools import partial
 
-from manage import PROJECT_NAME, game, paths, rcon
+from manage import PROJECT_NAME_SHORT, game, paths, rcon
 from manage.command import Download, Start
 from manage.util import clean_docker
 
@@ -45,7 +45,7 @@ def test_start(mocker, tmp_path, tmp_file, uncap):
     expected_uid = 30120
     expected_gid = 30121
 
-    server_json = tmp_file(f'cfg/{name}/server.json',
+    server_json = tmp_file(f'cfg/{name}/config.json',
                            json.dumps({
                                'user': {
                                    'name': f'server-user:{expected_uid}',
@@ -79,7 +79,7 @@ def test_start(mocker, tmp_path, tmp_file, uncap):
     uncap(server_hot)
 
     logs = list(game.logs_dir(name).iterdir())
-    assert len(logs) == 1
+    assert len(logs) == 2
     log = logs[0]
     assert log.name.endswith('.log')
 
@@ -148,4 +148,4 @@ def test_start_stopfile_loop(mocker, tmp_path, tmp_file, uncap):
 
     content = log.read_text(encoding='utf-8')
 
-    assert content == f'1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n({PROJECT_NAME}) closing logfile writer\n'
+    assert content == f'1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n({PROJECT_NAME_SHORT}) closing logfile writer\n'

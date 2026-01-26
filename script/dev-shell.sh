@@ -11,24 +11,26 @@ help() {
 
 		Launch a shell in the server environment for a game.
 
-		-h, --help   Print this message.
-		-r, --root   Run as root instead of as server's user.
+		-h, --help      Print this message.
+		-v, --verbose   Enable verbose output.
+		-r, --root      Run as root instead of as server's user.
 	EOF
 }
 
+status=0
 getopt --test >/dev/null 2>&1 || status=$?
-if [ "${status-0}" -ne 4 ]; then
+if [ "$status" -ne 4 ]; then
 	echo 'Error: getopt --test failed. This script requires GNU getopt from util-linux.' >&2
 	exit 1
 fi
-unset status
 
+status=0
 args=$(getopt --name "$(basename -- "$0")" \
-	--options hr \
-	--longoptions help,root \
+	--options hrv \
+	--longoptions help,verbose,root \
 	-- "$@") || status=$?
 
-if [ "${status-0}" -ne 0 ]; then
+if [ "$status" -ne 0 ]; then
 	help
 	exit 1
 fi
@@ -41,6 +43,9 @@ while :; do
 		help
 		exit 0
 		;;
+	-v | --verbose)
+		verbose=true
+		;;
 	-r | --root)
 		root=true
 		;;
@@ -52,9 +57,15 @@ while :; do
 	shift # option
 done
 
+verbose="${verbose-false}"
+root="${root-false}"
+
+if $verbose; then
+	printf -- 'Args: |%s|\n' "$args"
+fi
+
 this_dir="$(dirname -- "$(readlink -f -- "$0")")"
-source_dir="$(readlink -f -- "$this_dir/..")"
-#rcon_dir="$source_dir/rcon" # TODO: expose RCON client? m1 cli supports rcon --send.
+repo_dir="$(readlink -f -- "$this_dir/..")"
 
 game="${1-}"
 shift || true
@@ -65,19 +76,12 @@ if [ -z "$game" ]; then
 	exit 1
 fi
 
-game_cfg_dir="$source_dir/cfg/$game"
+game_cfg_dir="$repo_dir/cfg/$game"
 
 if [ ! -d "$game_cfg_dir" ]; then
 	echo "Error: unknown game: $game" >&2
 	exit 1
 fi
-
-if [ "${1-}" = '-r' ]; then
-	root=true
-	shift
-fi
-
-root=${root-false}
 
 # read user from config.json:
 # {
@@ -99,11 +103,11 @@ user_group="${user_groupstr%%:*}"
 user_uid="${user_namestr##*:}"
 user_gid="${user_groupstr##*:}"
 
-host_hot="$source_dir/server-files/$game/hot"
-host_shelf="$source_dir/shelf/$game"
+host_hot="$repo_dir/server-files/$game/hot"
+host_shelf="$repo_dir/shelf/$game"
 
 mounts=(
-	"$source_dir:/src"
+	"$repo_dir:/src"
 	"$host_hot:/hot"
 	"$host_shelf:/shelf"
 )
@@ -148,7 +152,12 @@ print_mounts() {
 
 preamble
 
-("$source_dir/m1/py.sh" -- -m cli "$game" download) # builds the image
+verbose_flag=
+if $verbose; then
+	verbose_flag='--verbose'
+fi
+
+("$repo_dir/m1/py.sh" -- -m cli $verbose_flag "$game" download) # builds the image
 
 run_mounts=()
 for m in "${mounts[@]}"; do
